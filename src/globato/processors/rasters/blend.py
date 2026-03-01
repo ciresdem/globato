@@ -77,6 +77,26 @@ class MultiStackBlend(RasterHook):
         slope_norm[np.isnan(slope_norm)] = 0.0
         return slope_norm
 
+    def _write_chunk(self, chunk, window, buff_win, src, dst):
+
+        # Crop buffer
+        y_off = window.row_off - buff_win.row_off
+        x_off = window.col_off - buff_win.col_off
+
+        final_chunk = chunk[y_off : y_off + window.height,
+                            x_off : x_off + window.width]
+
+        dst.write(final_chunk, 1, window=window)
+
+        try:
+            for b in range(2,8):
+                b_arr = src.read(b, window=window)
+                b_arr = b_arr[y_off : y_off + window.height,
+                              x_off : x_off + window.width]
+                dst.write(b_arr, b, window=window)
+        except Exception:
+            pass
+
     def process_raster(self, src_path, dst_path, entry):
         with rasterio.open(src_path) as src:
             profile = src.profile.copy()
@@ -92,6 +112,8 @@ class MultiStackBlend(RasterHook):
 
                     valid_mask = (z != ndv) & (~np.isnan(z))
                     if not np.any(valid_mask):
+                        logger.warning('no valid data')
+                        self._write_chunk(z, window, src, dst)
                         continue
 
                     fg_mask = valid_mask & (w >= self.weight_threshold)
@@ -99,6 +121,8 @@ class MultiStackBlend(RasterHook):
                     bg_mask = valid_mask & (~fg_mask)
 
                     if not np.any(fg_mask):
+                        logger.warning(f"no fg data over weight of {self.weight_threshold}")
+                        self._write_chunk(z, window, src, dst)
                         continue
 
                     struct = scipy.ndimage.generate_binary_structure(2, 2)
@@ -127,6 +151,8 @@ class MultiStackBlend(RasterHook):
                     anchor_vals = z[anchors_mask]
                     target_pts = np.array([rows[transition_zone], cols[transition_zone]]).T
                     if len(anchor_pts) < 4 or len(target_pts) == 0:
+                        logger.warning("too few points to perform interpolation")
+                        self._write_chunk(z, window, src, dst)
                         continue
 
                     try:
@@ -157,14 +183,15 @@ class MultiStackBlend(RasterHook):
                         logger.warning(f"Blend failed in chunk: {e}")
                         pass
 
-                    # Crop buffer
-                    y_off = window.row_off - buff_win.row_off
-                    x_off = window.col_off - buff_win.col_off
+                    self._write_chunk(z, window, buff_win, src, dst)
+                    # # Crop buffer
+                    # y_off = window.row_off - buff_win.row_off
+                    # x_off = window.col_off - buff_win.col_off
 
-                    final_chunk = z[y_off : y_off + window.height,
-                                    x_off : x_off + window.width]
+                    # final_chunk = z[y_off : y_off + window.height,
+                    #                 x_off : x_off + window.width]
 
-                    dst.write(final_chunk, 1, window=window)
+                    # dst.write(final_chunk, 1, window=window)
 
         return True
 

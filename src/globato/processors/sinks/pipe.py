@@ -16,7 +16,7 @@ import logging
 import numpy as np
 from fetchez.hooks import FetchHook
 
-#logging.basicConfig(stream=sys.stderr)
+logging.basicConfig(stream=sys.stderr)
 logger = logging.getLogger(__name__)
 
 

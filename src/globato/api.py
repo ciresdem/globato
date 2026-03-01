@@ -95,6 +95,24 @@ class GlobatoStream:
 
         return df
 
+    def to_polars(self):
+        """Consumes the stream and returns a Polars DataFrame.
+        Blazing fast, highly memory efficient alternative to Pandas.
+        """
+
+        import polars as pl
+
+        # Consume the stream
+        chunks = list(self._iterator)
+        if not chunks:
+            return pl.DataFrame()
+
+        # Stack the chunks into a single numpy array
+        stacked_array = np.concatenate(chunks)
+
+        # Polars reads the numpy structured array memory directly
+        return pl.from_numpy(stacked_array)
+
     def to_numpy(self) -> np.recarray:
         """Consumes the stream and returns a single stacked numpy structured array."""
 

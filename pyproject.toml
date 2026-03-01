@@ -21,7 +21,9 @@ dependencies = [
     "fiona",
     "pandas",
     "pyproj>3.6.1",
-    "pyshp"
+    "pyshp",
+    "h5py",
+    "pygmt",
 ]
 
 [project.urls]

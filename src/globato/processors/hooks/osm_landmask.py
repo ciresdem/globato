@@ -17,12 +17,18 @@ import logging
 import math
 import fiona
 import shapely.wkb
-from osgeo import ogr
 from shapely.geometry import box, LineString, Point, mapping
 from shapely.ops import linemerge, unary_union
 from fetchez.hooks import FetchHook
 from fetchez.core import Fetch, urlencode
 from fetchez import utils
+
+try:
+    from osgeo import ogr
+
+    HAS_OSGEO = True
+except ImportError:
+    HAS_OSGEO = False
 
 try:
     from fetchez.modules.gmrt import gmrt_fetch_point
@@ -46,6 +52,12 @@ class OSMLandmask(FetchHook):
         self.filename = filename
 
     def run(self, entries):
+        if not HAS_OSGEO:
+            logger.error(
+                "You must have gdal installed to run this module. Install gdal on your system and run 'pip install gdal'"
+            )
+            return {}
+
         regions = [getattr(mod, "region", None) for mod, _ in entries]
         valid_regions = [r for r in regions if r]
 

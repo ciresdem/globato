@@ -180,6 +180,14 @@ class RasterHook(FetchHook):
                                          x_off : x_off + window.width]
 
                     dst.write(final_chunk, 1, window=window)
+                    # if is_stack:
+                    #     try:
+                    #         for b in range(2,8):
+                    #             b_arr = src.read(b, window=window)
+                    #             dst.write(b_arr, b, window=window)
+                    #     except Exception:
+                    #         pass
+
 
         return True
 
