@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/continuous-dems">
-        <img src="media/cudem_logo_micro.svg" height="60" alt="CUDEM Logo">
+        <img src="media/cudem_logo_micro_plain.svg" height="60" alt="CUDEM Logo">
     </a>
 </p>
 <h1 align="center">Globato</h1>
