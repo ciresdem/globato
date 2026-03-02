@@ -3,7 +3,8 @@
         <img src="media/cudem_logo_micro_plain.svg" height="60" alt="CUDEM Logo">
     </a>
 </p>
-<h1 align="center">Globato<br><em>Domo Arigato, Multi-Resolution Globato.</em></h1>
+<h1 align="center">Globato</h1>
+<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT">
