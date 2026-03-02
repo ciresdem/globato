@@ -52,7 +52,7 @@ class MBSReader:
                  min_year=None,
                  auto_weight=True,
                  auto_uncertainty=True,
-                 # want_filtered=False,
+                 want_filtered=False,
                  want_flagged=False,
                  **kwargs):
 
@@ -66,7 +66,7 @@ class MBSReader:
         self.min_year = min_year
         self.auto_weight = auto_weight
         self.auto_uncertainty = auto_uncertainty
-        # self.want_filtered = want_filtered
+        self.want_filtered = want_filtered
         self.want_flagged = want_flagged
 
         self.weight = 1

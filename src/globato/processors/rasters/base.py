@@ -120,7 +120,7 @@ class RasterHook(FetchHook):
         return new_entries
 
     def process_raster(self, src_path, dst_path, entry):
-        barrier_geoms = self._get_barrier_geometries()
+        self.barrier_geoms = self._get_barrier_geometries()
         with rasterio.open(src_path) as src:
             profile = src.profile.copy()
             is_stack = (src.count >= 3)
@@ -146,39 +146,39 @@ class RasterHook(FetchHook):
                         except Exception:
                             pass
 
-                    # Barrier Logic (Coastline Split)
-                    if barrier_geoms:
-                        win_transform = rasterio.windows.transform(buff_win, src.transform)
-                        barrier_mask = rasterize(
-                            barrier_geoms, out_shape=data.shape,
-                            transform=win_transform, fill=0, default_value=1, dtype='uint8'
-                        ).astype(bool)
+                    # # Barrier Logic (Coastline Split)
+                    # if barrier_geoms:
+                    #     win_transform = rasterio.windows.transform(buff_win, src.transform)
+                    #     barrier_mask = rasterize(
+                    #         barrier_geoms, out_shape=data.shape,
+                    #         transform=win_transform, fill=0, default_value=1, dtype='uint8'
+                    #     ).astype(bool)
 
-                        # Split and process independently
-                        # a is land b is water (typically)
-                        #data_a = np.where(barrier_mask, data, ndv)
-                        data_b = np.where(~barrier_mask, data, ndv)
+                    #     # Split and process independently
+                    #     # a is land b is water (typically)
+                    #     #data_a = np.where(barrier_mask, data, ndv)
+                    #     data_b = np.where(~barrier_mask, data, ndv)
 
-                        # Process chunks
-                        #res_a = self.process_chunk(data_a, ndv, entry, transform=chunk_transform, window=buff_win)
-                        res_b = self.process_chunk(data_b, ndv, entry, transform=chunk_transform, window=buff_win)
-                        #res_a = np.where(barrier_mask, ndv, ndv)
-                        res_b = np.where(~barrier_mask, res_b, ndv)
-                        #res_a[:] = ndv
-                        #res_b[res_a == ndv] = ndv
-                        #res_b[res_b == ndv] = np.nan
-                        #res_b[res_b > 0] = ndv
+                    #     # Process chunks
+                    #     #res_a = self.process_chunk(data_a, ndv, entry, transform=chunk_transform, window=buff_win)
+                    #     res_b = self.process_chunk(data_b, ndv, entry, transform=chunk_transform, window=buff_win)
+                    #     #res_a = np.where(barrier_mask, ndv, ndv)
+                    #     res_b = np.where(~barrier_mask, res_b, ndv)
+                    #     #res_a[:] = ndv
+                    #     #res_b[res_a == ndv] = ndv
+                    #     #res_b[res_b == ndv] = np.nan
+                    #     #res_b[res_b > 0] = ndv
 
-                        # Stitch
-                        result = np.where(~barrier_mask, res_b, ndv)
-                        #result = np.where(barrier_mask, res_a, res_b)
-                    else:
-                        # Standard Processing
-                        result = self.process_chunk(
-                            data, ndv, entry,
-                            transform=chunk_transform,
-                            window=buff_win,
-                        )
+                    #     # Stitch
+                    #     result = np.where(~barrier_mask, res_b, ndv)
+                    #     #result = np.where(barrier_mask, res_a, res_b)
+                    # else:
+                    # Standard Processing
+                    result = self.process_chunk(
+                        data, ndv, entry,
+                        transform=chunk_transform,
+                        window=buff_win,
+                    )
 
                     # Crop buffer
                     y_off = window.row_off - buff_win.row_off
