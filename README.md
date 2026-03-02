@@ -2,8 +2,8 @@
     <a href="https://github.com/continuous-dems">
         <img src="media/cudem_logo_micro_plain.svg" height="60" alt="CUDEM Logo">
     </a>
-	<h1>Globato</h1>
-	<em>Domo Arigato, Multi-Resolution Globato.</em>
+	<h1 align="center">Globato</h1>
+	<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
 </p>
 
 
