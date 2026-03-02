@@ -107,8 +107,7 @@ class GmtSurface(RasterHook):
                         transform=src.transform, fill=0, default_value=1, dtype='uint8'
                     ).astype(bool)
                     #data_b = np.where(~barrier_mask, data, ndv)
-                    result_arr = np.where(~barrier_mask, result_arr, np.nan)
-                    print(result_arr)
+                    result_arr = np.where(~barrier_mask, result_arr, nodata)
 
                 with rasterio.open(dst_path, "w", **profile) as dst:
                     dst.write(result_arr.astype(rasterio.float32), 1)

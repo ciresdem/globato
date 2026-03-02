@@ -163,13 +163,13 @@ class CudemStepDown(RasterHook):
 
             # Interpolate!
             step_barrier = self.barrier if i > 0 else None
-            #if self.algo == "interp_gmt":
-            if i > 0:
+            if self.algo == "interp_gmt":
+                #if i > 0:
                 # Use GMT for smooth splines (Great for Step 0/Coarse)
                 interp = GmtSurface(
                     tension=0.95,
                     barrier=step_barrier,
-                    upper=-.01, #if i > 0 else None,
+                    upper=-.01 if i > 0 else None,
                 )
             else:
                 # Default to Scipy (Great for Step 1+/Fine)
