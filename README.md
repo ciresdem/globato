@@ -4,6 +4,7 @@
     </a>
 </p>
 <h1 align="center">Globato</h1>
+<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT">
@@ -13,10 +14,6 @@
 	<img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Zulip Chat">
   </a>
 </p>
-
-**Domo Arigato, Multi-Resolution Globato.**
-
-> ⚠️ **BETA STATUS:** This project is in active development (v0.1.6).
 
 **Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the `fetchez` ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
 
