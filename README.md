@@ -2,8 +2,8 @@
     <a href="https://github.com/continuous-dems">
         <img src="media/cudem_logo_micro.svg" height="60" alt="CUDEM Logo">
     </a>
-	<h1> Globato </h1>
 </p>
+<h1 align="center">Globato</h1>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT">
