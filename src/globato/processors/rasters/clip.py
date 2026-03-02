@@ -27,12 +27,13 @@ class RasterClipHook(RasterHook):
     name = "raster_clip"
     category = "raster-op"
     default_suffix = "_clipped"
+    stage = "file"
 
     def __init__(self, invert=False, **kwargs):
         super().__init__(**kwargs)
 
         self.invert = str(invert).lower() == "true"
-        self.clip_geoms = None
+        #self.clip_geoms = None
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         """Process individual windows/chunks passed by RasterHook."""
@@ -40,19 +41,19 @@ class RasterClipHook(RasterHook):
         if not self.barrier_geoms:
             return data
 
-        out_shape = data.shape[-2:] if data.ndim >= 2 else data.shape
+        #out_shape = data.shape[-2:] if data.ndim >= 2 else data.shape
 
         geom_mask = rasterize(
             self.barrier_geoms,
-            out_shape=out_shape,
+            out_shape=data.shape,
             transform=transform,
             fill=0,
             default_value=1,
             dtype='uint8'
         ).astype(bool)
 
-        if data.ndim == 3:
-            geom_mask = np.broadcast_to(geom_mask, data.shape)
+        # if data.ndim == 3:
+        #     geom_mask = np.broadcast_to(geom_mask, data.shape)
 
         if self.invert:
             # Set pixels INSIDE the polygons to nodata
@@ -61,4 +62,5 @@ class RasterClipHook(RasterHook):
             # Set pixels OUTSIDE the polygons to nodata
             clipped_data = np.where(geom_mask, data, ndv)
 
+        logger.info(f"[Clip] clipped at {stage}.")
         return clipped_data
