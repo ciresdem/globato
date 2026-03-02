@@ -42,5 +42,5 @@ class RangeZ(GlobatoFilter):
         if self.max_z is not None:
             mask |= (chunk["z"] > self.max_z)
 
-        logger.info(f'[RangeZ] filtered {np.count_nonzero(mask)} points')
+        logger.info(f"Filtered {np.count_nonzero(mask)} points")
         return mask

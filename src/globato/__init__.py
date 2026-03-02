@@ -25,6 +25,10 @@ from .modules.glob_dem import GlobDEM
 from .modules.glob_coast import GlobCoast
 from .modules.sources import GlobCopernicus, GlobFabDEM, GlobMultibeam, GlobBAG, GlobNOSXYZ
 
+# --- Schemas ---
+from . import schemas
+
+# --- API ----
 from .api import read
 
 logger = logging.getLogger(__name__)
@@ -150,3 +154,4 @@ def setup_fetchez(registry_cls):
     )
 
 setup_fetchez(FetchezRegistry)
+__all__ = ["read"]

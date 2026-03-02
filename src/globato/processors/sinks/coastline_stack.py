@@ -36,6 +36,7 @@ class CoastlineStack(FetchHook):
 
         self.weights = {
             'nhd': -10.0,
+            #'cusp': 10.0,
             'hydrolakes': -10.0,
             'copernicus': 5.0,
             'nasadem': 5.0,

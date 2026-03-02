@@ -34,7 +34,8 @@ class StreamReproject(FetchHook):
         if not SRSParser: return None
 
         actual_src = self.forced_src_srs or entry_src_srs or 'EPSG:4326'
-        if not actual_src: return None
+        if not actual_src:
+            return None
 
         if actual_src in self._cache:
             return self._cache[actual_src]

@@ -86,6 +86,9 @@ class MultiStackAccumulator:
             y_size=self.ycount
         )
 
+        logger.info(
+            f"Initializing Multi_Stack internal arrays at {self.xcount}/{self.ycount}"
+        )
 
     def _init_raster(self):
         """Create the zero-filled accumulation file or load existing."""

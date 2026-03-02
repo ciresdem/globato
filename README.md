@@ -1,4 +1,19 @@
-# 🌍 Fetchez-Globato 🤖
+<p align="center">
+    <a href="https://github.com/continuous-dems">
+        <img src="assets/images/cudem_logo_micro.svg" height="60" alt="CUDEM Logo">
+    </a>
+</p>
+
+<h1 align="center">Globato</h1>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+  <a href="https://cudem.zulip.org">
+	<img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Zulip Chat">
+  </a>
+</p>
 
 **Domo Arigato, Multi-Resolution Globato.**
 

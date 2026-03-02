@@ -113,7 +113,7 @@ class MultiStackBlend(RasterHook):
                     valid_mask = (z != ndv) & (~np.isnan(z))
                     if not np.any(valid_mask):
                         logger.warning('no valid data')
-                        self._write_chunk(z, window, src, dst)
+                        self._write_chunk(z, window, buff_win, src, dst)
                         continue
 
                     fg_mask = valid_mask & (w >= self.weight_threshold)
@@ -121,10 +121,10 @@ class MultiStackBlend(RasterHook):
                     bg_mask = valid_mask & (~fg_mask)
 
                     if not np.any(fg_mask):
-                        logger.warning(f"no fg data over weight of {self.weight_threshold}")
-                        self._write_chunk(z, window, src, dst)
+                        #logger.warning(f"no fg data over weight of {self.weight_threshold}")
+                        self._write_chunk(z, window, buff_win, src, dst)
                         continue
-
+                    #logger.info(f"yes fg data over weight of {self.weight_threshold}")
                     struct = scipy.ndimage.generate_binary_structure(2, 2)
                     fg_closed = scipy.ndimage.binary_closing(fg_mask, structure=struct)
                     blend_mask = scipy.ndimage.binary_dilation(fg_closed, iterations=self.blend_dist)
@@ -152,7 +152,7 @@ class MultiStackBlend(RasterHook):
                     target_pts = np.array([rows[transition_zone], cols[transition_zone]]).T
                     if len(anchor_pts) < 4 or len(target_pts) == 0:
                         logger.warning("too few points to perform interpolation")
-                        self._write_chunk(z, window, src, dst)
+                        self._write_chunk(z, window, buff_win, src, dst)
                         continue
 
                     try:

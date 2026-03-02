@@ -19,6 +19,7 @@ from rasterio.features import rasterize
 from rasterio.windows import Window
 import fiona
 from transformez.spatial import TransRegion
+import fetchez
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
@@ -79,13 +80,15 @@ class RasterHook(FetchHook):
             self.region = self._get_region_from_entries(entries)
 
         if self.barrier and self.barrier.lower() == "coastline":
-            osm_path = "auto_coastline.geojson"
-            if not os.path.exists(osm_path):
-                logger.info("Auto-generating OSM Coastline barrier...")
-                from ..hooks.osm_landmask import OSMLandmask
-                osm_hook = OSMLandmask(filename=osm_path)
-                osm_hook.run(entries)
-            self.barrier = osm_path
+            #osm_path = "auto_coastline.geojson"
+            #osm_path = "auto_coastline.gpkg"
+            #if not os.path.exists(osm_path):
+            logger.info("Auto-generating OSM Coastline barrier...")
+            gc = fetchez.get("glob_coast")
+            #from ..hooks.osm_landmask import OSMLandmask
+            #osm_hook = OSMLandmask(filename=osm_path)
+            #osm_hook.run(entries)
+            self.barrier = gc[0]
 
         new_entries = []
         for mod, entry in entries:
@@ -118,7 +121,6 @@ class RasterHook(FetchHook):
 
     def process_raster(self, src_path, dst_path, entry):
         barrier_geoms = self._get_barrier_geometries()
-
         with rasterio.open(src_path) as src:
             profile = src.profile.copy()
             is_stack = (src.count >= 3)
@@ -153,17 +155,23 @@ class RasterHook(FetchHook):
                         ).astype(bool)
 
                         # Split and process independently
-                        data_a = np.where(barrier_mask, data, ndv)
+                        # a is land b is water (typically)
+                        #data_a = np.where(barrier_mask, data, ndv)
                         data_b = np.where(~barrier_mask, data, ndv)
 
                         # Process chunks
-                        res_a = self.process_chunk(data_a, ndv, entry, transform=chunk_transform, window=buff_win)
+                        #res_a = self.process_chunk(data_a, ndv, entry, transform=chunk_transform, window=buff_win)
                         res_b = self.process_chunk(data_b, ndv, entry, transform=chunk_transform, window=buff_win)
+                        #res_a = np.where(barrier_mask, ndv, ndv)
+                        res_b = np.where(~barrier_mask, res_b, ndv)
                         #res_a[:] = ndv
+                        #res_b[res_a == ndv] = ndv
+                        #res_b[res_b == ndv] = np.nan
                         #res_b[res_b > 0] = ndv
 
                         # Stitch
-                        result = np.where(barrier_mask, res_a, res_b)
+                        result = np.where(~barrier_mask, res_b, ndv)
+                        #result = np.where(barrier_mask, res_a, res_b)
                     else:
                         # Standard Processing
                         result = self.process_chunk(
@@ -216,8 +224,8 @@ class RasterHook(FetchHook):
         try:
             with fiona.open(self.barrier, "r") as vec:
                 return [feature["geometry"] for feature in vec]
-        except Exception:
-            return None
+        except Exception as e:
+            logger.error(f"Could not parse geometries from {self.barrier}")
 
     def get_outliers(self, in_array, percentile=75, k=1.5):
         if np.all(np.isnan(in_array)):
