@@ -16,6 +16,8 @@ dependencies = [
     "fetchez>=0.4.2",
     "transformez",
     "numpy>1.24",
+    "scipy",
+    "shapely",
     "laspy[lazrs,laszip]",
     "rasterio>1.4.0",
     "fiona",
@@ -23,8 +25,14 @@ dependencies = [
     "pyproj>3.6.1",
     "pyshp",
     "h5py",
-    "pygmt",
 ]
+
+[project.optional-dependencies]
+gmt = ["pygmt"]
+gdal = ["gdal"]
+verde = ["verde"]
+
+full = ["globato[gmt, gdal, verde]"]
 
 [project.urls]
 Homepage = "https://github.com/ciresdem/globato"

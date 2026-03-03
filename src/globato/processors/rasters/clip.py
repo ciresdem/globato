@@ -62,5 +62,4 @@ class RasterClipHook(RasterHook):
             # Set pixels OUTSIDE the polygons to nodata
             clipped_data = np.where(geom_mask, data, ndv)
 
-        logger.info(f"[Clip] clipped at {self.stage}.")
         return clipped_data

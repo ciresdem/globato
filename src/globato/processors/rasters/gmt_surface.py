@@ -20,7 +20,7 @@ from ..rasters.base import RasterHook
 try:
     import pygmt
     HAS_PYGMT = True
-except ImportError:
+except (ImportError, OSError):
     HAS_PYGMT = False
 
 logger = logging.getLogger(__name__)

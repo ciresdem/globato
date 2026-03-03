@@ -48,6 +48,7 @@ class RasterHook(FetchHook):
             buffer=0,
             min_weight=0.0,
             strip_bands=False,
+            chunk_size=None,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -58,6 +59,7 @@ class RasterHook(FetchHook):
         self.min_weight = float(min_weight)
         self.region = None
         self.strip_bands=strip_bands
+        self.chunk_size=chunk_size
 
     def _get_region_from_entries(self, entries):
         regions = [getattr(mod, "region", None) for mod, _ in entries]
@@ -66,7 +68,6 @@ class RasterHook(FetchHook):
         if not valid_regions:
             return entries
 
-        # Union of all requested regions
         w = min(r[0] for r in valid_regions)
         e = max(r[1] for r in valid_regions)
         s = min(r[2] for r in valid_regions)
@@ -80,14 +81,8 @@ class RasterHook(FetchHook):
             self.region = self._get_region_from_entries(entries)
 
         if self.barrier and self.barrier.lower() == "coastline":
-            #osm_path = "auto_coastline.geojson"
-            #osm_path = "auto_coastline.gpkg"
-            #if not os.path.exists(osm_path):
             logger.info("Auto-generating OSM Coastline barrier...")
-            gc = fetchez.get("glob_coast")
-            #from ..hooks.osm_landmask import OSMLandmask
-            #osm_hook = OSMLandmask(filename=osm_path)
-            #osm_hook.run(entries)
+            gc = fetchez.get("glob_coast", hooks=['raster_sieve:chunk=full,size=80', 'raster_polygonize'])
             self.barrier = gc[0]
 
         new_entries = []
@@ -188,15 +183,13 @@ class RasterHook(FetchHook):
                                          x_off : x_off + window.width]
 
                     dst.write(final_chunk, 1, window=window)
-                    # if is_stack:
-                    #     try:
-                    #         for b in range(2,8):
-                    #             b_arr = src.read(b, window=window)
-                    #             dst.write(b_arr, b, window=window)
-                    #     except Exception:
-                    #         pass
-
-
+                    if is_stack:
+                        try:
+                            for b in range(2,8):
+                                b_arr = src.read(b, window=window)
+                                dst.write(b_arr, b, window=window)
+                        except Exception:
+                            pass
         return True
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
@@ -205,7 +198,23 @@ class RasterHook(FetchHook):
         raise NotImplementedError
 
     def yield_buffered_windows(self, src, buffer_size=0):
-        for block_index, window in src.block_windows(1):
+
+        if str(self.chunk_size).lower() == "full" or self.chunk_size == -1:
+            windows = [((0, 0), Window(0, 0, src.width, src.height))]
+
+        elif self.chunk_size:
+            windows = []
+            c_size = int(self.chunk_size)
+            for row_off in range(0, src.height, c_size):
+                for col_off in range(0, src.width, c_size):
+                    width = min(c_size, src.width - col_off)
+                    height = min(c_size, src.height - row_off)
+                    windows.append(((row_off, col_off), Window(col_off, row_off, width, height)))
+
+        else:
+            windows = list(src.block_windows(1))
+
+        for block_index, window in windows:
             if buffer_size == 0:
                 yield window, window
                 continue

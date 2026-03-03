@@ -22,8 +22,6 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.windows import Window
 
 from .base import RasterHook
-from .scipy_griddata import ScipyInterp
-from .gmt_surface import GmtSurface
 
 logger = logging.getLogger(__name__)
 
@@ -164,26 +162,35 @@ class CudemStepDown(RasterHook):
             # Interpolate!
             step_barrier = self.barrier if i > 0 else None
             if self.algo == "interp_gmt":
-                #if i > 0:
-                # Use GMT for smooth splines (Great for Step 0/Coarse)
-                interp = GmtSurface(
-                    tension=0.95,
-                    barrier=step_barrier,
-                    upper=-.01 if i > 0 else None,
-                )
-            else:
+                from .gmt_surface import GmtSurface, HAS_PYGMT
+                if HAS_PYGMT:
+                    #if i > 0:
+                    # Use GMT for smooth splines (Great for Step 0/Coarse)
+                    interp = GmtSurface(
+                        tension=0.95,
+                        barrier=step_barrier,
+                        upper=-.01 if i > 0 else None,
+                    )
+                else:
+                    logger.warning("PyGMT is missing or failed to load. Falling back to Scipy interpolation.")
+                    self.algo = "interp_scipy"
+            elif self.algo == "interp_verde":
+                from .verde_surface import VerdeSurface, HAS_VERDE
+                if HAS_VERDE:
+                    # Damping smooths the spline to prevent overshoot (like GMT tension)
+                    interp = VerdeSurface(damping=1e-4, barrier=step_barrier)
+                else:
+                    logger.warning("Verde is missing. Falling back to Scipy interpolation.")
+                    self.algo = "interp_scipy"
+
+            if self.algo == "interp_scipy" or interp is None:
+                from .scipy_griddata import ScipyInterp
                 # Default to Scipy (Great for Step 1+/Fine)
                 interp = ScipyInterp(
                     method="cubic",
                     min_weight=weight,
                     #barrier=step_barrier
                 )
-
-            # interp = ScipyInterp(
-            #     method="cubic",
-            #     min_weight=weight,
-            #     barrier=step_barrier
-            # )
 
             success = interp.process_raster(step_stack, step_interp, entry)
 

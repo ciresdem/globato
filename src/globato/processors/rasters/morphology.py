@@ -4,6 +4,7 @@
 """
 globato.processors.rasters.morphology
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Mophology operations on the raster.
 
 :copyright: (c) 2016 - 2026 Regents of the University of Colorado
@@ -12,7 +13,6 @@ Mophology operations on the raster.
 
 import numpy as np
 import scipy.ndimage
-import rasterio
 from .base import RasterHook
 
 class RasterMorphology(RasterHook):
@@ -29,32 +29,36 @@ class RasterMorphology(RasterHook):
         self.op = op.lower()
         self.kernel = int(kernel)
 
-    def proccess_chunk(self, data, ndv, entry, transform=None, window=None):
-        structure = np.ones((self.kernel, self.kernel))
-        valid_mask = (data != ndv) & ~np.isnan(data)
+    def process_chunk(self, data, ndv, entry, transform=None, window=None):
+        footprint = np.ones((self.kernel, self.kernel), dtype=bool)
+
+        is_float = data.dtype.kind == 'f'
+        if is_float:
+            valid_mask = (data != ndv) & ~np.isnan(data)
+        else:
+            valid_mask = (data != ndv) if ndv is not None else np.ones_like(data, dtype=bool)
 
         if not np.any(valid_mask):
             return data
 
         data_min, data_max = np.nanmin(data[valid_mask]), np.nanmax(data[valid_mask])
         fill_val = data_max if self.op in ["erosion", "opening"] else data_min
-        data[~valid_mask] = fill_val
+
+        working_data = data.copy()
+        working_data[~valid_mask] = fill_val
 
         if self.op == "erosion":
-            result = scipy.ndimage.grey_erosion(data, structure=structure)
+            result = scipy.ndimage.grey_erosion(working_data, footprint=footprint)
         elif self.op == "dilation":
-            result = scipy.ndimage.grey_dilation(data, structure=structure)
+            result = scipy.ndimage.grey_dilation(working_data, footprint=footprint)
         elif self.op == "opening":
-            result = scipy.ndimage.grey_opening(data, structure=structure)
+            result = scipy.ndimage.grey_opening(working_data, footprint=footprint)
         elif self.op == "closing":
-            result = scipy.ndimage.grey_closing(data, structure=structure)
+            result = scipy.ndimage.grey_closing(working_data, footprint=footprint)
         else:
-            result = data
+            result = working_data
 
-        result[~valid_mask] = ndv
+        if ndv is not None:
+            result[~valid_mask] = ndv
 
-        y_off = window.row_off - buffered_window.row_off
-        x_off = window.col_off - buffered_window.col_off
-        out_arr = result[y_off:y_off+window.height, x_off:x_off+window.width]
-
-        return out_arr
+        return result

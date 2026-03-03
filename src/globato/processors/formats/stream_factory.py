@@ -17,6 +17,7 @@ import numpy as np
 import numpy.lib.recfunctions as rfn
 
 from .rio import RasterioReader
+from .fio import FionaReader
 from .bag import BAGReader
 from .lidar import LASReader
 from .multibeam import MBSReader
@@ -53,7 +54,7 @@ class StreamFactory:
             "usecols": [0, 1, 2],
         },
         "charts_000": {
-            "reader": OGRReader,
+            "reader": FionaReader,
             "layer": "SOUNDG",
             "z_scale": -1,
         },
@@ -78,7 +79,7 @@ class StreamFactory:
         # TODO: update this to fiona
         if ext in [".shp", ".000", ".json", ".geojson", ".kml"] or \
            (ext == ".gdb" and os.path.isdir(src_fn)):
-            return OGRReader(src_fn, **kwargs).yield_chunks()
+            return FionaReader(src_fn, **kwargs).yield_chunks()
 
         # ASCII / XYZ
         if ext in [".xyz", ".txt", ".csv", ".dat"]:
@@ -140,7 +141,8 @@ class StreamFactory:
         # TODO: update this to fiona
         if ext in [".shp", ".000", ".json", ".geojson", ".kml"] or \
            (ext == ".gdb" and os.path.isdir(src_fn)):
-            return OGRReader(src_fn, **kwargs)
+            #return OGRReader(src_fn, **kwargs)
+            return FionaReader(src_fn, **kwargs)
 
         # ASCII / XYZ
         if ext in [".xyz", ".txt", ".csv", ".dat"]:

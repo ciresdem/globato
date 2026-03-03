@@ -103,10 +103,7 @@ class MBSReader:
 
     def read_native_fbt(self):
         """Natively reads MB-System Format 71 (.fbt) binary files.
-        If it encounters unsupported legacy versions or corruption, it returns None
-        to trigger the mblist fallback.
-
-        https://github.com/dwcaress/MB-System/blob/master/src/mbio/mbsys_ldeoih.h
+        Supports modern V4/V5 formats and legacy V1/V2/V3 formats.
         """
 
         logger.debug(f"Attempting native Python binary read for {self.src_fn}")
@@ -114,9 +111,9 @@ class MBSReader:
         all_x, all_y, all_z, all_flags, all_xtrack = [], [], [], [], []
 
         # MB-System format ID constants
-        ID_V4 = 22068
-        ID_V5 = 22069
-        ID_COMMENT2 = 25443
+        ID_V1, ID_V2, ID_V3 = 25700, 28270, 17476
+        ID_V4, ID_V5 = 22068, 22069
+        ID_COMMENT1, ID_COMMENT2 = 8995, 25443
 
         try:
             with open(self.src_fn, 'rb') as f:
@@ -125,80 +122,123 @@ class MBSReader:
                     if not flag_bytes or len(flag_bytes) < 2:
                         break # EOF
 
-                    # Determine Endianness by testing both unpacks
-                    le_flag = struct.unpack('<h', flag_bytes)[0]
-                    be_flag = struct.unpack('>h', flag_bytes)[0]
+                    le_flag = struct.unpack('<H', flag_bytes)[0]
+                    be_flag = struct.unpack('>H', flag_bytes)[0]
 
-                    endian = None
-                    if le_flag in [ID_V4, ID_V5, ID_COMMENT2]:
+                    # Check Asymmetric Modern Flags
+                    if le_flag in [ID_V4, ID_V5]:
                         endian = '<'
                         flag = le_flag
-                    elif be_flag in [ID_V4, ID_V5, ID_COMMENT2]:
+                    elif be_flag in [ID_V4, ID_V5]:
                         endian = '>'
                         flag = be_flag
-                    elif le_flag in [8995, 25700, 28270, 17476] or be_flag in [8995, 25700, 28270, 17476]:
-                        # These are V1, V2, and V3 formats.
-                        logger.info("Legacy FBT version detected. Falling back to mblist.")
-                        return None
+
+                    # Check Symmetric Legacy Flags
+                    elif le_flag in [ID_V1, ID_V2, ID_V3, ID_COMMENT1, ID_COMMENT2]:
+                        flag = le_flag
+                        endian = '<' # Default for comments
+
+                        # Peek at the year to determine the true endianness of the data!
+                        if flag in [ID_V1, ID_V2, ID_V3]:
+                            year_bytes = f.read(2)
+                            f.seek(-2, os.SEEK_CUR) # Rewind the peek
+
+                            # If Little Endian yields a sane year (0-2050), it's Little Endian.
+                            # (Note: Old files often stored 2-digit years like '98')
+                            y_le = struct.unpack('<h', year_bytes)[0]
+                            if 0 <= y_le <= 2050:
+                                endian = '<'
+                            else:
+                                endian = '>'
                     else:
                         logger.warning(f"Unknown FBT flag. Falling back to mblist.")
                         return None
 
-                    # Process based on Record Type
+                    # Process Comments
                     if flag == ID_COMMENT2:
-                        f.read(128) # Comment payload is always 128 bytes
+                        f.read(128)
+                        continue
+                    elif flag == ID_COMMENT1:
+                        f.read(36 + 128)
                         continue
 
-                    # Read V4 or V5 Data Header
-                    is_v5 = (flag == ID_V5)
-                    # Use 'b' (signed char) for ss_scalepower, 'B' for the rest
-                    header_fmt = endian + ('dddddfffffffiiiiffbBBB' if is_v5 else 'dddddfffffffhhhhffbBBB')
-                    header_size = 96 if is_v5 else 88
+                    # Read Data Headers
+                    if flag == ID_V5:
+                        h_size = 96
+                        h_bytes = f.read(h_size)
+                        if len(h_bytes) < h_size: break
+                        h = struct.unpack(endian + 'dddddfffffffiiiiffbBBB', h_bytes)
+                        lon, lat, sensor_depth = h[1], h[2], h[3]
+                        beams_bath, beams_amp, pixels_ss = h[12], h[13], h[14]
+                        depth_scale, distance_scale = h[16], h[17]
 
-                    header_bytes = f.read(header_size)
-                    if len(header_bytes) < header_size:
-                        break
+                    elif flag == ID_V4:
+                        h_size = 88
+                        h_bytes = f.read(h_size)
+                        if len(h_bytes) < h_size: break
+                        h = struct.unpack(endian + 'dddddfffffffhhhhffbBBB', h_bytes)
+                        lon, lat, sensor_depth = h[1], h[2], h[3]
+                        beams_bath, beams_amp, pixels_ss = h[12], h[13], h[14]
+                        depth_scale, distance_scale = h[16], h[17]
 
-                    header_data = struct.unpack(header_fmt, header_bytes)
+                    elif flag == ID_V3:
+                        h_size = 46
+                        h_bytes = f.read(h_size)
+                        if len(h_bytes) < h_size: break
+                        h = struct.unpack(endian + 'hhhhhHHHHHHhhhhhiihhh', h_bytes)
+                        lon = (h[5] / 60.0) + (h[6] / 600000.0)
+                        lat = (h[7] / 60.0) + (h[8] / 600000.0) - 90.0
+                        beams_bath, beams_amp, pixels_ss = h[11], h[12], h[13]
+                        depth_scale, distance_scale, sensor_depth = h[14]/1000.0, h[15]/1000.0, h[16]/1000.0
 
-                    lon = header_data[1]
-                    lat = header_data[2]
-                    sensor_depth = header_data[3]
-                    beams_bath = header_data[12]
-                    beams_amp = header_data[13]
-                    pixels_ss = header_data[14]
-                    depth_scale = header_data[16]
-                    distance_scale = header_data[17]
+                    elif flag == ID_V2:
+                        h_size = 42
+                        h_bytes = f.read(h_size)
+                        if len(h_bytes) < h_size: break
+                        h = struct.unpack(endian + 'hhhhhHHHHHHhhhhhhhhhh', h_bytes)
+                        lon = (h[5] / 60.0) + (h[6] / 600000.0)
+                        lat = (h[7] / 60.0) + (h[8] / 600000.0) - 90.0
+                        beams_bath, beams_amp, pixels_ss = h[11], h[12], h[13]
+                        depth_scale, distance_scale, sensor_depth = h[14]/1000.0, h[15]/1000.0, 0.0
 
-                    # Safety check to prevent negative read lengths
-                    if beams_bath < 0 or beams_amp < 0 or pixels_ss < 0:
-                        logger.error(
-                            f"Corrupt array lengths parsed (bath={beams_bath}). Falling back to mblist."
-                        )
+                    elif flag == ID_V1:
+                        h_size = 36
+                        h_bytes = f.read(h_size)
+                        if len(h_bytes) < h_size: break
+                        h = struct.unpack(endian + 'hhhhhHHHHHHhhhhhhh', h_bytes)
+                        lon = (h[5] / 60.0) + (h[6] / 600000.0)
+                        lat = (h[7] / 60.0) + (h[8] / 600000.0) - 90.0
+                        beams_bath, beams_amp, pixels_ss = h[11], h[12], h[13]
+                        depth_scale, distance_scale, sensor_depth = h[14]/1000.0, h[15]/1000.0, 0.0
+
+                    # Safety check
+                    if beams_bath < 0 or beams_amp < 0 or pixels_ss < 0 or beams_bath > 10000:
+                        logger.error(f"Corrupt array lengths parsed. Falling back to mblist.")
                         return None
 
+                    if lon > 180: lon -= 360
+
                     # Read Data Arrays
-                    beamflags = np.frombuffer(f.read(beams_bath), dtype=np.uint8)
-                    bath_raw = np.frombuffer(f.read(beams_bath * 2), dtype=f'{endian}i2')
-                    acrosstrack_raw = np.frombuffer(f.read(beams_bath * 2), dtype=f'{endian}i2')
+                    b_flags = f.read(beams_bath)
+                    if len(b_flags) < beams_bath: break
+                    beamflags = np.frombuffer(b_flags, dtype=np.uint8)
 
-                    # We skip alongtrack as we don't need it for standard XYZ
+                    b_bath = f.read(beams_bath * 2)
+                    if len(b_bath) < beams_bath * 2: break
+                    bath_raw = np.frombuffer(b_bath, dtype=f'{endian}i2')
+
+                    b_xtrack = f.read(beams_bath * 2)
+                    if len(b_xtrack) < beams_bath * 2: break
+                    acrosstrack_raw = np.frombuffer(b_xtrack, dtype=f'{endian}i2')
+
                     f.read(beams_bath * 2)
-
-                    # Skip Amplitude
-                    if beams_amp > 0:
-                        f.read(beams_amp * 2)
-
-                    # Skip Sidescan (ss, ss_across, ss_along)
-                    if pixels_ss > 0:
-                        f.read(pixels_ss * 2 * 3)
+                    if beams_amp > 0: f.read(beams_amp * 2)
+                    if pixels_ss > 0: f.read(pixels_ss * 2 * 3)
 
                     # Apply Scaling
-                    # We want heights, not depths
                     bath = ((bath_raw * depth_scale) + sensor_depth) * -1
                     xtrack = acrosstrack_raw * distance_scale
 
-                    # Position approximation
                     x_pos = lon + (xtrack / (111111.0 * np.cos(np.radians(lat))))
                     y_pos = np.full(beams_bath, lat)
 
@@ -223,12 +263,11 @@ class MBSReader:
             'crosstrack_distance': np.concatenate(all_xtrack)
         })
 
+        # Remove points where the vessel's GPS dropped out (Null Island)
+        df = df[~((df['x'].abs() < 0.1) & (df['y'].abs() < 0.1))]
+
         if not self.want_flagged:
             df = df[df['beamflag'] == 0]
-
-        # # Apply Filters & Weights
-        # if self.want_filtered:
-        #     df = df[df['beamflag'] == 0]
 
         if self.auto_weight:
             src_inf = f"{self.src_fn}.inf"
