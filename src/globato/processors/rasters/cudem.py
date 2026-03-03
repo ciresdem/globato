@@ -21,6 +21,7 @@ from fetchez.utils import remove_glob2, str2inc
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.windows import Window
 
+from .fill import RasterFill
 from .base import RasterHook
 
 logger = logging.getLogger(__name__)
@@ -113,10 +114,16 @@ class CudemStepDown(RasterHook):
                     fg_count = fg_src.read(2, window=window)
                     fg_weight = fg_src.read(3, window=window)
 
+                    # Scrub data that doesn't meet the weight threshold.
+                    # This turns low-quality bathy into NoData so the background can overwrite it.
+                    invalid_weight_mask = (fg_count == 0) | (fg_weight < current_weight)
+                    fg_z[invalid_weight_mask] = fg_ndv
+
                     # Get Background chunk
                     bg_chunk = bg_aligned[window.row_off:window.row_off+window.height,
                                           window.col_off:window.col_off+window.width]
 
+                    # gaps + scrubbed low-weight pixels are both marked as invalid
                     fg_invalid = (fg_z == fg_ndv) | np.isnan(fg_z)
                     bg_valid = (bg_chunk != fg_ndv) & ~np.isnan(bg_chunk)
 
@@ -151,45 +158,50 @@ class CudemStepDown(RasterHook):
             step_stack = f"temp_stack_step{i}.tif"
             step_interp = f"temp_interp_step{i}.tif"
 
-            # Decimate the master stack to this step's resolution
             self._decimate_raster(src_path, step_stack, target_res=res)
 
-            # Fill gaps with the previous surface
             if previous_surface and os.path.exists(previous_surface):
-                # Pass 'weight' so we can mark filled pixels as valid for this step
                 self._blend_background(step_stack, previous_surface, current_weight=weight)
 
-            # Interpolate!
             step_barrier = self.barrier if i > 0 else None
+            interp = None
+
             if self.algo == "interp_gmt":
                 from .gmt_surface import GmtSurface, HAS_PYGMT
                 if HAS_PYGMT:
-                    #if i > 0:
-                    # Use GMT for smooth splines (Great for Step 0/Coarse)
                     interp = GmtSurface(
                         tension=0.95,
                         barrier=step_barrier,
                         upper=-.01 if i > 0 else None,
+                        min_weight=weight # ADDED
                     )
                 else:
                     logger.warning("PyGMT is missing or failed to load. Falling back to Scipy interpolation.")
-                    self.algo = "interp_scipy"
+                    self.algo = "raster_fill"
+
             elif self.algo == "interp_verde":
                 from .verde_surface import VerdeSurface, HAS_VERDE
                 if HAS_VERDE:
-                    # Damping smooths the spline to prevent overshoot (like GMT tension)
-                    interp = VerdeSurface(damping=1e-4, barrier=step_barrier)
+                    interp = VerdeSurface(damping=1e-4, barrier=step_barrier, min_weight=weight) # ADDED
                 else:
                     logger.warning("Verde is missing. Falling back to Scipy interpolation.")
-                    self.algo = "interp_scipy"
+                    self.algo = "raster_fill"
 
-            if self.algo == "interp_scipy" or interp is None:
+            elif self.algo == "interp_scipy" or interp is None:
                 from .scipy_griddata import ScipyInterp
-                # Default to Scipy (Great for Step 1+/Fine)
                 interp = ScipyInterp(
                     method="cubic",
-                    min_weight=weight,
-                    #barrier=step_barrier
+                    min_weight=weight, # Was already here
+                )
+            else:
+                self.algo = "raster_fill"
+
+            if self.algo == "raster_fill" or interp is None:
+                interp = RasterFill(
+                    max_dist=1000,
+                    smoothing=3,
+                    barrier=step_barrier,
+                    min_weight=weight # ADDED
                 )
 
             success = interp.process_raster(step_stack, step_interp, entry)
@@ -199,7 +211,7 @@ class CudemStepDown(RasterHook):
 
         if previous_surface and os.path.exists(previous_surface):
             shutil.move(previous_surface, dst_path)
-            #remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
+            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
             return True
 
         return False

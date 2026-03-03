@@ -23,6 +23,8 @@ from fetchez.hooks.builtins.file_ops.unzip import Unzip
 from fetchez.hooks.builtins.pipeline.fn_filter import FilenameFilter
 from fetchez.registry import FetchezRegistry
 from globato.processors.hooks.osm_landmask import OSMLandmask
+from globato.processors.rasters.sieve import RasterSieveHook
+from globato.processors.rasters.polygonize import RasterPolygonizeHook
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ class GlobCoast(core.FetchModule):
     Uses 'Weighted Voting' to resolve conflicts (e.g. NHD water overrides Copernicus land).
     """
 
-    def __init__(self, res="1s", sources=None, weights=None, **kwargs):
+    def __init__(self, res="1s", sources=None, weights=None, fill_inland_holes=False, **kwargs):
         super().__init__(name="glob_coast", **kwargs)
 
         # Default Hierarchy:
@@ -68,6 +70,23 @@ class GlobCoast(core.FetchModule):
         }
         if weights:
             self.weights.update(weights)
+
+        # Sieve the raster to remove salt & pepper ocean noise
+        sieve_cls = self.add_hook(RasterSieveHook())
+        if sieve_cls:
+            self.add_hook(sieve_cls(chunk="full", size=80))
+
+        # Convert the cleaned raster to vector polygons
+        poly_cls = self.add_hook(RasterPolygonizeHook(target_value=1))
+        if poly_cls:
+            self.add_hook(poly_cls())
+
+        if fill_inland_holes:
+            try:
+                from globato.processors.vectors.fill_holes import VectorFillHoles
+                self.add_hook(VectorFillHoles(min_area=0.0))
+            except ImportError:
+                logger.warning("VectorFillHoles hook not found. Ponds will not be filled.")
 
     def _init_grid(self):
         """Initialize the empty voting grid based on the region and resolution."""
@@ -114,7 +133,7 @@ class GlobCoast(core.FetchModule):
                 if weight > 0:
                     self.grid[valid_mask] += (vote_grid[valid_mask] * weight)
                 else:
-                    # Binary mask assumption vs Elevation assumption
+                    # Binary mask vs Elevation
                     if np.nanmin(buffer) >= 0:
                         feature_mask = valid_mask & (buffer > 0)
                         self.grid[feature_mask] -= abs(weight)
@@ -132,7 +151,7 @@ class GlobCoast(core.FetchModule):
 
             if not geoms: return
 
-            # Rasterize: 1 where polygon exists, 0 otherwise
+            # 1 where polygon exists, 0 otherwise
             mask = rasterize(
                 geoms,
                 out_shape=(self.height, self.width),
@@ -151,7 +170,8 @@ class GlobCoast(core.FetchModule):
 
     def _finalize(self):
         """Convert voting grid to binary mask and save to TIFF."""
-        # Binary Rule: Vote > 0 is Land (1), Vote <= 0 is Water (0)
+
+        # Vote > 0 is Land (1), Vote <= 0 is Water (0)
         final_mask = (self.grid > 0).astype(np.uint8)
 
         profile = {
@@ -178,7 +198,6 @@ class GlobCoast(core.FetchModule):
 
         self._init_grid()
 
-        # Expand region slightly to fetch surrounding data
         w, e, s, n = self.region
         pad = 0.1
         fetch_region = [w - pad, e + pad, s - pad, n + pad]
@@ -187,7 +206,6 @@ class GlobCoast(core.FetchModule):
             fetched_files = []
             weight = self.weights.get(mod_name, 0.1)
 
-            # Special handling for OSM Landmask
             if mod_name == 'osm_landmask':
                 landmask_fn = os.path.join(self._outdir, f"temp_landmask_{w}_{s}.geojson")
                 osm_hook = OSMLandmask(filename=landmask_fn)
@@ -220,7 +238,6 @@ class GlobCoast(core.FetchModule):
                     logger.error(f"Failed to fetch {mod_name}: {e}")
 
             else:
-                # Standard Modules
                 mod_cls = FetchezRegistry.load_module(mod_name)
                 if not mod_cls:
                     logger.warning(f"Unknown source: {mod_name}")
@@ -241,7 +258,6 @@ class GlobCoast(core.FetchModule):
                 except Exception as e:
                     logger.error(f"Failed to fetch {mod_name}: {e}")
 
-            # Process the downloaded files
             for f_path in fetched_files:
                 if not f_path or not os.path.exists(f_path): continue
 

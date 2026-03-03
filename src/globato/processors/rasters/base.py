@@ -82,7 +82,7 @@ class RasterHook(FetchHook):
 
         if self.barrier and self.barrier.lower() == "coastline":
             logger.info("Auto-generating OSM Coastline barrier...")
-            gc = fetchez.get("glob_coast", hooks=['raster_sieve:chunk=full,size=80', 'raster_polygonize'])
+            gc = fetchez.get("glob_coast")
             self.barrier = gc[0]
 
         new_entries = []
