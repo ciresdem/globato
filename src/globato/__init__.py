@@ -32,7 +32,7 @@ from . import schemas
 from .api import read
 
 logger = logging.getLogger(__name__)
-__version__ = "0.1.6"
+__version__ = "0.1.8"
 
 def _auto_register_hooks():
     """Recursively scan the 'processors' directory and auto-register all FetchHooks."""
