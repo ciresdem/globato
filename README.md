@@ -18,7 +18,7 @@
   </a>
 </p>
 
-**Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the [`fetchez`](https://github.com/continuous-dems/fetchez) ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
+**Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the [Fetchez](https://github.com/continuous-dems/fetchez) ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
 
 ## ❓ Why Globato?
 
