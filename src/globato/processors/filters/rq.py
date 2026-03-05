@@ -22,7 +22,6 @@ from fetchez.core import run_fetchez
 from fetchez import utils
 from .base import GlobatoFilter
 
-# Optional Imports
 try:
     from osgeo import gdal
     HAS_GDAL = True
@@ -36,6 +35,7 @@ except ImportError:
     HAS_GRID_ENGINE = False
 
 logger = logging.getLogger(__name__)
+
 
 class ReferenceQuality(GlobatoFilter):
     """Filters points by comparing Z values to a Reference Raster (RQ).
@@ -62,7 +62,7 @@ class ReferenceQuality(GlobatoFilter):
         self.threshold = float(threshold)
         self.mode = mode.lower()
         self.builder = builder.lower()
-        self.res = float(res) # Only used for 'grid' mode
+        self.res = float(res)
         self.ref_fn = None
 
     def setup(self, mod, entry):
@@ -138,7 +138,9 @@ class ReferenceQuality(GlobatoFilter):
         nx = int(np.ceil((target_region[1] - target_region[0]) / self.res))
         ny = int(np.ceil((target_region[3] - target_region[2]) / self.res))
 
-        logger.info(f"[RQ] Gridding reference surface ({nx}x{ny}) from {len(files)} files...")
+        logger.info(
+            f"[RQ] Gridding reference surface ({nx}x{ny}) from {len(files)} files..."
+        )
 
         grid_data = GridEngine.load_and_interpolate(files, target_region, nx, ny)
         #grid_data = GridEngine.fill_nans(grid_data, decay_pixels=50)
@@ -149,7 +151,6 @@ class ReferenceQuality(GlobatoFilter):
     def filter_chunk(self, chunk):
         nodata = self.src.nodata if self.src.nodata is not None else -9999
 
-        # Sample Reference
         coords = list(zip(chunk['x'], chunk['y']))
         ref_vals = np.fromiter((val[0] for val in self.src.sample(coords)), dtype=np.float32)
 
@@ -172,5 +173,7 @@ class ReferenceQuality(GlobatoFilter):
         if hasattr(self, 'src'): self.src.close()
         if self.ref_fn and os.path.exists(self.ref_fn):
             if self.ref_fn.endswith('.vrt'):
-                try: os.remove(self.ref_fn)
-                except: pass
+                try:
+                    os.remove(self.ref_fn)
+                except Exception:
+                    pass
