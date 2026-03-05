@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/continuous-dems">
-        <img src="media/cudem_logo_micro_plain.svg" height="60" alt="CUDEM Logo">
+        <img src="https://github.com/continuous-dems/globato/media/cudem_logo_micro_plain.svg" height="60" alt="CUDEM Logo">
     </a>
 	<h1 align="center">Globato</h1>
 	<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
@@ -9,6 +9,9 @@
 <p align="center">
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+  <a href="https://badge.fury.io/py/fetchez">
+	<img src="https://badge.fury.io/py/globato.svg" alt="PyPi version">
   </a>
   <a href="https://cudem.zulip.org">
 	<img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Zulip Chat">
@@ -21,13 +24,13 @@
 
 Building Digital Elevation Models (DEMs) typically involves a "download-then-process" workflow that requires massive storage and directories full of custom scripts.
 
-**Globato changes the paradigm.** It acts as a streaming extension to `fetchez`, allowing you to:
-* **Stream, Don't Store:** Process points from remote sources (LiDAR, Multibeam, COGs) on-the-fly without saving raw files to disk.
+**Globato changes this.** It acts as a streaming extension to `fetchez`, allowing you to:
+* **Stream, not store:** Process points from remote sources (LiDAR, Multibeam, COGs) on-the-fly without saving raw files to disk.
 * **Harmonize Resolution:** Seamlessly blend high-resolution multibeam with coarse global topography (hence the **M.R.** in *Mr. Globato*).
 * **Standardize Metadata:**
 * **ETC**
 
-Whether you are building a quick 30m regional map or a precision 1m surface, Globato keeps your pipeline clean, reproducible, and memory-efficient.
+Whether you are building a quick 30m regional map or a precision 1m surface, `globato` keeps your pipeline clean, reproducible, and memory-efficient.
 
 ---
 
@@ -75,11 +78,13 @@ Globato extends the core ecosystem by adding three types of components:
 
 `gebco_cog`: A specialized fetch module for the GEBCO global bathymetry dataset, optimized for COG subsetting.
 
-🚀 Usage Example
+`glob_coast`: A "Super-Module" that fetches topographic, bathymetri can hydrographic datasets to generate a `coastline-mask`.
 
-Because Globato is just a set of hooks, a complex ETL job looks just like a standard fetchez command.
+## 🚀 Usage Example
 
-Example: The "M.R. Globato" Pipeline fetches multibeam data, filters outliers, reprojects to NAVD88, and grids it—without saving intermediate files.
+Because `globato` is just a set of hooks, a complex ETL job looks just like a standard `fetchez` command.
+
+Example: The `globato` Pipeline fetches multibeam data, filters outliers, reprojects to NAVD88, and grids it—without saving intermediate files.
 
 ```bash
 fetchez multibeam -R -124.5/-124.0/43.0/43.5 \
