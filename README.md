@@ -80,7 +80,7 @@ Globato extends the core ecosystem by adding three types of components:
 
 `glob_coast`: A "Super-Module" that fetches topographic, bathymetri can hydrographic datasets to generate a `coastline-mask`.
 
-## 🚀 Usage Example
+## 🤖 Usage Example
 
 Because `globato` is just a set of hooks, a complex ETL job looks just like a standard `fetchez` command.
 
