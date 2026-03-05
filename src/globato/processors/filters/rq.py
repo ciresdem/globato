@@ -41,9 +41,8 @@ class ReferenceQuality(GlobatoFilter):
     """Filters points by comparing Z values to a Reference Raster (RQ).
 
     Builder Modes:
-      - 'vrt': Uses GDAL to build a Virtual Raster. Fast, low disk usage.
-      - 'grid': Uses GridEngine to mosaic/interpolate/fill a solid GeoTIFF.
-                Slower, but handles gaps and overlaps better.
+      - 'vrt': Uses GDAL to build a Virtual Raster.
+      - 'grid': Uses GridEngine (transformez) to mosaic/interpolate/fill a solid GeoTIFF.
 
     Args:
         reference (str): Fetchez Module Name (default: 'gebco_cog').
