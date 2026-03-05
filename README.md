@@ -44,31 +44,33 @@ Whether you are building a quick 30m regional map or a precision 1m surface, `gl
     * **Native BAG Support:** A Bathymetric Attributed Grid reader that handles Variable Resolution (VR).
     * **COG Subsetting:** Windowed fetching for Cloud Optimized GeoTIFFs.
 * **Modern Architecture:** Built on `rasterio`, `numpy`, and `fetchez`, dropping heavy legacy dependencies for a pure Python experience.
-* **Declarative Projects:** Define complex, multi-sensor build pipelines in simple `yaml` files.
+* **Declarative Recipes:** Define complex, multi-sensor build pipelines in simple `yaml` files.
 
 ## 🔌 How Globato Extends Fetchez
 
-Globato does not provide a separate CLI tool. Instead, it acts as a plugin suite that injects advanced processing capabilities directly into the fetchez engine.
+`globato` does not provide a separate CLI tool. Instead, it acts as a plugin suite that injects advanced processing capabilities directly into the `fetchez` engine.
 
-When you install globato, fetchez automatically detects and registers these new capabilities, allowing you to chain them into your existing workflows using the standard --hook syntax.
+When you install `globato`, `fetchez` automatically detects and registers these new capabilities, allowing you to chain them into your existing workflows using the standard `--hook` syntax.
 
 ***The Globato Toolkit***
 
-Globato extends the core ecosystem by adding three types of components:
+`globato` extends the core `fetchez` ecosystem by adding three types of components:
 
-1. **Data Streams** (The Ingress) Standard fetchez downloads files. Globato turns those files into streaming point clouds.
+1. **Data Streams** Standard fetchez downloads files. `globato` turns those files into streaming point clouds.
 
 `stream_data`: Auto-detects file types (LAS, LAZ, BAG, XYZ, OGR) and converts them into a standardized stream of x,y,z,weight,uncertainty records.
 
 `stream_reproject`: Reprojects streaming points on-the-fly using pyproj (e.g., converting WGS84 to UTM Zone 10N in memory).
 
-2. **Filters** (The QA/QC) Clean your data before it ever hits a grid.
+2. **Filters** Clean your data before it ever hits a grid.
 
-`filter`: Applies algorithms like block_thin, outlierz (statistical outlier removal), or rangez to cull bad data from the stream.
+`block_thin`: Decimate your data stream for faster processing.
 
-3. **Stackers** (The Egress) The core of the "M.R. Globato" engine—turning streams into surfaces.
+`outierz`: Remove statistical outliers from you data stream
 
-`simple_stack`: A fast, memory-safe sink for generating standard weighted-mean Elevation rasters.
+3. **Stackers** The core of the `globato` engine; turning streams into surfaces.
+
+`simple_stack`: A fast, memory-safe stacker for generating standard weighted-mean Elevation rasters.
 
 `multi_stack`: The heavy-duty statistical engine. Generates 7-band GeoTIFFs (Z, Count, Weight, Uncertainty, Source Uncertainty, X-mean, Y-mean) for rigorous analysis.
 
@@ -84,7 +86,7 @@ Globato extends the core ecosystem by adding three types of components:
 
 Because `globato` is just a set of hooks, a complex ETL job looks just like a standard `fetchez` command.
 
-Example: The `globato` Pipeline fetches multibeam data, filters outliers, reprojects to NAVD88, and grids it—without saving intermediate files.
+Example: The `globato` pipeline fetches multibeam data, filters outliers, reprojects to NAVD88, and grids it without saving intermediate files.
 
 ```bash
 fetchez multibeam -R -124.5/-124.0/43.0/43.5 \
