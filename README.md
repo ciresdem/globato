@@ -10,7 +10,7 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
   </a>
-  <a href="https://badge.fury.io/py/fetchez">
+  <a href="https://badge.fury.io/py/globato">
 	<img src="https://badge.fury.io/py/globato.svg" alt="PyPi version">
   </a>
   <a href="https://cudem.zulip.org">
@@ -18,7 +18,7 @@
   </a>
 </p>
 
-**Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the `fetchez` ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
+**Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the [`fetchez`](https://github.com/continuous-dems/fetchez) ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
 
 ## ❓ Why Globato?
 
