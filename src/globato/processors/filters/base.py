@@ -11,10 +11,12 @@ Handles stream iteration, schema enforcement, and classification logic.
 
 import logging
 import numpy as np
+
 from fetchez.hooks import FetchHook
 from fetchez import utils
 
 logger = logging.getLogger(__name__)
+
 
 class GlobatoFilter(FetchHook):
     """Base class for Point Stream Filters/Classifiers.

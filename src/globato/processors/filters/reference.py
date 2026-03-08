@@ -81,8 +81,11 @@ class RasterMask(FetchHook, RasterSampling):
             if np.any(mask):
                 chunk["classification"][mask] = self.set_class
 
-            logger.info(f"Reclassified {np.count_nonzero(mask)} points using {self.name}")
+            logger.info(
+                f"Reclassified {np.count_nonzero(mask)} points using {self.name}"
+            )
             yield chunk
+
 
 class DiffZ(FetchHook, RasterSampling):
     """Filter based on diff from reference raster."""

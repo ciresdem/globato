@@ -4,6 +4,7 @@
 """
 globato.schemas
 ~~~~~~~~~~~~~~~
+
 Registers DEM-specific schemas (CUDEM, CRM, ETOPO, NTHMP, Etc.) into the Fetchez engine.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
@@ -11,6 +12,7 @@ Registers DEM-specific schemas (CUDEM, CRM, ETOPO, NTHMP, Etc.) into the Fetchez
 """
 
 from fetchez.schema import BaseSchema, SchemaRegistry
+
 
 class CUDEMSchema(BaseSchema):
     """The "cudem" schema.

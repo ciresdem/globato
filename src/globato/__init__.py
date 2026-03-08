@@ -5,6 +5,8 @@
 globato
 ~~~~~~~~~~~~~
 
+Initialize API and fetchez extension.
+
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
 """
@@ -14,9 +16,9 @@ import inspect
 import importlib
 import logging
 
-from fetchez.hooks.registry import HookRegistry
-from fetchez.registry import FetchezRegistry
+from fetchez.modules.registry import FetchezRegistry
 from fetchez.hooks import FetchHook
+from fetchez.hooks.registry import HookRegistry
 
 # --- Custom fetchez modules ---
 from .modules.local_fs import LocalFS
@@ -36,6 +38,7 @@ __version__ = "0.1.8"
 
 def _auto_register_hooks():
     """Recursively scan the 'processors' directory and auto-register all FetchHooks."""
+
     current_dir = os.path.dirname(os.path.abspath(__file__))
     processors_dir = os.path.join(current_dir, "processors")
 
@@ -69,89 +72,15 @@ def setup_fetchez(registry_cls):
 
     _auto_register_hooks()
 
-    registry_cls.register_module(
-        'local_fs',
-        LocalFS,
-        metadata={
-            'desc': 'Crawl, spatially filter, and process local directories of data.',
-            'tags': ['local', 'datalist', 'folder', 'inf', 'cudem', 'globato'],
-            'category': 'Globato',
-        }
-    )
-    registry_cls.register_module(
-        'gebco_cog',
-        GEBCO_COG,
-        metadata={
-            "inherits": "gebco",
-            'desc': 'Fetch GEBCO as a COG subset',
-            'tags': ['gebco', 'bathymetry', 'global', 'tid', 'cog'],
-            'category': 'Globato',
-        }
-    )
-    registry_cls.register_module(
-        'glob_dem',
-        GlobDEM,
-        metadata={
-            'desc': 'Fetch and glob the best available DEMs',
-            'tags': ['gebco', 'bathymetry', 'global', 'etopo', 'globato'],
-            'category': 'Tools',
-        }
-    )
-    registry_cls.register_module(
-        'glob_coast',
-        GlobCoast,
-        metadata={
-            'desc': 'Fetch and glob a coastline',
-            'tags': ['global', 'globato', 'coastline', 'landmask'],
-            'category': 'Tools',
-        }
-    )
-    registry_cls.register_module(
-        'copernicus_glob',
-        GlobCopernicus,
-        metadata={
-            "inherits": "copernicus",
-            "desc": "Copernicus Global/European Digital Elevation Models (COP-30/10)",
-            "tags": ["satellite", "dsm", "radar", "global", "europe", "clean", "globato"],
-            'category': 'Globato',
-        }
-    )
-    registry_cls.register_module(
-        'fabdem_glob',
-        GlobFabDEM,
-        metadata={
-            "inherits": "fabdem",
-            "tags": ["fabdem", "dem", "dtm", "copernicus", "global", "30m", "clean", "globato"],
-            'category': 'Globato',
-        }
-    )
-    registry_cls.register_module(
-        'multibeam_glob',
-        GlobMultibeam,
-        metadata={
-            "inherits": "multibeam",
-            "tags": ["bathymetry", "multibeam", "ocean", "sonar", "noaa", "ncei", "globato"],
-            'category': 'Globato',
-        }
-    )
-    registry_cls.register_module(
-        'bag_glob',
-        GlobBAG,
-        metadata={
-            "inherits": "nos_hydro",
-            "tags": ["bathymetry", "hydrography", "nos", "noaa", "bag", "soundings", "globato"],
-            'category': 'Globato',
-        }
-    )
-    registry_cls.register_module(
-        'nos_xyz_glob',
-        GlobNOSXYZ,
-        metadata={
-            "inherits": "nos_hydro",
-            "tags": ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato"],
-            'category': 'Globato',
-        }
-    )
+    registry_cls._register_from_module(LocalFS)
+    registry_cls._register_from_module(GEBCO_COG)
+    registry_cls._register_from_module(GlobDEM)
+    registry_cls._register_from_module(GlobCoast)
+    registry_cls._register_from_module(GlobFabDEM)
+    registry_cls._register_from_module(GlobCopernicus)
+    registry_cls._register_from_module(GlobMultibeam)
+    registry_cls._register_from_module(GlobBAG)
+    registry_cls._register_from_module(GloNOSXYZ)
 
 setup_fetchez(FetchezRegistry)
 __all__ = ["read"]

@@ -6,16 +6,21 @@ globato.processors.transforms.reproject
 ~~~~~~~~~~~~~
 
 Reproject the data stream. Hook for fetchez.
+
+:copyright: (c) 2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import logging
 import numpy as np
 
 from fetchez.hooks import FetchHook
+
 from transformez.srs import SRSParser
 from transformez.utils import RasterQuery
 
 logger = logging.getLogger(__name__)
+
 
 class StreamReproject(FetchHook):
     name = "stream_reproject"

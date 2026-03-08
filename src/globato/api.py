@@ -17,6 +17,7 @@ from typing import Union, List, Iterator, Optional
 
 from globato.processors.formats.stream_factory import StreamFactory
 from globato.processors.formats.schema import ensure_schema
+
 from fetchez.core import FetchModule
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,7 @@ def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
 
     else:
         raise TypeError(f"Unknown source type: {type(source)}")
+
 
 def raw_stream_wrapper(gen):
     """Helper to handle the difference between readers yielding plain tuples vs recarrays"""

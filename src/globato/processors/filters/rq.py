@@ -16,10 +16,12 @@ import os
 import logging
 import numpy as np
 import rasterio
-from fetchez.hooks import FetchHook
-from fetchez.registry import FetchezRegistry
-from fetchez.core import run_fetchez
+
 from fetchez import utils
+from fetchez.core import run_fetchez
+from fetchez.hooks import FetchHook
+from fetchez.modules.registry import FetchezRegistry
+
 from .base import GlobatoFilter
 
 try:

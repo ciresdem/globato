@@ -21,7 +21,8 @@ import fiona
 from fetchez import core, cli, utils
 from fetchez.hooks.builtins.file_ops.unzip import Unzip
 from fetchez.hooks.builtins.pipeline.fn_filter import FilenameFilter
-from fetchez.registry import FetchezRegistry
+from fetchez.modules.registry import FetchezRegistry
+
 from globato.processors.hooks.osm_landmask import OSMLandmask
 from globato.processors.rasters.sieve import RasterSieveHook
 from globato.processors.rasters.polygonize import RasterPolygonizeHook
@@ -35,6 +36,12 @@ logger = logging.getLogger(__name__)
     sources="Comma-separated sources (default: copernicus,nhd,osm_landmask,hydrolakes)"
 )
 class GlobCoast(core.FetchModule):
+
+    name = "glob_coast"
+    desc = 'Fetch and glob a coastline'
+    tags = ['global', 'globato', 'coastline', 'landmask']
+    category = 'Tools'
+
     """Synthesizes a coastline raster from multiple sources.
     Uses 'Weighted Voting' to resolve conflicts (e.g. NHD water overrides Copernicus land).
     """

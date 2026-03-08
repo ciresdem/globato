@@ -20,8 +20,9 @@ Useful for:
 import os
 import logging
 import numpy as np
+
 from fetchez import core, cli, utils, spatial
-from fetchez.registry import FetchezRegistry
+from fetchez.modules.registry import FetchezRegistry
 
 from globato.processors.formats.stream_factory import DataStream
 from globato.processors.filters.dropclass import DropClass
@@ -45,6 +46,12 @@ logger = logging.getLogger(__name__)
     fill="Fill gaps/NaNs (bool, default: True)"
 )
 class GlobDEM(core.FetchModule):
+
+    name = "glob_dem"
+    desc = 'Fetch and glob the best available DEMs'
+    tags = ['gebco', 'bathymetry', 'global', 'etopo', 'globato']
+    category = 'Tools'
+
     """Fetches, crops, and merges data from multiple sources into a single DEM."""
 
     def __init__(self, res="3s", sources=None, crs="EPSG:4326",

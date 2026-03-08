@@ -87,8 +87,8 @@ class PointPixels:
 
         # mrl: removed 'mask': None
         out_arrays = {
-            'z': None, 'count': None, 'weight': None, 'uncertainty': None,
-            'x': None, 'y': None, 'pixel_x': None, 'pixel_y': None
+            "z": None, "count": None, "weight": None, "uncertainty": None,
+            "x": None, "y": None, "pixel_x": None, "pixel_y": None
         }
 
         if points is None or len(points) == 0:

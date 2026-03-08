@@ -60,6 +60,7 @@ def run_hook(hook_instance, src, dst, region=None):
         logger.error(f"Error: {e}")
         sys.exit(1)
 
+
 def main():
     parser = argparse.ArgumentParser(
         prog="grits",

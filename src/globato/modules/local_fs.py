@@ -20,6 +20,7 @@ import logging
 
 from fetchez import core
 from fetchez import cli
+
 from transformez.spatial import TransRegion as Region
 
 from ..processors.formats.stream_factory import DataStream
@@ -36,6 +37,12 @@ logger = logging.getLogger(__name__)
     gen_inf="Boolean: Write a full .inf sidecar via stream if missing (default: True)."
 )
 class LocalFS(core.FetchModule):
+
+    name = "local_fs"
+    desc = "Crawl, spatially filter, and process local directories of data."
+    tags = ['local', 'datalist', 'folder', 'inf', 'cudem', 'globato']
+    category = "Globato"
+
     """The Modern Datalist."""
 
     def __init__(self, path=".", ext=".tif", datatype="raster", gen_inf=True, **kwargs):

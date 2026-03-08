@@ -11,8 +11,9 @@ Get gebco as a cog
 :license: MIT, see LICENSE for more details.
 """
 
-from fetchez.modules.gebco import GEBCO as CoreGEBCO
+from fetchez.modules.builtins.gebco import GEBCO as CoreGEBCO
 from ..processors.formats.cog import COGSubset
+
 
 # Source Cooperative (Alex Leith) - Cloud Optimized GeoTIFFs
 GEBCO_COG_URLS = {
@@ -21,6 +22,12 @@ GEBCO_COG_URLS = {
     'sub_ice': 'https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024_sub_ice_topo.tif'
 }
 class GEBCO_COG(CoreGEBCO):
+
+    name = "gebco"
+    desc = 'Fetch GEBCO as a COG subset'
+    tags = ['gebco', 'bathymetry', 'global', 'tid', 'cog']
+    category = 'Globato'
+
     """Globato Wrapper for GEBCO that uses Cloud Optimized GeoTIFFs
     to fetch ONLY the requested region.
     """
