@@ -1,16 +1,24 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.5.0", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "globato"
-version = "0.1.8"
 description = "A suite of specialized data processors (Multibeam, Lidar, Raster), etc. for the Fetchez ecosystem."
 readme = "README.md"
-authors = [{ name = "Matthew Love", email = "matthew.love@colorado.edu" }]
 license = { file = "LICENSE" }
+dynamic = ["version"]
 requires-python = ">=3.12"
+authors = [{ name = "Matthew Love", email = "matthew.love@colorado.edu" }]
+maintainers = [
+    {name = "Matthew Love", email = "matthew.love@colorado.edu"},
+]
 keywords = ["geospatial", "fetchez", "multibeam", "lidar", "etl"]
+classifiers = [
+    'Programming Language :: Python :: 3',
+    'Operating System :: OS Independent',
+    'Topic :: Scientific/Engineering :: GIS',
+]
 
 dependencies = [
     "fetchez>=0.4.2",
@@ -35,8 +43,8 @@ verde = ["verde"]
 full = ["globato[gmt, gdal, verde]"]
 
 [project.urls]
-Homepage = "https://github.com/ciresdem/globato"
-Repository = "https://github.com/ciresdem/globato"
+Homepage = "https://github.com/continuous-dems/globato"
+Repository = "https://github.com/continuous-dems/globato"
 
 [project.entry-points."fetchez.modules"]
 globato_modules = "globato.modules"
