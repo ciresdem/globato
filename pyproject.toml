@@ -60,8 +60,46 @@ globato = "globato.cli.main:main"
 fetchez-index = "globato.cli_index:main"
 grits = "globato.cli.grits:main"
 
-# --- Build Configuration ---
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["globato*"]
-namespaces = false
+# --- Build configuration ---
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.version]
+path = "src/transformez/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/transformez"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/globato",
+  "tests",
+  "CHANGELOG.md",
+  "CITATION.cff",
+  "CONTRIBUTING.md",
+  "AUTHORS.md",
+]
+exclude = [
+  ".github",
+]
+
+# # --- Devtools configuration ---
+
+# [tool.mypy]
+# mypy_path = "src"
+# packages = ["transformez"]
+# python_version = "3.12"
+# disable_error_code = ["import-untyped"]
+# # strict = true
+
+# [[tool.mypy.overrides]]
+# module = [
+#     "matplotlib.*",
+#     "rasterio.*",
+#     "scipy.*",
+#     "pyproj.*",
+#     "fetchez.*",
+# ]
+# ignore_missing_imports = true
+# follow_untyped_imports = true
