@@ -1,21 +1,17 @@
 <p align="center">
-    <a href="https://github.com/continuous-dems">
-        <img src="https://github.com/continuous-dems/globato/blob/main/media/cudem_logo_micro_plain.svg" height="60" alt="CUDEM Logo">
-    </a>
-	<h1 align="center">Globato</h1>
-	<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
+	<a href="https://github.com/continuous-dems">
+		<img src="https://github.com/continuous-dems/fetchez/blob/modules/docs/source/_static/continuous_dems_logo.svg" height="80" alt="Continuous DEMs Logo">
+	</a>
 </p>
+<h1 align="center">Globato</h1>
+<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
 
 <p align="center">
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
-  </a>
-  <a href="https://badge.fury.io/py/globato">
-	<img src="https://badge.fury.io/py/globato.svg" alt="PyPi version">
-  </a>
-  <a href="https://cudem.zulip.org">
-	<img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Zulip Chat">
-  </a>
+  <a href="https://github.com/continuous-dems/globato"><img src="https://img.shields.io/badge/version-0.2.0-blue.svg" alt="Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-yellow.svg" alt="Python"></a>
+  <a href="https://badge.fury.io/py/globato"><img src="https://badge.fury.io/py/globato.svg" alt="PyPI version"></a>
+  <a href="https://cudem.zulip.org"><img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Project Chat"></a>
 </p>
 
 **Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the [Fetchez](https://github.com/continuous-dems/fetchez) ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
