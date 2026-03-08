@@ -11,6 +11,22 @@ Initialize API and fetchez extension.
 :license: MIT, see LICENSE for more details.
 """
 
+try:
+    from globato._version import __version__
+except ImportError:
+    # Fallback when using the package from source without installing
+    # in editable mode with pip (nobody should do this):
+    # <https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs>
+    import warnings
+
+    warnings.warn(
+        "Importing 'globato' outside a proper installation."
+        " It's highly recommended to install the package from a stable release or"
+        " in editable mode.",
+        stacklevel=2,
+    )
+    __version__ = "dev"
+
 import os
 import inspect
 import importlib
@@ -34,7 +50,6 @@ from . import schemas
 from .api import read
 
 logger = logging.getLogger(__name__)
-__version__ = "0.1.8"
 
 def _auto_register_hooks():
     """Recursively scan the 'processors' directory and auto-register all FetchHooks."""
@@ -80,7 +95,7 @@ def setup_fetchez(registry_cls):
     registry_cls._register_from_module(GlobCopernicus)
     registry_cls._register_from_module(GlobMultibeam)
     registry_cls._register_from_module(GlobBAG)
-    registry_cls._register_from_module(GloNOSXYZ)
+    registry_cls._register_from_module(GlobNOSXYZ)
 
 setup_fetchez(FetchezRegistry)
 __all__ = ["read"]

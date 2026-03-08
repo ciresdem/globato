@@ -66,10 +66,10 @@ grits = "globato.cli.grits:main"
 source = "vcs"
 
 [tool.hatch.build.hooks.version]
-path = "src/transformez/_version.py"
+path = "src/globato/_version.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/transformez"]
+packages = ["src/globato"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -88,7 +88,7 @@ exclude = [
 
 # [tool.mypy]
 # mypy_path = "src"
-# packages = ["transformez"]
+# packages = ["globato"]
 # python_version = "3.12"
 # disable_error_code = ["import-untyped"]
 # # strict = true
