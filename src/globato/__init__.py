@@ -51,6 +51,7 @@ from .api import read
 
 logger = logging.getLogger(__name__)
 
+
 def _auto_register_hooks():
     """Recursively scan the 'processors' directory and auto-register all FetchHooks."""
 
@@ -98,4 +99,5 @@ def setup_fetchez(registry_cls):
     registry_cls._register_from_module(GlobNOSXYZ)
 
 setup_fetchez(FetchezRegistry)
+
 __all__ = ["read"]
