@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.sinks.pipe
+globato.hooks.sinks.pipe
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 pipe the stream to xyz (stdout)

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.transforms.point_pixels
+globato.hooks.transforms.point_pixels
 ~~~~~~~~~~~~~
 
 pointz class to bin point data and a Point Cloud Filtering Engine.

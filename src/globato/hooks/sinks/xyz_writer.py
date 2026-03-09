@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.sinks.xyz_writer
+globato.hooks.sinks.xyz_writer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Writes the point stream to an ASCII XYZ file inline.
 

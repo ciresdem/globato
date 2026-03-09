@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.sinks.simple_stack
+globato.hooks.sinks.simple_stack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is the grid engine utility for combining data into a grid.
@@ -22,6 +22,7 @@ from fetchez.hooks import FetchHook
 from fetchez import utils
 
 logger = logging.getLogger(__name__)
+
 
 class PointAccumulator:
     """A lightweight streaming gridder.

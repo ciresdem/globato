@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.sinks.gtpc_writer
+globato.hooks.sinks.gtpc_writer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Writes streams to .gtpc (Globato Point Cloud) HDF5 format.
@@ -21,6 +21,7 @@ from fetchez import utils
 from ..transforms.point_pixels import PointPixels
 
 logger = logging.getLogger(__name__)
+
 
 class WriteGTPC(FetchHook):
     """Saves stream to .gtpc HDF5.

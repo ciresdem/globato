@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.vectors.vector_fill_holes
+globato.hooks.vectors.vector_fill_holes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Removes interior rings (holes/ponds) from polygon vectors.
 Perfect for solidifying landmasks and delineating continuous ocean boundaries.
@@ -18,6 +18,7 @@ from shapely.geometry import shape, mapping, Polygon, MultiPolygon
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
+
 
 class VectorFillHoles(FetchHook):
     """Removes interior holes from vector polygons.

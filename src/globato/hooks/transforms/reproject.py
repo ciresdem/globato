@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.transforms.reproject
+globato.hooks.transforms.reproject
 ~~~~~~~~~~~~~
 
 Reproject the data stream. Hook for fetchez.

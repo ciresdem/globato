@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.hooks.osm_landmask
+globato.hooks.hooks.osm_landmask
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Fetches OSM Coastline data and polygonizes it into a landmask.

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.sinks.multi_stack
+globato.hooks.sinks.multi_stack
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Multi-band Statistical Gridder (The "Heavy" Stacker).
