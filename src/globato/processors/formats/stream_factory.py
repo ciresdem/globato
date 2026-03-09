@@ -186,9 +186,9 @@ class DataStream(FetchHook):
     """
 
     name = "stream_data"
-    stage = "file"
-    desc = "Setup an data stream from input data."
-    category = "format-stream"
+    meta_stage = "file"
+    meta_desc = "Setup an data stream from input data."
+    meta_category = "format-stream"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

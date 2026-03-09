@@ -19,9 +19,10 @@ from rasterio.warp import reproject
 import fiona
 
 from fetchez import core, cli, utils
-from fetchez.hooks.builtins.file_ops.unzip import Unzip
-from fetchez.hooks.builtins.pipeline.fn_filter import FilenameFilter
-from fetchez.modules.registry import FetchezRegistry
+from fetchez.hooks.unzip import Unzip
+from fetchez.hooks.fn_filter import FilenameFilter
+from fetchez.registry import ModuleRegistry
+from fetchez.modules import FetchModule
 
 from globato.processors.hooks.osm_landmask import OSMLandmask
 from globato.processors.rasters.sieve import RasterSieveHook
@@ -35,16 +36,17 @@ logger = logging.getLogger(__name__)
     res="Target resolution (e.g. '1s', '30m')",
     sources="Comma-separated sources (default: copernicus,nhd,osm_landmask,hydrolakes)"
 )
-class GlobCoast(core.FetchModule):
-
-    name = "glob_coast"
-    desc = 'Fetch and glob a coastline'
-    tags = ['global', 'globato', 'coastline', 'landmask']
-    category = 'Tools'
-
+class GlobCoast(FetchModule):
     """Synthesizes a coastline raster from multiple sources.
+
     Uses 'Weighted Voting' to resolve conflicts (e.g. NHD water overrides Copernicus land).
     """
+
+    name = "glob_coast"
+    meta_desc = "Fetch and glob a coastline"
+    meta_agency = "Globato"
+    meta_tags = ["global", "globato", "coastline", "landmask"]
+    meta_category = "Tools"
 
     def __init__(self, res="1s", sources=None, weights=None, fill_inland_holes=False, **kwargs):
         super().__init__(name="glob_coast", **kwargs)
@@ -224,7 +226,7 @@ class GlobCoast(core.FetchModule):
                     fetched_files.append(landmask_fn)
 
             elif mod_name == 'nhd':
-                mod_cls = FetchezRegistry.load_module('tnm')
+                mod_cls = ModuleRegistry.get_class('tnm')
                 mod_instance = mod_cls(
                     src_region=fetch_region,
                     datasets="14",
@@ -245,7 +247,7 @@ class GlobCoast(core.FetchModule):
                     logger.error(f"Failed to fetch {mod_name}: {e}")
 
             else:
-                mod_cls = FetchezRegistry.load_module(mod_name)
+                mod_cls = ModuleRegistry.get_class(mod_name)
                 if not mod_cls:
                     logger.warning(f"Unknown source: {mod_name}")
                     continue

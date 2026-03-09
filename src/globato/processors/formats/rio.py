@@ -113,8 +113,8 @@ class RasterioReader:
 
 class RasterioStream(FetchHook):
     name = "rasterio_stream"
-    stage = "file"
-    category = "format-stream"
+    meta_stage = "file"
+    meta_category = "format-stream"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

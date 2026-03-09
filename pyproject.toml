@@ -47,10 +47,10 @@ Homepage = "https://github.com/continuous-dems/globato"
 Repository = "https://github.com/continuous-dems/globato"
 
 [project.entry-points."fetchez.modules"]
-globato_modules = "globato"
+globato_modules = "globato.modules"
 
 [project.entry-points."fetchez.hooks"]
-globato_hooks = "globato"
+globato_hooks = "globato.processors"
 
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"

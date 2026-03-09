@@ -20,7 +20,7 @@ import rasterio
 from fetchez import utils
 from fetchez.core import run_fetchez
 from fetchez.hooks import FetchHook
-from fetchez.modules.registry import FetchezRegistry
+from fetchez.registry import ModuleRegistry
 
 from .base import GlobatoFilter
 
@@ -94,7 +94,7 @@ class ReferenceQuality(GlobatoFilter):
             return [self.ref_source]
 
         logger.info(f"[RQ] Fetching reference data: {self.ref_source}...")
-        mod_cls = FetchezRegistry.load_module(self.ref_source)
+        mod_cls = ModuleRegistry.get_class(self.ref_source)
 
         if not mod_cls:
             return None

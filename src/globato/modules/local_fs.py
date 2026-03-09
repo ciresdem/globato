@@ -18,8 +18,8 @@ import json
 import glob
 import logging
 
-from fetchez import core
 from fetchez import cli
+from fetchez.modules import FetchModule
 
 from transformez.spatial import TransRegion as Region
 
@@ -36,12 +36,13 @@ logger = logging.getLogger(__name__)
     datatype="Data type tag for downstream hooks (default: 'raster').",
     gen_inf="Boolean: Write a full .inf sidecar via stream if missing (default: True)."
 )
-class LocalFS(core.FetchModule):
+class LocalFS(FetchModule):
 
     name = "local_fs"
-    desc = "Crawl, spatially filter, and process local directories of data."
-    tags = ['local', 'datalist', 'folder', 'inf', 'cudem', 'globato']
-    category = "Globato"
+    meta_desc = "Crawl, spatially filter, and process local directories of data."
+    meta_agency = "Globato"
+    meta_tags = ["local", "datalist", "folder", "inf", "cudem", "globato"]
+    meta_category = "Local Data"
 
     """The Modern Datalist."""
 

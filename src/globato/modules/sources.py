@@ -14,10 +14,10 @@ import logging
 import rasterio
 
 from fetchez.hooks import FetchHook
-from fetchez.hooks.builtins.file_ops.unzip import Unzip
-from fetchez.hooks.builtins.metadata.datatype import SetDataType
-from fetchez.hooks.builtins.pipeline.fn_filter import FilenameFilter
-from fetchez.modules.registry import FetchezRegistry
+from fetchez.hooks.unzip import Unzip
+from fetchez.hooks.datatype import SetDataType
+from fetchez.hooks.fn_filter import FilenameFilter
+from fetchez.registry import ModuleRegistry
 
 from globato.processors.formats.stream_factory import DataStream
 from globato.processors.filters.rq import ReferenceQuality
@@ -27,10 +27,10 @@ from globato.processors.sinks.simple_stack import SimpleStack
 
 logger = logging.getLogger(__name__)
 
-BaseFabDEM = FetchezRegistry.load_module("fabdem") or object
-BaseCopernicus = FetchezRegistry.load_module("copernicus") or object
-BaseMultibeam = FetchezRegistry.load_module("multibeam") or object
-BaseHydroNOS = FetchezRegistry.load_module("nos_hydro") or object
+BaseFabDEM = ModuleRegistry.get_class("fabdem") or object
+BaseCopernicus = ModuleRegistry.get_class("copernicus") or object
+BaseMultibeam = ModuleRegistry.get_class("multibeam") or object
+BaseHydroNOS = ModuleRegistry.get_class("nos_hydro") or object
 
 
 class GlobFabDEM(BaseFabDEM):
@@ -45,8 +45,8 @@ class GlobFabDEM(BaseFabDEM):
     """
 
     name = "glob_fabdem"
-    tags = ["fabdem", "dem", "dtm", "copernicus", "global", "30m", "clean", "globato"]
-    category = "Globato"
+    meta_tags = ["fabdem", "dem", "dtm", "copernicus", "global", "30m", "clean", "globato"]
+    meta_category = "Globato"
 
     def __init__(self, **kwargs):
         super().__init__(name="glob_fabdem", **kwargs)
@@ -85,9 +85,9 @@ class GlobCopernicus(BaseCopernicus):
     """
 
     name = "glob_copernicus"
-    desc = "Copernicus Global/European Digital Elevation Models (COP-30/10)"
-    tags = ["satellite", "dsm", "radar", "global", "europe", "clean", "globato"]
-    category = "Globato"
+    meta_desc = "Copernicus Global/European Digital Elevation Models (COP-30/10)"
+    meta_tags = ["satellite", "dsm", "radar", "global", "europe", "clean", "globato"]
+    meta_category = "Globato"
 
     def __init__(self, **kwargs):
         super().__init__(name="glob_copernicus", **kwargs)
@@ -119,8 +119,8 @@ class GlobMultibeam(BaseMultibeam):
     """
 
     name = "glob_multibeam"
-    tags = ["bathymetry", "multibeam", "ocean", "sonar", "noaa", "ncei", "globato"]
-    category = 'Globato'
+    meta_tags = ["bathymetry", "multibeam", "ocean", "sonar", "noaa", "ncei", "globato"]
+    meta_category = 'Globato'
 
     def __init__(self, res="1s", **kwargs):
         super().__init__(name="glob_multibeam", **kwargs)
@@ -152,7 +152,7 @@ class ValidateBAG(FetchHook):
     """
 
     name = "validate_bag"
-    stage = "file"
+    meta_stage = "file"
 
     def run(self, entries):
         for mod, entry in entries:
@@ -185,8 +185,8 @@ class ValidateBAG(FetchHook):
 
 class GlobBAG(BaseHydroNOS):
     name = "glob_bag"
-    tags = ["bathymetry", "hydrography", "nos", "noaa", "bag", "soundings", "globato"]
-    category = "Globato"
+    meta_tags = ["bathymetry", "hydrography", "nos", "noaa", "bag", "soundings", "globato"]
+    meta_category = "Globato"
 
     def __init__(self, **kwargs):
         super().__init__(name="glob_bag", **kwargs)
@@ -198,8 +198,8 @@ class GlobBAG(BaseHydroNOS):
 
 class GlobNOSXYZ(BaseHydroNOS):
     name = "glob_nos"
-    tags = ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato"]
-    category = "Globato"
+    meta_tags = ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato"]
+    meta_category = "Globato"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

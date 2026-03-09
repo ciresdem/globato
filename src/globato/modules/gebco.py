@@ -11,7 +11,7 @@ Get gebco as a cog
 :license: MIT, see LICENSE for more details.
 """
 
-from fetchez.modules.builtins.gebco import GEBCO as CoreGEBCO
+from fetchez.modules.gebco import GEBCO as CoreGEBCO
 from ..processors.formats.cog import COGSubset
 
 
@@ -23,17 +23,16 @@ GEBCO_COG_URLS = {
 }
 class GEBCO_COG(CoreGEBCO):
 
-    name = "gebco"
-    desc = 'Fetch GEBCO as a COG subset'
-    tags = ['gebco', 'bathymetry', 'global', 'tid', 'cog']
-    category = 'Globato'
+    name = "gebco_cog"
+    meta_desc = "Fetch GEBCO as a COG subset"
+    meta_tags = ["gebco", "bathymetry", "global", "tid", "cog", "globato"]
 
     """Globato Wrapper for GEBCO that uses Cloud Optimized GeoTIFFs
     to fetch ONLY the requested region.
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__("gebco_cog", **kwargs)
         self.add_hook(COGSubset())
 
     def run(self):
