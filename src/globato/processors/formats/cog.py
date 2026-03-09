@@ -28,9 +28,9 @@ class COGSubset(FetchHook):
     """
 
     name = "cog_subset"
-    stage = "pre"
-    desc = "Pass the download url through a cog download."
-    category = "pipeline"
+    meta_stage = "pre"
+    meta_desc = "Pass the download url through a cog download."
+    meta_category = "pipeline"
 
     def run(self, entries):
         new_entries = []

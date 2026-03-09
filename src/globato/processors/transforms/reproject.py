@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 class StreamReproject(FetchHook):
     name = "stream_reproject"
-    stage = "file"
-    desc = "Reproject the stream to the desired SRS using Transformez."
-    category = "pipeline"
+    meta_stage = "file"
+    meta_desc = "Reproject the stream to the desired SRS using Transformez."
+    meta_category = "pipeline"
 
     def __init__(self, dst_srs, src_srs=None, vert_grid=None, **kwargs):
         super().__init__(**kwargs)

@@ -33,8 +33,8 @@ class WriteGTPC(FetchHook):
     """
 
     name = "write_gtpc"
-    stage = "file"
-    category = "stream-sink"
+    meta_stage = "file"
+    meta_category = "stream-sink"
 
     def __init__(self, res=None, mode="mean", compression="gzip", **kwargs):
         super().__init__(**kwargs)

@@ -18,6 +18,7 @@ from .base import RasterHook
 
 logger = logging.getLogger(__name__)
 
+
 class RasterDiff(RasterHook):
     """Calculates pixel-wise difference (Source - Aux).
 

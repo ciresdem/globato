@@ -30,9 +30,9 @@ class SpatialCrop(FetchHook):
     """
 
     name = "spatial_crop"
-    desc = "Crop stream to the target bounding box"
-    stage = "file"
-    category = "stream-filter"
+    meta_desc = "Crop stream to the target bounding box"
+    meta_stage = "file"
+    meta_category = "stream-filter"
 
     def __init__(self, soft=False, set_class=7, **kwargs):
         super().__init__(**kwargs)

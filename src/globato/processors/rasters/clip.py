@@ -25,9 +25,8 @@ class RasterClipHook(RasterHook):
     """Clips a raster array using vector geometries."""
 
     name = "raster_clip"
-    category = "raster-op"
     default_suffix = "_clipped"
-    stage = "file"
+    meta_stage = "file"
 
     def __init__(self, invert=False, **kwargs):
         super().__init__(**kwargs)

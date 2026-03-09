@@ -280,8 +280,8 @@ class Point2PixelStream(FetchHook):
     """Base class for streaming point filters."""
 
     name = "point2pixel"
-    stage = "file"
-    category = "pipeline"
+    meta_stage = "file"
+    meta_category = "pipeline"
 
     def __init__(self, x_inc=None, y_inc=None, want_sums=True, **kwargs):
         super().__init__(**kwargs)

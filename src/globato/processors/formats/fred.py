@@ -30,9 +30,9 @@ class FredGenerator(FetchHook):
     """
 
     name = "fred_export"
-    stage = "post"
-    desc = "generate a fred geojson index of the output data"
-    category = "metadata"
+    meta_stage = "post"
+    meta_desc = "generate a fred geojson index of the output data"
+    meta_category = "metadata"
 
     def __init__(self, name="output", output_dir=None, scan=True, **kwargs):
         """Args:

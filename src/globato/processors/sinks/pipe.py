@@ -33,9 +33,9 @@ class XYZPrinter(FetchHook):
     """
 
     name = "stream_pipe_xyz"
-    stage = "file"
-    desc = "stream xyz data to stdout"
-    category = "stream-sink"
+    meta_stage = "file"
+    meta_desc = "stream xyz data to stdout"
+    meta_category = "stream-sink"
 
     def __init__(self, fmt="%.6f", delimiter=" ", **kwargs):
         super().__init__(**kwargs)
