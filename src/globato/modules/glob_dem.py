@@ -22,7 +22,8 @@ import logging
 import numpy as np
 
 from fetchez import core, cli, utils, spatial
-from fetchez.modules.registry import FetchezRegistry
+from fetchez.registry import ModuleRegistry
+from fetchez.modules import FetchModule
 
 from globato.processors.formats.stream_factory import DataStream
 from globato.processors.filters.dropclass import DropClass
@@ -45,14 +46,14 @@ logger = logging.getLogger(__name__)
     blend="Blending mode for overlaps (mean, first, last, min, max)",
     fill="Fill gaps/NaNs (bool, default: True)"
 )
-class GlobDEM(core.FetchModule):
+class GlobDEM(FetchModule):
+    """Fetches, crops, and merges data from multiple sources into a single DEM."""
 
     name = "glob_dem"
-    desc = 'Fetch and glob the best available DEMs'
-    tags = ['gebco', 'bathymetry', 'global', 'etopo', 'globato']
-    category = 'Tools'
-
-    """Fetches, crops, and merges data from multiple sources into a single DEM."""
+    meta_desc = "Fetch and glob the best available DEMs"
+    meta_agency = "Globato"
+    meta_tags = ["gebco", "bathymetry", "global", "etopo", "globato"]
+    meta_category = "Tools"
 
     def __init__(self, res="3s", sources=None, crs="EPSG:4326",
                  blend="mean", fill=True, **kwargs):
@@ -104,7 +105,7 @@ class GlobDEM(core.FetchModule):
 
         initialized_mods = []
         for mod_name in self.source_list:
-            mod_cls = FetchezRegistry.load_module(mod_name)
+            mod_cls = ModuleRegistry.get_class(mod_name)
             if not mod_cls:
                 logger.warning(f"Unknown module: {mod_name}")
                 continue

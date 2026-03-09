@@ -24,8 +24,8 @@ class GlobatoFilter(FetchHook):
     Subclasses should implement `filter_chunk(chunk)`.
     """
 
-    stage = "file"
-    category = "stream-filter"
+    meta_stage = "file"
+    meta_category = "stream-filter"
 
     def __init__(
             self,

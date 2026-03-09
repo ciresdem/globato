@@ -185,9 +185,9 @@ class XYZStream(FetchHook):
     """
 
     name = "xyz_stream"
-    stage = "file"
-    desc = "Standardize ASCII XYZ data"
-    category = "format-stream"
+    meta_stage = "file"
+    meta_desc = "Standardize ASCII XYZ data"
+    meta_category = "format-stream"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

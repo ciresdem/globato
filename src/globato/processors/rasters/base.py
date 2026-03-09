@@ -36,8 +36,8 @@ class RasterHook(FetchHook):
     - Set the stage to either 'post' or 'file'
     """
 
-    stage = "post"
-    category = "raster-op"
+    meta_stage = "post"
+    meta_category = "raster-op"
     default_suffix = "_processed"
 
     def __init__(
