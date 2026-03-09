@@ -27,67 +27,7 @@ except ImportError:
     )
     __version__ = "dev"
 
-# import os
-# import inspect
-# import importlib
-# import logging
-
-# from fetchez.modules.registry import FetchezRegistry
-# from fetchez.hooks import FetchHook
-# from fetchez.hooks.registry import HookRegistry
-
-# # --- Custom fetchez modules ---
-# from .modules.local_fs import LocalFS
-# from .modules.gebco import GEBCO_COG
-# from .modules.glob_dem import GlobDEM
-# from .modules.glob_coast import GlobCoast
-# from .modules.sources import GlobCopernicus, GlobFabDEM, GlobMultibeam, GlobBAG, GlobNOSXYZ
-
-# --- Schemas ---
-# from . import schemas
-
 # --- API ----
 from .api import read
-
-# logger = logging.getLogger(__name__)
-
-
-# def _auto_register_hooks():
-#     """Recursively scan the 'processors' directory and auto-register all FetchHooks."""
-
-#     current_dir = os.path.dirname(os.path.abspath(__file__))
-#     processors_dir = os.path.join(current_dir, "processors")
-
-#     if not os.path.exists(processors_dir):
-#         return
-
-#     for root, dirs, files in os.walk(processors_dir):
-#         dirs[:] = [d for d in dirs if not d.startswith('_')]
-
-#         for f in files:
-#             if f.endswith(".py") and not f.startswith("_"):
-#                 rel_dir = os.path.relpath(root, current_dir)
-#                 mod_path = rel_dir.replace(os.sep, '.')
-#                 mod_name = f[:-3]
-
-#                 full_mod_name = f"globato.{mod_path}.{mod_name}"
-
-#                 try:
-#                     mod = importlib.import_module(full_mod_name)
-#                     for name, obj in inspect.getmembers(mod):
-#                         if (inspect.isclass(obj) and
-#                             issubclass(obj, FetchHook) and
-#                             obj is not FetchHook):
-#                             HookRegistry.register_hook(obj)
-#                 except Exception as e:
-#                     logger.warning(f"Failed to auto-load globato hook {full_mod_name}: {e}")
-
-
-# def setup_fetchez(registry_cls):
-#     """Register All globato capabilities with Fetchez."""
-
-#     _auto_register_hooks()
-
-# setup_fetchez(FetchezRegistry)
 
 __all__ = ["read"]

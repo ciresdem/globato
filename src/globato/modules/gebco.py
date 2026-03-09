@@ -12,7 +12,7 @@ Get gebco as a cog
 """
 
 from fetchez.modules.gebco import GEBCO as CoreGEBCO
-from ..processors.formats.cog import COGSubset
+from ..hooks.formats.cog import COGSubset
 
 
 # Source Cooperative (Alex Leith) - Cloud Optimized GeoTIFFs

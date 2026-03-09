@@ -24,9 +24,9 @@ from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.registry import ModuleRegistry
 from fetchez.modules import FetchModule
 
-from globato.processors.hooks.osm_landmask import OSMLandmask
-from globato.processors.rasters.sieve import RasterSieveHook
-from globato.processors.rasters.polygonize import RasterPolygonizeHook
+from globato.hooks.hooks.osm_landmask import OSMLandmask
+from globato.hooks.rasters.sieve import RasterSieveHook
+from globato.hooks.rasters.polygonize import RasterPolygonizeHook
 
 logger = logging.getLogger(__name__)
 
