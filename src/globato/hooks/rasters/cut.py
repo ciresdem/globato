@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.cut
+globato.hooks.rasters.cut
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Masks data outside the defined pipeline region.
 """
@@ -17,6 +17,7 @@ class RasterCut(RasterHook):
 
     Usage: --hook raster_cut
     """
+
     name = "raster_cut"
     default_suffix = "_cut"
 

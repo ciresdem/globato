@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.cudem
+globato.hooks.rasters.cudem
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Orchestrates multi-resolution step-down gridding in the raster domain.
@@ -34,7 +34,7 @@ class CudemStepDown(RasterHook):
 
     name = "ms_cudem"
     default_suffix = "_cudem"
-    category = "multi-stack"
+    meta_category = "multi-stack"
 
     def __init__(self, steps=2, weights="1.0/0.5", resolutions="1s/3s",
                  algo="interp_scipy", barrier=None, **kwargs):

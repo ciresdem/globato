@@ -2,10 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.interpolators.verde_surface
+globato.hooks.rasters.verde_surface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Uses Verde's Biharmonic Spline algorithm to interpolate sparse grids.
 An excellent, pure-Python alternative to GMT's continuous curvature splines.
+
+:copyright: (c) 2016 - 2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import logging

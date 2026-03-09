@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.base
+globato.hooks.rasters.base
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Base classes for Raster operations.

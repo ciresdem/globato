@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.zscore
+globato.hooks.rasters.zscore
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Filters data based on local Z-Score (Standard Score).

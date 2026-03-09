@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.polygonize
+globato.hooks.rasters.polygonize
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Polygonize the raster.

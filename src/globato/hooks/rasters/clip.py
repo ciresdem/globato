@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.clip
+globato.hooks.rasters.clip
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Clip a raster to a vector
 

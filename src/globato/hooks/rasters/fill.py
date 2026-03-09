@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.fill
+globato.hooks.rasters.fill
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Fill NoData voids using Rasterio's discrete Poisson PDE solver (GDALFillNodata).
 Requires global context to smoothly interpolate large gaps and extrapolate to edges.

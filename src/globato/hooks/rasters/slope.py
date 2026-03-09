@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.slope
+globato.hooks.rasters.slope
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Filters data based on calculated Slope (Rise/Run).
 """
 
 import numpy as np
 from .base import RasterHook
+
 
 class RasterSlopeFilter(RasterHook):
     """Filters pixels based on local slope.

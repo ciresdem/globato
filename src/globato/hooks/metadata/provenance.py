@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.metadata.provenance
+globato.hooks.metadata.provenance
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Generate bitmap data mask
@@ -16,8 +16,9 @@ import logging
 import threading
 import numpy as np
 import rasterio
-from fetchez.hooks import FetchHook
 from rasterio.windows import Window
+
+from fetchez.hooks import FetchHook
 from ..transforms.point_pixels import PointPixels
 
 logger = logging.getLogger(__name__)

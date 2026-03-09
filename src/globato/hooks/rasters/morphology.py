@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.morphology
+globato.hooks.rasters.morphology
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Mophology operations on the raster.

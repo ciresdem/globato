@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.seive
+globato.hooks.rasters.seive
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Remove small regions from a raster.

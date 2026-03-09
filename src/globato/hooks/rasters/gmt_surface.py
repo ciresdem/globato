@@ -2,10 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.interpolators.gmt_surface
+globato.hooks.rasters.gmt_surface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Uses GMT's 'surface' algorithm (Continuous Curvature Splines in Tension)
 via PyGMT to interpolate sparse grids. Essential for deep water/large gaps.
+
+:copyright: (c) 2016 - 2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import os

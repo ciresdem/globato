@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.interpolators.scipy_griddata
+globato.hooks.rasters.scipy_griddata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Interpolates gaps in a stacked DEM using SciPy's griddata.

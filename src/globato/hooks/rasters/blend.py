@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.blend
+globato.hooks.rasters.blend
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Blends high-weight data into low-weight background using spatial buffering,
 interpolation, and slope-gated randomization.
@@ -40,7 +40,7 @@ class MultiStackBlend(RasterHook):
 
     name = "ms_blend"
     default_suffix = "_blended"
-    category = "multi-stack"
+    meta_category = "multi-stack"
 
     def __init__(self, weight_threshold=1.0, blend_dist=5, slope_scale=0.5,
                  random_scale=0.025, algo='linear', **kwargs):

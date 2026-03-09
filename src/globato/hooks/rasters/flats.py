@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.rasters.flats
+globato.hooks.rasters.flats
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Removes flat areas from a DEM by identifying contiguous areas of identical values
 that exceed a specified size threshold.
@@ -19,6 +19,7 @@ import numpy as np
 from .base import RasterHook
 
 logger = logging.getLogger(__name__)
+
 
 class RasterFlats(RasterHook):
     """Remove flat areas from the input DEM.
