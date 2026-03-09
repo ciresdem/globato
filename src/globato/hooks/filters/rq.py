@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.rq
+globato.hooks.filters.rq
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Reference Quality (RQ) Filter.
@@ -55,6 +55,7 @@ class ReferenceQuality(GlobatoFilter):
     """
 
     name = "rq"
+    meta_desc = "Filter points by comparing z values to a reference raster."
 
     def __init__(self, reference="gebco_cog", threshold=10, mode="diff",
                  builder="vrt", res=0.00416, **kwargs):

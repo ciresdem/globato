@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.block_thin
+globato.hooks.filters.block_thin
 ~~~~~~~~~~~~~
 
 These filters are destructive by nature.
@@ -31,7 +31,7 @@ class BlockThin(GlobatoFilter):
     """
 
     name = "block_thin"
-    desc = "Thin the data"
+    meta_desc = "Thin the data"
 
     def __init__(self, res=10, mode='min', soft=True, **kwargs):
         super().__init__(**kwargs)

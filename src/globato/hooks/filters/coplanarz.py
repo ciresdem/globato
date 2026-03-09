@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.coplanarz
+globato.hooks.filters.coplanarz
 ~~~~~~~~~~~~~
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado

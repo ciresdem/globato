@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.vector_crop
+globato.hooks.filters.vector_crop
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Crops stream data using a polygon vector mask.
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import logging

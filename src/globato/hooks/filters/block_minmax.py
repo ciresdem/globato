@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.block_minmax
+globato.hooks.filters.block_minmax
 ~~~~~~~~~~~~~
 
 These filters are destructive by nature.
@@ -30,7 +30,7 @@ class BlockMinMax(GlobatoFilter):
     """
 
     name = "block_minmax"
-    desc = "Thin the data by min/max"
+    meta_desc = "Thin the data by min/max"
 
     def __init__(self, res=10, mode='min', soft=True, **kwargs):
         super().__init__(**kwargs)

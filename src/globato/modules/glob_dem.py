@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.glob_dem
+globato.modules.glob_dem
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A "Super-Module" that fetches, processes, and merges the best available DEMs
@@ -25,9 +25,9 @@ from fetchez import core, cli, utils, spatial
 from fetchez.registry import ModuleRegistry
 from fetchez.modules import FetchModule
 
-from globato.processors.formats.stream_factory import DataStream
-from globato.processors.filters.dropclass import DropClass
-from globato.processors.sinks.simple_stack import SimpleStack
+from globato.hooks.formats.stream_factory import DataStream
+from globato.hooks.filters.dropclass import DropClass
+from globato.hooks.sinks.simple_stack import SimpleStack
 
 try:
     from transformez.grid_engine import GridEngine, GridWriter

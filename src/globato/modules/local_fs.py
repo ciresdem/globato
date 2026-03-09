@@ -23,8 +23,8 @@ from fetchez.modules import FetchModule
 
 from transformez.spatial import TransRegion as Region
 
-from ..processors.formats.stream_factory import DataStream
-from ..processors.metadata.globato_inf import GlobatoInfo
+from ..hooks.formats.stream_factory import DataStream
+from ..hooks.metadata.globato_inf import GlobatoInfo
 
 logger = logging.getLogger(__name__)
 

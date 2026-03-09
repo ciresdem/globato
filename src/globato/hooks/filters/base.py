@@ -2,11 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.base
+globato.hooks.filters.base
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Base class for all Globato stream filters.
 Handles stream iteration, schema enforcement, and classification logic.
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import logging

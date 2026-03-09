@@ -50,7 +50,7 @@ Repository = "https://github.com/continuous-dems/globato"
 globato_modules = "globato.modules"
 
 [project.entry-points."fetchez.hooks"]
-globato_hooks = "globato.processors"
+globato_hooks = "globato.hooks"
 
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"

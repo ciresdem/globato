@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.dropclass
+globato.hooks.filters.dropclass
 ~~~~~~~~~~~~~
 
 Drops the classification from the point stream
@@ -27,7 +27,7 @@ class DropClass(GlobatoFilter):
     """
 
     name = "drop_class"
-    desc = "Drop specified classes from the point stream"
+    meta_desc = "Drop specified classes from the point stream"
 
     def __init__(self, classes="7/12", **kwargs):
         super().__init__(**kwargs)

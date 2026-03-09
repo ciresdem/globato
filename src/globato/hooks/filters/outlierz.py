@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.outlierz
+globato.hooks.filters.outlierz
 ~~~~~~~~~~~~~
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
@@ -25,7 +25,7 @@ class OutlierZ(GlobatoFilter):
     """
 
     name = "outlierz"
-    desc = "filter outliers based on percentile"
+    meta_desc = "filter outliers based on percentile"
 
     def __init__(self, threshold=3.0, **kwargs):
         super().__init__(**kwargs)

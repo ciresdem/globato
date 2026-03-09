@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.glob_coast
+globato.modules.glob_coast
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Super-Module that generates a high-quality Coastline Mask.
 Merges Vectors (NHD, OSM) and Rasters (Copernicus, GMRT) into a unified product using weighted voting.
 """
@@ -92,7 +93,7 @@ class GlobCoast(FetchModule):
 
         if fill_inland_holes:
             try:
-                from globato.processors.vectors.fill_holes import VectorFillHoles
+                from globato.hooks.vectors.fill_holes import VectorFillHoles
                 self.add_hook(VectorFillHoles(min_area=0.0))
             except ImportError:
                 logger.warning("VectorFillHoles hook not found. Ponds will not be filled.")

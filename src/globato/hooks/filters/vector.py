@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.vector
+globato.hooks.filters.vector
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Filters points using OGR Vector Data (Shapefile/GeoPackage).
@@ -31,12 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class VectorMask(GlobatoFilter, RasterSampling):
-    """
-    Filters points based on a Vector Polygon mask (e.g. Landmask).
-
-    Strategy:
-        1. Rasterizes the vector onto a temp grid matching the data region.
-        2. Uses fast raster sampling to filter the stream.
+    """Filters points based on a Vector Polygon mask (e.g. Landmask).
 
     Args:
         vector (str): Path to vector file (.shp, .gpkg).

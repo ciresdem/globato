@@ -19,11 +19,11 @@ from fetchez.hooks.datatype import SetDataType
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.registry import ModuleRegistry
 
-from globato.processors.formats.stream_factory import DataStream
-from globato.processors.filters.rq import ReferenceQuality
-from globato.processors.filters.rangez import RangeZ
-from globato.processors.filters.dropclass import DropClass
-from globato.processors.sinks.simple_stack import SimpleStack
+from globato.hooks.formats.stream_factory import DataStream
+from globato.hooks.filters.rq import ReferenceQuality
+from globato.hooks.filters.rangez import RangeZ
+from globato.hooks.filters.dropclass import DropClass
+from globato.hooks.sinks.simple_stack import SimpleStack
 
 logger = logging.getLogger(__name__)
 

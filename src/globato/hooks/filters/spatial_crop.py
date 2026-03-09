@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.spatial_crop
+globato.hooks.filters.spatial_crop
 ~~~~~~~~~~~~~
 
 crop stream data by region

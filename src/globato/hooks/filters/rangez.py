@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.filters.rangez
+globato.hooks.filters.rangez
 ~~~~~~~~~~~~~
 
 Filter data by z-range
@@ -27,7 +27,7 @@ class RangeZ(GlobatoFilter):
     """
 
     name = "range_z"
-    desc = "Classify points by Z range"
+    meta_desc = "Classify points by Z range"
 
     def __init__(self, min_z=None, max_z=None, **kwargs):
         super().__init__(**kwargs)
