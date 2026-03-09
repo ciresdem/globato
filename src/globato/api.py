@@ -15,10 +15,10 @@ import numpy as np
 import pandas as pd
 from typing import Union, List, Iterator, Optional
 
-from globato.processors.formats.stream_factory import StreamFactory
-from globato.processors.formats.schema import ensure_schema
+from globato.hooks.formats.stream_factory import StreamFactory
+from globato.hooks.formats.schema import ensure_schema
 
-from fetchez.core import FetchModule
+from fetchez.modules import FetchModule
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class GlobatoStream:
     def reproject(self, dst_srs: str):
         """Injects a reprojection step into the stream."""
 
-        from globato.processors.transforms.reproject import stream_reproject_chunk
+        from globato.hooks.transforms.reproject import stream_reproject_chunk
 
         def _repro_func(chunk):
             return stream_reproject_chunk(chunk, self.src_srs, dst_srs)
@@ -65,7 +65,7 @@ class GlobatoStream:
         region: [w, e, s, n]
         """
 
-        from globato.processors.transforms.crop import stream_crop_chunk
+        from globato.hooks.transforms.crop import stream_crop_chunk
 
         return self.map(stream_crop_chunk, region=region)
 
@@ -164,7 +164,7 @@ def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
                      except Exception as e:
                          logger.warning(f"Failed to stream {fn}: {e}")
 
-        return GlobatoStream(_module_chain_gen(), src_srs="EPSG:4326") # Modules usually normalize to 4326?
+        return GlobatoStream(_module_chain_gen(), src_srs="EPSG:4326") # Modules usually normalize to 4326
 
     else:
         raise TypeError(f"Unknown source type: {type(source)}")
