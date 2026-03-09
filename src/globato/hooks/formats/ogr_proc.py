@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.ogr_proc
+globato.hooks.formats.ogr_proc
 ~~~~~~~~~~~~~
 
 OGR data parsing from cudem

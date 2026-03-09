@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.fred
+globato.hooks.formats.fred
 ~~~~~~~~~~~~~
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado

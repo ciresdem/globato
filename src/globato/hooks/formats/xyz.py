@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.xyz
+globato.hooks.formats.xyz
 ~~~~~~~~~~~~~
 
 Process XYZ/ASCII files

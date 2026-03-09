@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.gdal_proc
+globato.hooks.formats.gdal_proc
 ~~~~~~~~~~~~~
 
 GDAL data parsing

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.lidar
+globato.hooks.formats.lidar
 ~~~~~~~~~~~~~
 
 This hook converts lidar to a point stream.

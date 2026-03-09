@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.rio
+globato.hooks.formats.rio
 ~~~~~~~~~~~~~
 
 Rasterio data parsing

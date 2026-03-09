@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.fio
+globato.hooks.formats.fio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Fiona/Shapely based Vector Reader (Shapefile, GeoPackage, S-57).
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado

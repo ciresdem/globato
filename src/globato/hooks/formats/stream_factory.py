@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.stream_factory
+globato.hooks.formats.stream_factory
 ~~~~~~~~~~~~~
 
 This turns files into point streams.
@@ -34,6 +34,7 @@ from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
 logging.getLogger('rasterio').setLevel(logging.ERROR)
+
 
 class StreamFactory:
     """Auto-detects file type and returns the appropriate streaming iterator."""

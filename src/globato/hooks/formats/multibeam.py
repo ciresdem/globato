@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.multibeam
+globato.hooks.formats.multibeam
 ~~~~~~~~~~~~~~~~~~~
 
 Multibeam Reader.

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.schema
+globato.hooks.formats.schema
 ~~~~~~~~~~~~~~~~~~~
 
 Makes sure incoming format streams make the correct rec-array

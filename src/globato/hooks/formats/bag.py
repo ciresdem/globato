@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.bag
+globato.hooks.formats.bag
 ~~~~~~~~~~~~~~~~~~~
 
 Dedicated BAG (Bathymetric Attributed Grid) Reader.

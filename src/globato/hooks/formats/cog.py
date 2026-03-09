@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.cog
+globato.hooks.formats.cog
 ~~~~~~~~~~~~~
 
 This hook intercepts the url, determines if it's a cog and if so

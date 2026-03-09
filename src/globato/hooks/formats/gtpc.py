@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.processors.formats.gtpc
+globato.hooks.formats.gtpc
 ~~~~~~~~~~~~~
 
 Globato Point Cloud files.
@@ -16,6 +16,7 @@ import h5py
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
 
 class GTPCReader:
     """Reads .gtpc (Globato Point Cloud) files."""
