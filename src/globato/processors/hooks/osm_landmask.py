@@ -41,11 +41,11 @@ OSM_API = "https://lz4.overpass-api.de/api/interpreter"
 
 
 class OSMLandmask(FetchHook):
-    """Generates a Land/Water mask vector from OpenStreetMap.
-    """
+    """Generates a Land/Water mask vector from OpenStreetMap."""
+
     name = "osm_landmask"
-    stage = "pre"
-    category = "generator"
+    meta_stage = "pre"
+    meta_category = "generator"
 
     def __init__(self, filename="landmask.geojson", **kwargs):
         super().__init__(**kwargs)

@@ -21,9 +21,9 @@ class GlobatoInfo(FetchHook):
     """
 
     name = "stream_inf"
-    desc = "Generate .inf metadata (minmax, count, wkt)."
-    stage = "file"
-    category = "metadata"
+    meta_desc = "Generate .inf metadata (minmax, count, wkt)."
+    meta_stage = "file"
+    meta_category = "metadata"
 
     def run(self, entries):
         for mod, entry in entries:

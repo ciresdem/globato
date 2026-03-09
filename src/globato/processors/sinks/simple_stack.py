@@ -185,8 +185,8 @@ class SimpleStack(FetchHook):
     """
 
     name = "simple_stack"
-    stage = "file"
-    category = "stream-sink"
+    meta_stage = "file"
+    meta_category = "stream-sink"
 
     def __init__(
             self,

@@ -185,8 +185,8 @@ class GDALStream(FetchHook):
     """Source Hook: Opens a raster and attaches a stream iterator."""
 
     name = "gdal_stream"
-    stage = "file"
-    category = "format-stream"
+    meta_stage = "file"
+    meta_category = "format-stream"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

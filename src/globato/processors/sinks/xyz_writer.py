@@ -27,8 +27,8 @@ class WriteXYZ(FetchHook):
     """
 
     name = "write_xyz"
-    stage = "file"
-    category = "stream-sink"
+    meta_stage = "file"
+    meta_category = "stream-sink"
 
     def __init__(self, output="{base}_out.xyz", fmt="%.6f", **kwargs):
         super().__init__(**kwargs)

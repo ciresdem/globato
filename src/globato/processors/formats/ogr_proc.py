@@ -248,8 +248,8 @@ class OGRStream(FetchHook):
     """
 
     name = "ogr_stream"
-    stage = "file"
-    category = "format-stream"
+    meta_stage = "file"
+    meta_category = "format-stream"
 
     def __init__(self, layer=None, z_field=None,
                  weight_field=None, unc_field=None,

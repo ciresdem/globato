@@ -30,8 +30,8 @@ class VectorFillHoles(FetchHook):
     """
 
     name = "vector_fill_holes"
-    stage = "post"
-    category = "vector-op"
+    meta_stage = "post"
+    meta_category = "vector-op"
 
     def __init__(self, min_area=0.0, suffix="_filled", **kwargs):
         super().__init__(**kwargs)
