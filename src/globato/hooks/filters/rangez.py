@@ -15,7 +15,7 @@ import logging
 import numpy as np
 from fetchez.utils import float_or
 
-from globato.processors.filters.base import GlobatoFilter
+from .base import GlobatoFilter
 
 logger = logging.getLogger(__name__)
 
