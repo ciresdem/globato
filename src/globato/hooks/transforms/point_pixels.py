@@ -330,9 +330,9 @@ class Point2PixelStream(FetchHook):
     def run(self, entries):
         for mod, entry in entries:
             # Check for existing stream
-            stream = entry.get('stream')
-            stream_type = entry.get('stream_type')
-            if stream and stream_type == 'xyz_recarray':
-                entry['stream'] = self._stream_wrapper(stream, entry=entry, region=mod.region)
-                entry['stream_type'] = 'point_pixels_arrays'
+            stream = entry.get("stream", "")
+            stream_type = entry.get("stream_type", "")
+            if stream and stream_type == "xyz_recarray":
+                entry["stream"] = self._stream_wrapper(stream, entry=entry, region=mod.region)
+                entry["stream_type"] = "point_pixels_arrays"
         return entries

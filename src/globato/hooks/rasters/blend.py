@@ -79,7 +79,7 @@ class MultiStackBlend(RasterHook):
 
     def _write_chunk(self, chunk, window, buff_win, src, dst):
 
-        # Crop buffer
+        # Crop the buffered Z chunk down to the target window size
         y_off = window.row_off - buff_win.row_off
         x_off = window.col_off - buff_win.col_off
 
@@ -88,14 +88,33 @@ class MultiStackBlend(RasterHook):
 
         dst.write(final_chunk, 1, window=window)
 
-        try:
-            for b in range(2,8):
+        # Write the remaining bands (Count, Weight, Uncertainty, etc.)
+        for b in range(2, src.count + 1):
+            try:
+                # Read using the exact target window, so no cropping is needed!
                 b_arr = src.read(b, window=window)
-                b_arr = b_arr[y_off : y_off + window.height,
-                              x_off : x_off + window.width]
                 dst.write(b_arr, b, window=window)
-        except Exception:
-            pass
+            except Exception as e:
+                logger.error(f"Failed to write band {b} in _write_chunk: {e}")
+    # def _write_chunk(self, chunk, window, buff_win, src, dst):
+
+    #     # Crop buffer
+    #     y_off = window.row_off - buff_win.row_off
+    #     x_off = window.col_off - buff_win.col_off
+
+    #     final_chunk = chunk[y_off : y_off + window.height,
+    #                         x_off : x_off + window.width]
+
+    #     dst.write(final_chunk, 1, window=window)
+
+    #     try:
+    #         for b in range(2,8):
+    #             b_arr = src.read(b, window=window)
+    #             b_arr = b_arr[y_off : y_off + window.height,
+    #                           x_off : x_off + window.width]
+    #             dst.write(b_arr, b, window=window)
+    #     except Exception:
+    #         pass
 
     def process_raster(self, src_path, dst_path, entry):
         with rasterio.open(src_path) as src:
@@ -130,7 +149,8 @@ class MultiStackBlend(RasterHook):
                     blend_mask = scipy.ndimage.binary_dilation(fg_closed, iterations=self.blend_dist)
                     transition_zone = blend_mask & (~fg_closed) & valid_mask
                     if not np.any(transition_zone):
-                        return z
+                        self._write_chunk(z, window, buff_win, src, dst)
+                        continue
 
                     if self.random_scale > 0:
                         rand_arr = np.random.rand(*z.shape)

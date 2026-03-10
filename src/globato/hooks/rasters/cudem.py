@@ -17,6 +17,7 @@ import shutil
 import logging
 import numpy as np
 import rasterio
+import scipy.ndimage
 from fetchez.utils import remove_glob2, str2inc
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.windows import Window
@@ -37,13 +38,14 @@ class CudemStepDown(RasterHook):
     meta_category = "multi-stack"
 
     def __init__(self, steps=2, weights="1.0/0.5", resolutions="1s/3s",
-                 algo="interp_scipy", barrier=None, **kwargs):
+                 algo="raster_fill", barrier=None, blend_dist=5, **kwargs):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
         self.steps = int(steps)
         self.weights = [float(w) for w in weights.split("/")]
         self.resolutions = [str2inc(x) for x in resolutions.split("/")]
         self.algo = algo
         self.barrier = barrier
+        self.blend_dist = int(blend_dist)
 
         while len(self.weights) <= self.steps:
             self.weights.append(self.weights[-1] / 2)
@@ -52,7 +54,7 @@ class CudemStepDown(RasterHook):
             self.resolutions.append(res_val)
 
     def _decimate_raster(self, src_path, dst_path, target_res):
-        """Downsamples the master stack using average pooling."""
+        """Downsamples the main stack using average pooling."""
 
         target_res = float(target_res)
         with rasterio.open(src_path) as src:
@@ -90,7 +92,8 @@ class CudemStepDown(RasterHook):
         with rasterio.open(foreground_path) as fg_src, rasterio.open(background_path) as bg_src:
             profile = fg_src.profile.copy()
             fg_ndv = fg_src.nodata
-            if fg_ndv is None: fg_ndv = -9999
+            if fg_ndv is None:
+                fg_ndv = -9999
 
             with rasterio.open(temp_path, 'w', **profile) as dst:
                 #  Align background to foreground grid
@@ -114,6 +117,16 @@ class CudemStepDown(RasterHook):
                     fg_count = fg_src.read(2, window=window)
                     fg_weight = fg_src.read(3, window=window)
 
+                    fg_valid_mask = (fg_z != fg_ndv) & (~np.isnan(fg_z))
+                    if self.blend_dist > 0:
+                        # Create a circular/square structural element for the buffer
+                        moat_mask = scipy.ndimage.binary_dilation(
+                            fg_valid_mask,
+                            iterations=self.blend_dist
+                        )
+                    else:
+                        moat_mask = fg_valid_mask
+
                     # Scrub data that doesn't meet the weight threshold.
                     # This turns low-quality bathy into NoData so the background can overwrite it.
                     invalid_weight_mask = (fg_count == 0) | (fg_weight < current_weight)
@@ -123,6 +136,7 @@ class CudemStepDown(RasterHook):
                     bg_chunk = bg_aligned[window.row_off:window.row_off+window.height,
                                           window.col_off:window.col_off+window.width]
 
+                    bg_chunk[moat_mask] = fg_ndv
                     # gaps + scrubbed low-weight pixels are both marked as invalid
                     fg_invalid = (fg_z == fg_ndv) | np.isnan(fg_z)
                     bg_valid = (bg_chunk != fg_ndv) & ~np.isnan(bg_chunk)
@@ -211,7 +225,7 @@ class CudemStepDown(RasterHook):
 
         if previous_surface and os.path.exists(previous_surface):
             shutil.move(previous_surface, dst_path)
-            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
+            #remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
             return True
 
         return False
