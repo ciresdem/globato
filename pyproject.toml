@@ -52,6 +52,9 @@ globato_modules = "globato.modules"
 [project.entry-points."fetchez.hooks"]
 globato_hooks = "globato.hooks"
 
+[project.entry-points."fetchez.schemas"]
+globato_hooks = "globato.schemas"
+
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
 

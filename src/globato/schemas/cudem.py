@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.schemas
+globato.schemas.cudem
 ~~~~~~~~~~~~~~~
 
-Registers DEM-specific schemas (CUDEM, CRM, ETOPO, NTHMP, Etc.) into the Fetchez engine.
+Registers CUDEM DEM-specific schema into the Fetchez engine.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
 """
 
-from fetchez.schema import BaseSchema, SchemaRegistry
+from fetchez.schema import BaseSchema  # , SchemaRegistry
 
 
 class CUDEMSchema(BaseSchema):
@@ -65,6 +65,3 @@ class CUDEMSchema(BaseSchema):
 
         config["global_hooks"] = global_hooks
         return config
-
-# Register it with Fetchez!
-SchemaRegistry.register(CUDEMSchema)
