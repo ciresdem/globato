@@ -5,7 +5,7 @@
 globato.hooks.sinks.multi_stack
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Multi-band Statistical Gridder (The "Heavy" Stacker).
+Multi-band Statistical Gridder.
 Generates Z, Count, Weight, Uncertainty, etc.
 Maintains a '.sums.tif' for continuous updates and provenance tracking.
 

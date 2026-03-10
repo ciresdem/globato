@@ -2,31 +2,31 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.schemas
+globato.schemas.crm
 ~~~~~~~~~~~~~~~
 
-Registers DEM-specific schemas (CUDEM, CRM, ETOPO, NTHMP, Etc.) into the Fetchez engine.
+Registers CRM DEM-specific schema into the Fetchez engine.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
 """
 
-from fetchez.schema import BaseSchema, SchemaRegistry
+from fetchez.schemas import BaseSchema  # , SchemaRegistry
 
 
-class CUDEMSchema(BaseSchema):
-    """The "cudem" schema.
+class CRMSchema(BaseSchema):
+    """The "CRM" schema.
 
     Enforces:
-      1/9 arc-second resolution
+      1 arc-second resolution
       1/4 degree tiles
-      6 cell delivery overlap
       Buffer region for fetching
       Crop output to delivery spec
-      Add cudem project metadata
+      Add CRM project metadata
+      Output ESPG is 4326+3855
     """
 
-    name = "cudem"
+    name = "crm"
 
     @classmethod
     def apply(cls, config):
@@ -35,8 +35,8 @@ class CUDEMSchema(BaseSchema):
         if not dist_region:
             return config
 
-        res_deg = 0.0000308641975  # 1/9 arc-second
-        buffer_deg = 6 * res_deg   # 6 cell overlap
+        res_deg = 0.0002777777777777778 # 1 arc-second
+        buffer_deg = 20 * res_deg   # 20 cell buffer for fetching
 
         proc_region = [
             dist_region[0] - buffer_deg,
@@ -48,6 +48,14 @@ class CUDEMSchema(BaseSchema):
         config["region"] = proc_region
 
         global_hooks = config.get("global_hooks", [])
+        modules = config.get("modules", [])
+
+        for module in modules:
+            for hook in module.get("hooks", []):
+                if hook.get("name") == "stream_reproject":
+                    if not hook.get("args", None):
+                        hook.setdefault("args", {})
+                    hook["args"].update({"dst_srs": "EPSG:4326+3855"})
 
         for hook in global_hooks:
             if hook.get("name") == "multi_stack":
@@ -55,7 +63,7 @@ class CUDEMSchema(BaseSchema):
                 hook["args"].update({
                     "resolution": res_deg,
                     "registration": "grid",
-                    "srs": "EPSG:4269+5703"
+                    "srs": "EPSG:4326+3855"
                 })
 
         global_hooks.append({
@@ -65,6 +73,3 @@ class CUDEMSchema(BaseSchema):
 
         config["global_hooks"] = global_hooks
         return config
-
-# Register it with Fetchez!
-SchemaRegistry.register(CUDEMSchema)
