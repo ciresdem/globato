@@ -42,6 +42,7 @@ class RasterBaseHook(FetchHook):
 
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
+
         return profile
 
     def _get_barrier_geometries(self):
@@ -51,7 +52,7 @@ class RasterBaseHook(FetchHook):
         barrier_path = self.barrier
 
         # AUTO-GENERATE COASTLINE!
-        if barrier_path.lower() in ["coastline", "landmask"]:
+        if os.path.basename(barrier_path).lower() in ["coastline", "landmask"]:
             mod = getattr(self, "current_mod", None)
             if not mod or not getattr(mod, "region", None):
                 logger.error("Region is required to auto-generate a coastline barrier.")
