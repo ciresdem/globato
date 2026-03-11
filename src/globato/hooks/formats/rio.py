@@ -26,10 +26,11 @@ logging.getLogger("rasterio").setLevel(logging.ERROR)
 class RasterioReader:
     """Streaming Raster Parser using Rasterio."""
 
-    def __init__(self, src_fn, band_no=1, chunk_size=4096):
+    def __init__(self, src_fn, band_no=1, chunk_size=4096, **kwargs):
         self.src_fn = src_fn
         self.band_no = band_no
         self.chunk_size = chunk_size
+        self.kwargs = kwargs
 
     def get_srs(self):
         """Get SRS as WKT."""

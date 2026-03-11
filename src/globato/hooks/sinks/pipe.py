@@ -62,18 +62,50 @@ class XYZPrinter(FetchHook):
                         data = np.column_stack(columns)
                         np.savetxt(sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter)
 
-                elif stream_type == "point_pixels_arrays":
-                    for arrs, srcwin, gt in stream:
 
-                        x_vals = arrs["pixel_x"].astype(int)
-                        y_vals = arrs["pixel_y"].astype(int)
-                        z_vals = arrs["z"][y_vals, x_vals]
+                elif stream_type == "raster":
+                    stream = entry.get("stream")
 
-                        columns = [y_vals, x_vals, z_vals]
+                    # 1. Pop the profile off the top of the generator
+                    profile = next(stream)
+                    #print(profile)
+                    for window, buff_win, data, ndv, transform in stream:
+                        # Grab the Z band (first band)
+                        z_data = data[0] if data.ndim == 3 else data
 
-                        data = np.column_stack(columns)
-                        self.fmt = ["%d", "%d", "%.6f"]
-                        np.savetxt(sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter)
+                        # Find valid pixels
+                        if ndv is not None:
+                            valid_mask = z_data != ndv
+                        else:
+                            valid_mask = ~np.isnan(z_data)
+
+                        # Generate pixel coordinates
+                        rows, cols = np.where(valid_mask)
+
+                        # Convert to geographic coordinates using the chunk's transform
+                        import rasterio
+                        xs, ys = rasterio.transform.xy(transform, rows, cols)
+
+                        z_vals = z_data[valid_mask]
+
+                        columns = [np.array(xs), np.array(ys), z_vals]
+                        data_out = np.column_stack(columns)
+
+                        # Print to stdout
+                        self.fmt = ["%.6f", "%.6f", "%.6f"]
+                        np.savetxt(sys.stdout, data_out, fmt=self.fmt, delimiter=self.delimiter)
+                # elif stream_type == "point_pixels_arrays":
+                #     for arrs, srcwin, gt in stream:
+
+                #         x_vals = arrs["pixel_x"].astype(int)
+                #         y_vals = arrs["pixel_y"].astype(int)
+                #         z_vals = arrs["z"][y_vals, x_vals]
+
+                #         columns = [y_vals, x_vals, z_vals]
+
+                #         data = np.column_stack(columns)
+                #         self.fmt = ["%d", "%d", "%.6f"]
+                #         np.savetxt(sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter)
 
             except IOError:
                 try:

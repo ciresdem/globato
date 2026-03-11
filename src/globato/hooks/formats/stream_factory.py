@@ -182,22 +182,23 @@ class DataStream(FetchHook):
     """Auto-detects file type and attaches a stream.
 
     Usage:
-      --hook stream_data
-      --hook stream_data:chunk_size=10000
+      --hook stream_data:stream_type=xyz
+      --hook stream_data:stream_type=raster:x_inc=1s:y_inc=1s
     """
 
     name = "stream_data"
     meta_stage = "file"
-    meta_desc = "Setup an data stream from input data."
+    meta_desc = "Setup a data stream from input data."
     meta_category = "format-stream"
 
-    def __init__(self, **kwargs):
+    def __init__(self, stream_type="xyz", **kwargs):
         super().__init__(**kwargs)
+        self.stream_type = stream_type.lower()
         self.reader_kwargs = kwargs
 
     def run(self, entries):
         for mod, entry in entries:
-            if entry.get("stream"):
+            if entry.get("stream") or entry.get("raster_stream"):
                 continue
 
             src = entry.get("dst_fn")
@@ -210,17 +211,22 @@ class DataStream(FetchHook):
             if not reader:
                 continue
 
-            w = getattr(mod, "weight", 1.0)
-            u = getattr(mod, "uncertainty", 0.0)
-
+            w = float(getattr(mod, "weight", 1.0))
+            u = float(getattr(mod, "uncertainty", 0.0))
             raw_stream = reader.yield_chunks()
             mod.region = TransRegion.from_list(mod.region)
+
             if raw_stream:
                 if hasattr(reader, "get_srs"):
                     entry["src_srs"] = reader.get_srs() or "EPSG:4326"
-
-                #entry['stream'] = stream
+                # If it's a point cloud reader...
                 entry["stream"] = ensure_schema(raw_stream, module_weight=w, module_unc=u)
                 entry["stream_type"] = "xyz_recarray"
+
+                if self.stream_type == "raster":
+                    from globato.hooks.transforms.point_pixels import Point2PixelStream
+                    # Pass all resolution/buffer args into PointPixels
+                    pp_hook = Point2PixelStream(**self.reader_kwargs)
+                    pp_hook.run([(mod, entry)])
 
         return entries

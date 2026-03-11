@@ -48,6 +48,8 @@ class GlobCoast(FetchModule):
     meta_agency = "Globato"
     meta_tags = ["global", "globato", "coastline", "landmask"]
     meta_category = "Tools"
+    meta_resolution = "Varies"
+    meta_license = "N/A"
 
     def __init__(self, res="1s", sources=None, weights=None, fill_inland_holes=False, **kwargs):
         super().__init__(name="glob_coast", **kwargs)

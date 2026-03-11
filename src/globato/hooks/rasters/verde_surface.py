@@ -18,7 +18,7 @@ import rasterio
 from rasterio.transform import xy
 from rasterio.features import rasterize
 
-from ..rasters.base import RasterHook
+from ..rasters.base import RasterGlobalHook
 
 # Lazy import verde so it remains an optional dependency
 try:
@@ -30,7 +30,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class VerdeSurface(RasterHook):
+class VerdeSurface(RasterGlobalHook):
     """Interpolates a sparse raster using Verde's Biharmonic Splines.
 
     This is a Global Operator (overrides process_raster), as splines

@@ -43,8 +43,10 @@ class LocalFS(FetchModule):
     meta_agency = "Globato"
     meta_tags = ["local", "datalist", "folder", "inf", "cudem", "globato"]
     meta_category = "Local Data"
+    meta_resolution = "Varies"
+    meta_license = "N/A"
 
-    """The Modern Datalist."""
+    """Local data path Datalists."""
 
     def __init__(self, path=".", ext=".tif", datatype="raster", gen_inf=True, **kwargs):
         super().__init__(name="local_fs", **kwargs)

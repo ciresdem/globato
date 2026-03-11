@@ -57,8 +57,10 @@ class MultiStackAccumulator:
             verbose=False,
     ):
         self.region = Region.from_list(region)
-        self.x_inc = float(x_inc)
-        self.y_inc = float(y_inc)
+        self.x_inc = abs(float(x_inc))
+        self.y_inc = abs(float(y_inc))
+        #self.x_inc = float(x_inc)
+        #self.y_inc = float(y_inc) * -1
         self.output_fn = output_fn
         self.mode = mode.lower()
         self.crs = crs
@@ -80,11 +82,6 @@ class MultiStackAccumulator:
 
         self._init_raster()
 
-        self.pixel_binner = PointPixels(
-            src_region=self.region,
-            x_size=self.xcount,
-            y_size=self.ycount
-        )
 
         logger.info(
             f"Initializing Multi_Stack internal arrays at {self.xcount}/{self.ycount}"
@@ -152,10 +149,16 @@ class MultiStackAccumulator:
     def update(self, points):
         """Process a chunk of points: Bin in memory -> Update Disk."""
 
+        pixel_binner = PointPixels(
+            src_region=self.region,
+            x_size=self.xcount,
+            y_size=self.ycount
+        )
+
         if points is None or len(points) == 0:
             return
 
-        arrays, sub_win, _ = self.pixel_binner(points, mode="sums")
+        arrays, sub_win, _ = pixel_binner(points, mode="sums")
         if arrays['z'] is None:
             return
 
@@ -171,12 +174,22 @@ class MultiStackAccumulator:
 
                 valid_new = arrays["count"] > 0
 
-                current_data[current_data == -9999] = 0
-                current_data[np.isnan(current_data)] = 0
+                # current_data[current_data == -9999] = 0
+                # current_data[np.isnan(current_data)] = 0
+
+                # ONLY zero out pixels that are actively receiving new data!
+                for i in range(current_data.shape[0]):
+                    band = current_data[i]
+                    mask = valid_new & ((band == -9999) | np.isnan(band))
+                    band[mask] = 0
 
                 if self.mode in ["mean", "weighted_mean"]:
                     get_band("z")[valid_new] += arrays["z"][valid_new]
-                    get_band("weights")[valid_new] += arrays["weightd"][valid_new]
+
+                    # Safely fallback for weight keys
+                    wt_arr = arrays.get("weights", arrays.get("weight", 0))
+                    get_band("weights")[valid_new] += wt_arr[valid_new]
+
                     get_band("count")[valid_new] += arrays["count"][valid_new]
                     get_band("uncertainty")[valid_new] += np.square(arrays["uncertainty"][valid_new])
 

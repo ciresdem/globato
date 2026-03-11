@@ -16,12 +16,12 @@ Based on cudem.grits.flats
 import logging
 import numpy as np
 
-from .base import RasterHook
+from .base import RasterStreamHook
 
 logger = logging.getLogger(__name__)
 
 
-class RasterFlats(RasterHook):
+class RasterFlats(RasterStreamHook):
     """Remove flat areas from the input DEM.
     Identified flat areas are set to NoData.
 

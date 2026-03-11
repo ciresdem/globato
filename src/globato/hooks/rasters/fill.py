@@ -17,11 +17,11 @@ import rasterio
 from rasterio.fill import fillnodata
 from rasterio.features import rasterize
 
-from .base import RasterHook
+from .base import RasterGlobalHook
 
 logger = logging.getLogger(__name__)
 
-class RasterFill(RasterHook):
+class RasterFill(RasterGlobalHook):
     """Fill NoData voids using a discrete Poisson solver.
 
     Usage: --hook raster_fill:max_dist=1000:smoothing=3

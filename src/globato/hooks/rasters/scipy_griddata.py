@@ -19,12 +19,12 @@ from scipy import interpolate
 import rasterio
 from rasterio.windows import Window
 
-from .base import RasterHook
+from .base import RasterStreamHook
 
 logger = logging.getLogger(__name__)
 
 
-class ScipyInterp(RasterHook):
+class ScipyInterp(RasterStreamHook):
     name = "interp_scipy"
     default_suffix = "_interp"
 

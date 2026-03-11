@@ -10,9 +10,9 @@ Masks data outside the defined pipeline region.
 import numpy as np
 import rasterio
 from rasterio.windows import from_bounds, intersection
-from .base import RasterHook
+from .base import RasterStreamHook
 
-class RasterCut(RasterHook):
+class RasterCut(RasterStreamHook):
     """Cuts (masks) the raster to the project region.
 
     Usage: --hook raster_cut
