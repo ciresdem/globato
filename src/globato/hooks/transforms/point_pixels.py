@@ -16,10 +16,12 @@ import sys
 import logging
 import numpy as np
 import warnings
+
 from fetchez.hooks import FetchHook
 from fetchez.utils import int_or, float_or, str2bool
 
 import rasterio
+from rasterio.windows import Window
 from scipy.spatial import cKDTree
 
 from transformez.spatial import TransRegion as Region
@@ -125,7 +127,6 @@ class PointPixels:
 
         # Convert to pixel coordinates
         # dst_gt: [origin_x, pixel_width, 0, origin_y, 0, pixel_height]
-        #print(self.dst_gt)
         pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
         pixel_y = np.floor((points_y - self.dst_gt[3]) / self.dst_gt[5]).astype(int)
 
@@ -275,6 +276,50 @@ class PointPixels:
         return out_arrays, this_srcwin, self.dst_gt
 
 
+class PixelsToPoints(FetchHook):
+    """Converts an in-memory raster_stream back into an xyz_recarray point stream."""
+
+    name = "pixels_to_points"
+    meta_stage = "file"
+    meta_category = "stream-transform"
+
+    def _raster_to_xyz(self, raster_stream):
+        profile = next(raster_stream)
+
+        for window, buff_win, data, ndv, transform in raster_stream:
+            cols, rows = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
+            xs, ys = rasterio.transform.xy(transform, rows, cols)
+
+            z = data.flatten()
+            x = np.array(xs).flatten()
+            y = np.array(ys).flatten()
+
+            if ndv is not None:
+                valid = z != ndv
+            else:
+                valid = ~np.isnan(z)
+
+            chunk = np.core.records.fromarrays(
+                [x[valid], y[valid], z[valid]],
+                names='x,y,z'
+            )
+
+            if chunk.size > 0:
+                yield chunk
+
+    def run(self, entries):
+        for mod, entry in entries:
+            # If the entry has a raster_stream, convert it!
+            stream = entry.get("raster_stream")
+            if stream:
+                entry["stream"] = self._raster_to_xyz(stream)
+                entry["stream_type"] = "xyz_recarray"
+
+                # Clean up the raster properties
+                del entry["raster_stream"]
+
+        return entries
+
 # Base Stream Transformer
 class Point2PixelStream(FetchHook):
     """Base class for streaming point filters."""
@@ -294,11 +339,9 @@ class Point2PixelStream(FetchHook):
         """Override this. Return filtered chunk (recarray) or None."""
 
         if region:
-            #print(self.x_inc, self.y_inc)
             xcount, ycount, _ = region.geo_transform(
                 x_inc=self.x_inc, y_inc=self.y_inc, node='grid'
             )
-            #print(xcount, ycount)
 
             point_array = PointPixels(
                 src_region=region,
@@ -315,24 +358,69 @@ class Point2PixelStream(FetchHook):
 
             return arrs, srcwin, gt
 
-
     def _stream_wrapper(self, input_stream, entry=None, region=None):
         count = 0
 
         if region:
+            xcount, ycount, gt = region.geo_transform(
+                x_inc=self.x_inc, y_inc=self.y_inc, node='grid'
+            )
+            transform = rasterio.transform.from_origin(gt[0], gt[3], gt[1], abs(gt[5]))
+
+            # If we want sums, we output a 7-band stack. Otherwise, just 1 band (Z).
+            band_count = 7 if self.want_sums else 1
+
+            profile = {
+                "driver": "GTiff",
+                "dtype": "float32",
+                "nodata": -9999,
+                "width": xcount,
+                "height": ycount,
+                "count": band_count,
+                "crs": entry.get("src_srs", "EPSG:4326"),
+                "transform": transform,
+            }
+            yield profile
+
             for chunk in input_stream:
                 count += chunk.size
-                arrs, srcwin, gt = self.process_chunk(chunk, region=region)
-                yield arrs, srcwin, gt
-        logger.info(f'Parsed {count} data records from {entry["dst_fn"]}')
+                arrs, srcwin, chunk_gt = self.process_chunk(chunk, region=region)
 
+                if arrs is None or arrs.get('z') is None:
+                    continue
+
+                col_off, row_off, width, height = srcwin
+                window = Window(col_off, row_off, width, height)
+                chunk_transform = rasterio.transform.from_origin(
+                    chunk_gt[0], chunk_gt[3], chunk_gt[1], abs(chunk_gt[5])
+                )
+
+                # Stack the dictionary of arrays into a 3D numpy array (Bands, Rows, Cols)
+                if self.want_sums:
+                    data = np.stack([
+                        arrs['z'], arrs['count'], arrs['weight'],
+                        arrs['uncertainty'], arrs.get('src_uncertainty', np.zeros_like(arrs['z'])),
+                        arrs['x'], arrs['y']
+                    ]).astype(np.float32)
+                else:
+                    data = arrs['z'].astype(np.float32)
+                    # Add a band dimension so it's (1, Rows, Cols)
+                    data = data[np.newaxis, ...]
+
+                # Yield the exact tuple RasterHook expects!
+                # Note: window and buff_win are the same here since points don't have native buffers
+                yield window, window, data, -9999, chunk_transform
+
+        logger.info(f'Parsed {count} data records from {entry["dst_fn"]}')
 
     def run(self, entries):
         for mod, entry in entries:
-            # Check for existing stream
             stream = entry.get("stream", "")
             stream_type = entry.get("stream_type", "")
             if stream and stream_type == "xyz_recarray":
-                entry["stream"] = self._stream_wrapper(stream, entry=entry, region=mod.region)
-                entry["stream_type"] = "point_pixels_arrays"
+                # Swap the stream keys to indicate it is now a raster stream!
+                entry["raster_stream"] = self._stream_wrapper(stream, entry=entry, region=getattr(mod, "region", None))
+                entry["stream_type"] = "raster"
+                del entry["stream"]
+
         return entries

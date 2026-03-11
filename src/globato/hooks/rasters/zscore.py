@@ -18,12 +18,12 @@ import logging
 import numpy as np
 import scipy.ndimage
 
-from .base import RasterHook
+from .base import RasterStreamHook
 
 logger = logging.getLogger(__name__)
 
 
-class RasterZScore(RasterHook):
+class RasterZScore(RasterStreamHook):
     """Local Z-Score Filter.
 
     Args:

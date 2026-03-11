@@ -21,11 +21,11 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.windows import Window
 
-from .base import RasterHook
+from .base import RasterStreamHook, RasterGlobalHook
 
 logger = logging.getLogger(__name__)
 
-class MultiStackBlend(RasterHook):
+class MultiStackBlend(RasterStreamHook):
     """Blends multi-stack raster data based on weight thresholds.
     Creates a smooth transition (buffer) between high-weight (Foreground)
     and low-weight (Background) areas.
@@ -91,132 +91,91 @@ class MultiStackBlend(RasterHook):
         # Write the remaining bands (Count, Weight, Uncertainty, etc.)
         for b in range(2, src.count + 1):
             try:
-                # Read using the exact target window, so no cropping is needed!
                 b_arr = src.read(b, window=window)
                 dst.write(b_arr, b, window=window)
             except Exception as e:
                 logger.error(f"Failed to write band {b} in _write_chunk: {e}")
-    # def _write_chunk(self, chunk, window, buff_win, src, dst):
 
-    #     # Crop buffer
-    #     y_off = window.row_off - buff_win.row_off
-    #     x_off = window.col_off - buff_win.col_off
+    def process_chunk(self, data, ndv, entry, transform=None, window=None):
+        # Ensure we are receiving a multi-stack!
+        if data.ndim < 3 or data.shape[0] < 3:
+            return data
 
-    #     final_chunk = chunk[y_off : y_off + window.height,
-    #                         x_off : x_off + window.width]
+        z = data[0]
+        w = data[2]
 
-    #     dst.write(final_chunk, 1, window=window)
+        valid_mask = (z != ndv) & (~np.isnan(z))
+        if not np.any(valid_mask):
+            return data
 
-    #     try:
-    #         for b in range(2,8):
-    #             b_arr = src.read(b, window=window)
-    #             b_arr = b_arr[y_off : y_off + window.height,
-    #                           x_off : x_off + window.width]
-    #             dst.write(b_arr, b, window=window)
-    #     except Exception:
-    #         pass
+        fg_mask = valid_mask & (w >= self.weight_threshold)
+        bg_mask = valid_mask & (~fg_mask)
 
-    def process_raster(self, src_path, dst_path, entry):
-        with rasterio.open(src_path) as src:
-            profile = src.profile.copy()
-            is_stack = (src.count >= 3)
+        if not np.any(fg_mask):
+            return data
 
-            with rasterio.open(dst_path, 'w', **profile) as dst:
-                for window, buff_win in self.yield_buffered_windows(src, buffer_size=self.buffer):
+        import scipy.ndimage
+        struct = scipy.ndimage.generate_binary_structure(2, 2)
+        fg_closed = scipy.ndimage.binary_closing(fg_mask, structure=struct)
+        blend_mask = scipy.ndimage.binary_dilation(fg_closed, iterations=self.blend_dist)
+        transition_zone = blend_mask & (~fg_closed) & valid_mask
 
-                    z = src.read(1, window=buff_win)
-                    w = src.read(3, window=buff_win)
-                    ndv = src.nodata
-                    chunk_transform = rasterio.windows.transform(buff_win, src.transform)
+        if not np.any(transition_zone):
+            return data
 
-                    valid_mask = (z != ndv) & (~np.isnan(z))
-                    if not np.any(valid_mask):
-                        logger.warning('no valid data')
-                        self._write_chunk(z, window, buff_win, src, dst)
-                        continue
+        if self.random_scale > 0:
+            rand_arr = np.random.rand(*z.shape)
+            rand_keep = rand_arr < self.random_scale
 
-                    fg_mask = valid_mask & (w >= self.weight_threshold)
+            if self.slope_scale > 0:
+                slope_norm = self._get_slope_norm(z, transition_zone)
+                if slope_norm is not None:
+                    flat_areas = slope_norm < self.slope_scale
+                    rand_keep[flat_areas] = False
+        # ... (Keep your existing random gating logic here) ...
 
-                    bg_mask = valid_mask & (~fg_mask)
+        anchors_mask = fg_mask | (bg_mask & ~transition_zone)
+        if self.random_scale > 0:
+            anchors_mask = anchors_mask | (transition_zone & rand_keep)
 
-                    if not np.any(fg_mask):
-                        #logger.warning(f"no fg data over weight of {self.weight_threshold}")
-                        self._write_chunk(z, window, buff_win, src, dst)
-                        continue
-                    #logger.info(f"yes fg data over weight of {self.weight_threshold}")
-                    struct = scipy.ndimage.generate_binary_structure(2, 2)
-                    fg_closed = scipy.ndimage.binary_closing(fg_mask, structure=struct)
-                    blend_mask = scipy.ndimage.binary_dilation(fg_closed, iterations=self.blend_dist)
-                    transition_zone = blend_mask & (~fg_closed) & valid_mask
-                    if not np.any(transition_zone):
-                        self._write_chunk(z, window, buff_win, src, dst)
-                        continue
+        rows, cols = np.indices(z.shape)
+        anchor_pts = np.array([rows[anchors_mask], cols[anchors_mask]]).T
+        anchor_vals = z[anchors_mask]
+        target_pts = np.array([rows[transition_zone], cols[transition_zone]]).T
 
-                    if self.random_scale > 0:
-                        rand_arr = np.random.rand(*z.shape)
-                        rand_keep = rand_arr < self.random_scale
+        if len(anchor_pts) < 4 or len(target_pts) == 0:
+            return data
 
-                        if self.slope_scale > 0:
-                            slope_norm = self._get_slope_norm(z, transition_zone)
-                            if slope_norm is not None:
-                                flat_areas = slope_norm < self.slope_scale
-                                rand_keep[flat_areas] = False
+        try:
+            interp_vals = scipy.interpolate.griddata(
+                anchor_pts, anchor_vals, target_pts, method=self.algo
+            )
+            dist = scipy.ndimage.distance_transform_cdt(~fg_mask, metric='taxicab')
+            d_vals = dist[transition_zone]
+            if d_vals.size > 0:
+                d_min, d_max = d_vals.min(), d_vals.max()
+                if d_max > d_min:
+                    weights = (d_vals - d_min) / (d_max - d_min)
+                else:
+                    weights = np.zeros_like(d_vals)
+            else:
+                weights = np.zeros(len(interp_vals))
 
-                    anchors_mask = fg_mask | (bg_mask & ~transition_zone)
-                    if self.random_scale > 0:
-                        anchors_mask = anchors_mask | (transition_zone & rand_keep)
+            original_vals = z[transition_zone]
+            original_vals[np.isnan(original_vals)] = interp_vals[np.isnan(original_vals)]
+            blended_vals = (1 - weights) * interp_vals + (weights) * original_vals
 
-                    rows, cols = np.indices(z.shape)
-                    anchor_pts = np.array([rows[anchors_mask], cols[anchors_mask]]).T
-                    anchor_vals = z[anchors_mask]
-                    target_pts = np.array([rows[transition_zone], cols[transition_zone]]).T
-                    if len(anchor_pts) < 4 or len(target_pts) == 0:
-                        logger.warning("too few points to perform interpolation")
-                        self._write_chunk(z, window, buff_win, src, dst)
-                        continue
+            # Apply the blended Z values back into the stack array!
+            z[transition_zone] = blended_vals
+            data[0] = z
 
-                    try:
-                        interp_vals = scipy.interpolate.griddata(
-                            anchor_pts,
-                            anchor_vals,
-                            target_pts,
-                            method=self.algo
-                        )
-                        dist = scipy.ndimage.distance_transform_cdt(~fg_mask, metric='taxicab')
-                        d_vals = dist[transition_zone]
-                        if d_vals.size > 0:
-                            d_min, d_max = d_vals.min(), d_vals.max()
-                            if d_max > d_min:
-                                weights = (d_vals - d_min) / (d_max - d_min)
-                            else:
-                                weights = np.zeros_like(d_vals)
-                        else:
-                            weights = np.zeros(len(interp_vals))
+        except Exception as e:
+            logger.warning(f"Blend failed in chunk: {e}")
 
-                        original_vals = z[transition_zone]
-                        original_vals[np.isnan(original_vals)] = interp_vals[np.isnan(original_vals)]
-                        blended_vals = (1 - weights) * interp_vals + (weights) * original_vals
-
-                        z[transition_zone] = blended_vals
-
-                    except Exception as e:
-                        logger.warning(f"Blend failed in chunk: {e}")
-                        pass
-
-                    self._write_chunk(z, window, buff_win, src, dst)
-                    # # Crop buffer
-                    # y_off = window.row_off - buff_win.row_off
-                    # x_off = window.col_off - buff_win.col_off
-
-                    # final_chunk = z[y_off : y_off + window.height,
-                    #                 x_off : x_off + window.width]
-
-                    # dst.write(final_chunk, 1, window=window)
-
-        return True
+        return data
 
 
-class RasterBlend(RasterHook):
+class RasterBlend(RasterGlobalHook):
     """Blends raster data based on weight thresholds.
     Creates a smooth transition (buffer) between high-weight (Foreground)
     and low-weight (Background) areas.

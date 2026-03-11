@@ -14,12 +14,12 @@ Remove small regions from a raster.
 import logging
 import numpy as np
 from rasterio.features import sieve
-from .base import RasterHook
+from .base import RasterStreamHook
 
 logger = logging.getLogger(__name__)
 
 
-class RasterSieveHook(RasterHook):
+class RasterSieveHook(RasterStreamHook):
     """Removes small contiguous regions (noise, holes, puddles) from a raster."""
 
     name = "raster_sieve"

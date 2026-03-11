@@ -8,10 +8,10 @@ Filters data based on calculated Slope (Rise/Run).
 """
 
 import numpy as np
-from .base import RasterHook
+from .base import RasterStreamHook
 
 
-class RasterSlopeFilter(RasterHook):
+class RasterSlopeFilter(RasterStreamHook):
     """Filters pixels based on local slope.
 
     Calculates slope using Numpy gradients (Run/Rise).

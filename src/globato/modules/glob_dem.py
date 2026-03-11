@@ -54,6 +54,8 @@ class GlobDEM(FetchModule):
     meta_agency = "Globato"
     meta_tags = ["gebco", "bathymetry", "global", "etopo", "globato"]
     meta_category = "Tools"
+    meta_resolution = "Varies"
+    meta_license = "N/A"
 
     def __init__(self, res="3s", sources=None, crs="EPSG:4326",
                  blend="mean", fill=True, **kwargs):

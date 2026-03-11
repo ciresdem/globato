@@ -13,9 +13,9 @@ Mophology operations on the raster.
 
 import numpy as np
 import scipy.ndimage
-from .base import RasterHook
+from .base import RasterStreamHook
 
-class RasterMorphology(RasterHook):
+class RasterMorphology(RasterStreamHook):
     """Apply morphological operations to the raster.
 
     Usage: --hook raster_morphology:op=closing:kernel=3

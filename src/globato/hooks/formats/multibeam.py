@@ -169,6 +169,7 @@ class MBSReader:
                         if len(h_bytes) < h_size: break
                         h = struct.unpack(endian + 'dddddfffffffiiiiffbBBB', h_bytes)
                         lon, lat, sensor_depth = h[1], h[2], h[3]
+                        heading = h[5]
                         beams_bath, beams_amp, pixels_ss = h[12], h[13], h[14]
                         depth_scale, distance_scale = h[16], h[17]
 
@@ -178,6 +179,7 @@ class MBSReader:
                         if len(h_bytes) < h_size: break
                         h = struct.unpack(endian + 'dddddfffffffhhhhffbBBB', h_bytes)
                         lon, lat, sensor_depth = h[1], h[2], h[3]
+                        heading = h[5]
                         beams_bath, beams_amp, pixels_ss = h[12], h[13], h[14]
                         depth_scale, distance_scale = h[16], h[17]
 
@@ -188,6 +190,7 @@ class MBSReader:
                         h = struct.unpack(endian + 'hhhhhHHHHHHhhhhhiihhh', h_bytes)
                         lon = (h[5] / 60.0) + (h[6] / 600000.0)
                         lat = (h[7] / 60.0) + (h[8] / 600000.0) - 90.0
+                        heading = h[9] * 360.0 / 65536.0
                         beams_bath, beams_amp, pixels_ss = h[11], h[12], h[13]
                         depth_scale, distance_scale, sensor_depth = h[14]/1000.0, h[15]/1000.0, h[16]/1000.0
 
@@ -198,6 +201,7 @@ class MBSReader:
                         h = struct.unpack(endian + 'hhhhhHHHHHHhhhhhhhhhh', h_bytes)
                         lon = (h[5] / 60.0) + (h[6] / 600000.0)
                         lat = (h[7] / 60.0) + (h[8] / 600000.0) - 90.0
+                        heading = h[9] * 360.0 / 65536.0
                         beams_bath, beams_amp, pixels_ss = h[11], h[12], h[13]
                         depth_scale, distance_scale, sensor_depth = h[14]/1000.0, h[15]/1000.0, 0.0
 
@@ -208,10 +212,10 @@ class MBSReader:
                         h = struct.unpack(endian + 'hhhhhHHHHHHhhhhhhh', h_bytes)
                         lon = (h[5] / 60.0) + (h[6] / 600000.0)
                         lat = (h[7] / 60.0) + (h[8] / 600000.0) - 90.0
+                        heading = h[9] * 360.0 / 65536.0
                         beams_bath, beams_amp, pixels_ss = h[11], h[12], h[13]
                         depth_scale, distance_scale, sensor_depth = h[14]/1000.0, h[15]/1000.0, 0.0
 
-                    # Safety check
                     if beams_bath < 0 or beams_amp < 0 or pixels_ss < 0 or beams_bath > 10000:
                         logger.error(f"Corrupt array lengths parsed. Falling back to mblist.")
                         return None
@@ -231,16 +235,30 @@ class MBSReader:
                     if len(b_xtrack) < beams_bath * 2: break
                     acrosstrack_raw = np.frombuffer(b_xtrack, dtype=f'{endian}i2')
 
-                    f.read(beams_bath * 2)
+                    b_ltrack = f.read(beams_bath * 2)
+                    if len(b_ltrack) < beams_bath * 2: break
+                    alongtrack_raw = np.frombuffer(b_ltrack, dtype=f'{endian}i2')
+
                     if beams_amp > 0: f.read(beams_amp * 2)
                     if pixels_ss > 0: f.read(pixels_ss * 2 * 3)
 
                     # Apply Scaling
                     bath = ((bath_raw * depth_scale) + sensor_depth) * -1
                     xtrack = acrosstrack_raw * distance_scale
+                    ltrack = alongtrack_raw * distance_scale
 
-                    x_pos = lon + (xtrack / (111111.0 * np.cos(np.radians(lat))))
-                    y_pos = np.full(beams_bath, lat)
+                    heading_rad = np.radians(heading)
+                    cos_h = np.cos(heading_rad)
+                    sin_h = np.sin(heading_rad)
+
+                    # Calculate physical offsets in meters
+                    # (MB-System standard: X-Track is Starboard, L-Track is Forward)
+                    delta_x = (ltrack * sin_h) + (xtrack * cos_h)
+                    delta_y = (ltrack * cos_h) - (xtrack * sin_h)
+
+                    # Convert meters to degrees
+                    x_pos = lon + (delta_x / (111111.0 * np.cos(np.radians(lat))))
+                    y_pos = lat + (delta_y / 111111.0)
 
                     all_x.append(x_pos)
                     all_y.append(y_pos)

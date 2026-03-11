@@ -16,12 +16,12 @@ import fiona
 import numpy as np
 from rasterio.features import rasterize
 
-from .base import RasterHook
+from .base import RasterStreamHook
 
 logger = logging.getLogger(__name__)
 
 
-class RasterClipHook(RasterHook):
+class RasterClipHook(RasterStreamHook):
     """Clips a raster array using vector geometries."""
 
     name = "raster_clip"

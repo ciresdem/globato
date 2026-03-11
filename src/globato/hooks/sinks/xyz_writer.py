@@ -30,13 +30,19 @@ class WriteXYZ(FetchHook):
     meta_stage = "file"
     meta_category = "stream-sink"
 
-    def __init__(self, output="{base}_out.xyz", fmt="%.6f", **kwargs):
+    def __init__(self, output="{base}_out.xyz", fmt="%.6f", artifact_id=None, **kwargs):
         super().__init__(**kwargs)
         self.output = output
         self.fmt = fmt
+        self.artifact_id = artifact_id or self.name
 
     def run(self, entries):
         for mod, entry in entries:
+            if entry.get("stream_type") == "raster":
+                from globato.hooks.transforms.point_pixels import PixelsToPoints
+                p2p = PixelsToPoints()
+                p2p.run([(mod, entry)])
+
             stream = entry.get('stream')
             if not stream: continue
 
@@ -49,7 +55,8 @@ class WriteXYZ(FetchHook):
                 out_fn = os.path.join(out_dir, out_fn)
 
             entry['stream'] = self._write_stream(stream, out_fn)
-            entry.setdefault('artifacts', {})[self.name] = out_fn
+            #entry.setdefault('artifacts', {})[self.name] = out_fn
+            entry.setdefault("artifacts", {})[self.artifact_id] = out_fn
 
         return entries
 

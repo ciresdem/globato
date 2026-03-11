@@ -19,7 +19,7 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.transform import xy
 
-from ..rasters.base import RasterHook
+from ..rasters.base import RasterGlobalHook
 
 try:
     import pygmt
@@ -30,7 +30,7 @@ except (ImportError, OSError):
 logger = logging.getLogger(__name__)
 
 
-class GmtSurface(RasterHook):
+class GmtSurface(RasterGlobalHook):
     """Interpolates a sparse raster using GMT Surface (Splines in Tension).
 
     This is a Global Operator (process_raster), not a Chunk Operator,
