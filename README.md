@@ -55,7 +55,7 @@ You can execute pre-configured YAML recipes directly from your local machine, a 
 globato recipe run my_local_dem.yaml
 
 
-# Run an official community recipe directly from GitHub
+# Run an official community recipe directly from GitHub (*to be implemented*)
 globato recipe run western_ak
 ```
 
