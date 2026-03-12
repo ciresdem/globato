@@ -74,7 +74,7 @@ The transition to this modern, modular architecture (supported by the NSF POSE p
 
 * Expanding the official dem-recipes GitHub repository with community-contributed pipelines.
 
-* Tighter integration with IVERT (Inter-operable Validation and Evaluation Reporting Tool) for automated ICESat-2 QA/QC validation.
+* Tighter integration with IVERT for automated ICESat-2 QA/QC validation.
 
 * Additional native Python hooks for advanced point-cloud classification and hydro-flattening.
 
