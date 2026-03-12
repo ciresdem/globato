@@ -14,85 +14,68 @@
   <a href="https://cudem.zulip.org"><img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Project Chat"></a>
 </p>
 
-**Globato** (*Global Bathymetry & Topography*) is the next-generation DEM generation suite for the [Fetchez](https://github.com/continuous-dems/fetchez) ecosystem. Originally part of the [CUDEM](https://github.com/ciresdem/cudem) project, Globato unifies data discovery, download, and processing into a single, streaming pipeline.
+# Globato: The ContinUous-DEM Generation Framework
 
-## ❓ Why Globato?
+**Globato** is the user-facing geospatial engine of the ContinUous-DEMs ecosystem. It is designed for the rapid development, blending, and processing of high-accuracy Topo-Bathy Digital Elevation Models (DEMs).
 
-Building Digital Elevation Models (DEMs) typically involves a "download-then-process" workflow that requires massive storage and directories full of custom scripts.
+Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and vertical datums) libraries, `globato` abstracts away the complexity of geospatial ETL pipelines. It allows users to generate massive, seamless DEMs using declarative YAML recipes or intuitive command-line tools—all while scaling infinitely on standard hardware.
 
-**Globato changes this.** It acts as a streaming extension to `fetchez`, allowing you to:
-* **Stream, not store:** Process points from remote sources (LiDAR, Multibeam, COGs) on-the-fly without saving raw files to disk.
-* **Harmonize Resolution:** Seamlessly blend high-resolution multibeam with coarse global topography (hence the **M.R.** in *Mr. Globato*).
-* **Standardize Metadata:**
-* **ETC**
+## Key Features
 
-Whether you are building a quick 30m regional map or a precision 1m surface, `globato` keeps your pipeline clean, reproducible, and memory-efficient.
+* **Infinite Memory Scaling:** `globato` uses a pure-Python, generator-based streaming architecture to process massive rasters and point clouds chunk-by-chunk, eliminating out-of-memory crashes.
+* **Declarative Pipelines:** Define your data sources, regions, and processing hooks in a simple YAML recipe, ensuring 100% reproducibility.
+* **Idempotent API Caching:** Remote API queries (NOAA, Copernicus, etc.) are hashed and cached locally. Tweak your blending weights or hillshade parameters and re-run your DEM in seconds without re-downloading data.
+* **Native Processing:** Generate complex shaded reliefs, sieves, and morphological filters using native Python—no GDAL dependencies required for core operations.
+* **Super-Modules:** Access advanced, automated workflows like `glob_coast`, which dynamically resolves and generates high-resolution coastline masks on the fly.
 
----
+## Installation
 
-## 🌎 Features
-
-* **Streaming Gridders:**
-    * **`simple_stack`**: A lightweight, memory-safe stream for generating standard Z-elevation rasters (weighted mean).
-    * **`multi_stack`**: A heavy-duty statistical engine that generates 7-band GeoTIFFs containing Elevation, Weight, Count, Uncertainty, Source Uncertainty, and average X/Y locations for every pixel.
-* **Provenance Tracking:** Automatically generate bitmask rasters that map exactly which datasets contributed to every pixel in your output.
-* **Data Readers:**
-    * **Native BAG Support:** A Bathymetric Attributed Grid reader that handles Variable Resolution (VR).
-    * **COG Subsetting:** Windowed fetching for Cloud Optimized GeoTIFFs.
-* **Modern Architecture:** Built on `rasterio`, `numpy`, and `fetchez`, dropping heavy legacy dependencies for a pure Python experience.
-* **Declarative Recipes:** Define complex, multi-sensor build pipelines in simple `yaml` files.
-
-## 🔌 How Globato Extends Fetchez
-
-`globato` does not provide a separate CLI tool. Instead, it acts as a plugin suite that injects advanced processing capabilities directly into the `fetchez` engine.
-
-When you install `globato`, `fetchez` automatically detects and registers these new capabilities, allowing you to chain them into your existing workflows using the standard `--hook` syntax.
-
-***The Globato Toolkit***
-
-`globato` extends the core `fetchez` ecosystem by adding three types of components:
-
-1. **Data Streams** Standard fetchez downloads files. `globato` turns those files into streaming point clouds.
-
-`stream_data`: Auto-detects file types (LAS, LAZ, BAG, XYZ, OGR) and converts them into a standardized stream of x,y,z,weight,uncertainty records.
-
-`stream_reproject`: Reprojects streaming points on-the-fly using pyproj (e.g., converting WGS84 to UTM Zone 10N in memory).
-
-2. **Filters** Clean your data before it ever hits a grid.
-
-`block_thin`: Decimate your data stream for faster processing.
-
-`outierz`: Remove statistical outliers from you data stream
-
-3. **Stackers** The core of the `globato` engine; turning streams into surfaces.
-
-`simple_stack`: A fast, memory-safe stacker for generating standard weighted-mean Elevation rasters.
-
-`multi_stack`: The heavy-duty statistical engine. Generates 7-band GeoTIFFs (Z, Count, Weight, Uncertainty, Source Uncertainty, X-mean, Y-mean) for rigorous analysis.
-
-`provenance`: Generates a bitmask raster tracking exactly which dataset contributed to each pixel.
-
-4. **Specialized Modules**
-
-`gebco_cog`: A specialized fetch module for the GEBCO global bathymetry dataset, optimized for COG subsetting.
-
-`glob_coast`: A "Super-Module" that fetches topographic, bathymetri can hydrographic datasets to generate a `coastline-mask`.
-
-## 🤖 Usage Example
-
-Because `globato` is just a set of hooks, a complex ETL job looks just like a standard `fetchez` command.
-
-Example: The `globato` pipeline fetches multibeam data, filters outliers, reprojects to NAVD88, and grids it without saving intermediate files.
+Install via pip (this will automatically pull in the `fetchez` and `transformez` dependencies):
 
 ```bash
-fetchez multibeam -R -124.5/-124.0/43.0/43.5 \
-    --weight 1.0 --uncertainty 0.5 \
-    # Turn download into a stream
-    --hook stream_data \
-    # Reproject stream to WGS84/NAVD88
-    --hook stream_reproject:dst_srs=EPSG:4326+5703 \
-    # Filter statistical outliers (3-sigma)
-    --hook filter:method=outlierz:threshold=3.0 \
-    # Grid into a 7-band statistical surface
-    --hook multi_stack:res=10:mode=mean:output=coos_bay_stack.tif
+pip install globato
 ```
+
+## The globato CLI
+globato provides a powerful, user-friendly Command Line Interface to generate DEMs, run community recipes, manipulate rasters, and more.
+
+1. **Generate a DEM on the Fly**
+Don't want to write a YAML file? You can build a DEM directly from the terminal by specifying your region, resolution, and desired data sources:
+
+```bash
+# Generate a 1 arc-second DEM of Southern California using NOAA NOS and Copernicus data
+globato dem run -R -120/-119/34/35 -I 1s nos_hydro copernicus
+```
+
+2. **Run Community Recipes**
+You can execute pre-configured YAML recipes directly from your local machine, a URL, or the official ContinUous-DEMs community repository.
+
+```bash
+# Run a local recipe
+globato recipe run my_local_dem.yaml
+
+
+# Run an official community recipe directly from GitHub
+globato recipe run western_ak
+```
+
+3. **Raster Tools**
+globato includes a suite of lightning-fast raster manipulation tools for cropping, inspecting, and modifying your outputs:
+
+```bash
+globato raster info my_dem.tif
+globato raster clip -R -120/-119/34/35 my_dem.tif clipped_dem.tif
+```
+
+## The Vision & Community
+The transition to this modern, modular architecture (supported by the NSF POSE program) is just the beginning. Our vision is to cultivate a thriving open-source community around high-accuracy elevation modeling.
+
+### Future Roadmap:
+
+* Expanding the official dem-recipes GitHub repository with community-contributed pipelines.
+
+* Tighter integration with IVERT (Inter-operable Validation and Evaluation Reporting Tool) for automated ICESat-2 QA/QC validation.
+
+* Additional native Python hooks for advanced point-cloud classification and hydro-flattening.
+
+We welcome contributions! Whether you want to write a new data-fetching module, build a custom visualization hook, or simply share a YAML recipe for your local coastline, check out our [GitHub Repository](https://github.com/continuous-dems) or join our [Zulip Chatspace](https://cudem.zulipchat.com/) to get involved.
