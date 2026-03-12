@@ -60,7 +60,7 @@ globato recipe run western_ak
 ```
 
 3. **Raster Tools**
-globato includes a suite of lightning-fast raster manipulation tools for cropping, inspecting, and modifying your outputs:
+globato includes a suite of raster manipulation tools for cropping, inspecting, and modifying your outputs:
 
 ```bash
 globato raster info my_dem.tif
