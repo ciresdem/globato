@@ -37,7 +37,7 @@ pip install globato
 ```
 
 ## The globato CLI
-globato provides a powerful, user-friendly Command Line Interface to generate DEMs, run community recipes, manipulate rasters, and more.
+`globato` provides a powerful, user-friendly Command Line Interface to generate DEMs, run community recipes, manipulate rasters, and more.
 
 1. **Generate a DEM on the Fly**
 Don't want to write a YAML file? You can build a DEM directly from the terminal by specifying your region, resolution, and desired data sources:
