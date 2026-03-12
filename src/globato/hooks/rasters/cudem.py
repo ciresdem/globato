@@ -117,7 +117,13 @@ class CudemStepDown(RasterGlobalHook):
                     fg_count = fg_src.read(2, window=window)
                     fg_weight = fg_src.read(3, window=window)
 
+                    # Scrub data that doesn't meet the weight threshold.
+                    # This turns low-quality bathy into NoData so the background can overwrite it.
+                    invalid_weight_mask = (fg_count == 0) | (fg_weight < current_weight)
+                    fg_z[invalid_weight_mask] = fg_ndv
+
                     fg_valid_mask = (fg_z != fg_ndv) & (~np.isnan(fg_z))
+
                     if self.blend_dist > 0:
                         # Create a circular/square structural element for the buffer
                         moat_mask = scipy.ndimage.binary_dilation(
@@ -127,10 +133,6 @@ class CudemStepDown(RasterGlobalHook):
                     else:
                         moat_mask = fg_valid_mask
 
-                    # Scrub data that doesn't meet the weight threshold.
-                    # This turns low-quality bathy into NoData so the background can overwrite it.
-                    invalid_weight_mask = (fg_count == 0) | (fg_weight < current_weight)
-                    fg_z[invalid_weight_mask] = fg_ndv
 
                     # Get Background chunk
                     bg_chunk = bg_aligned[window.row_off:window.row_off+window.height,
@@ -187,7 +189,8 @@ class CudemStepDown(RasterGlobalHook):
                         tension=0.95,
                         barrier=step_barrier,
                         upper=-.01 if i > 0 else None,
-                        min_weight=weight
+                        min_weight=weight,
+                        verbose=True
                     )
                 else:
                     logger.warning("PyGMT is missing or failed to load. Falling back to Scipy interpolation.")
@@ -226,7 +229,7 @@ class CudemStepDown(RasterGlobalHook):
 
         if previous_surface and os.path.exists(previous_surface):
             shutil.move(previous_surface, dst_path)
-            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
+            #remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
             return True
 
         return False

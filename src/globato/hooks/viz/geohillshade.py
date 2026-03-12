@@ -171,7 +171,6 @@ class GeoHillshade(RasterStreamHook):
             return 1 - (1 - H) * (1 - C)
 
         elif self.blend_mode == 'overlay':
-            # np.where automatically broadcasts the (R,C,1) mask across the (R,C,3) colors!
             return np.where(H < 0.5, 2 * H * C, 1 - 2 * (1 - H) * (1 - C))
 
         elif self.blend_mode == 'hard_light':
@@ -182,25 +181,6 @@ class GeoHillshade(RasterStreamHook):
             return (1 - 2 * H) * (C ** 2) + 2 * H * C
 
         return H * C
-
-    # def _blend_arrays(self, hs_norm, rgb_norm):
-    #     H = hs_norm[..., np.newaxis]
-    #     C = rgb_norm
-
-    #     if self.blend_mode == 'multiply':
-    #         return H * C
-    #     elif self.blend_mode == 'screen':
-    #         return 1 - (1 - H) * (1 - C)
-    #     elif self.blend_mode == 'overlay':
-    #         mask = H < 0.5
-    #         out = np.empty_like(C)
-    #         out[mask] = 2 * H[mask] * C[mask]
-    #         out[~mask] = 1 - 2 * (1 - H[~mask]) * (1 - C[~mask])
-    #         return out
-    #     elif self.blend_mode == 'soft_light':
-    #         return (1 - 2 * H) * (C ** 2) + 2 * H * C
-
-    #     return H * C
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         if not HAS_MATPLOTLIB:
