@@ -24,8 +24,8 @@ Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and 
 
 * **Infinite Memory Scaling:** `globato` uses a pure-Python, generator-based streaming architecture to process massive rasters and point clouds chunk-by-chunk, eliminating out-of-memory crashes.
 * **Declarative Pipelines:** Define your data sources, regions, and processing hooks in a simple YAML recipe, ensuring 100% reproducibility.
-* **Idempotent API Caching:** Remote API queries (NOAA, Copernicus, etc.) are hashed and cached locally. Tweak your blending weights or hillshade parameters and re-run your DEM in seconds without re-downloading data.
-* **Native Processing:** Generate complex shaded reliefs, sieves, and morphological filters using native Python—no GDAL dependencies required for core operations.
+* **API Caching:** Remote API queries (NOAA, Copernicus, etc.) are hashed and cached locally. Tweak your blending weights or hillshade parameters and re-run your DEM in seconds without re-downloading data.
+* **Native Processing:** Generate complex shaded reliefs, sieves, and morphological filters using native Python.
 * **Super-Modules:** Access advanced, automated workflows like `glob_coast`, which dynamically resolves and generates high-resolution coastline masks on the fly.
 
 ## Installation
