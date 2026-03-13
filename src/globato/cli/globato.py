@@ -71,6 +71,65 @@ def recipe_run(target):
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
 
+@recipe.command("list")
+def recipe_list():
+    """List all official community recipes available on GitHub."""
+
+    click.echo("Fetching community recipes catalog from GitHub...")
+
+    # Hit the GitHub API for the directory contents
+    api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
+
+    try:
+        response = requests.get(api_url, timeout=5)
+        response.raise_for_status()
+        files = response.json()
+
+        click.secho("\n📚 Available Community Recipes:", fg="cyan", bold=True)
+        for f in files:
+            if f["name"].endswith(".yaml"):
+                click.echo(f"  ➔ {f['name'].replace('.yaml', '')}")
+
+        click.echo("\n💡 Run 'globato recipe info <name>' to see what a recipe does.")
+
+    except Exception as e:
+        click.secho(f"Failed to fetch recipes: {e}", fg="red")
+
+
+@recipe.command("info")
+@click.argument("target")
+def recipe_info(target):
+    """Inspect a recipe's description and sources without running it."""
+
+    yaml_path = resolve_recipe(target)
+    if not yaml_path:
+        sys.exit(1)
+
+    with open(yaml_path, 'r') as f:
+        config_dict = yaml.safe_load(f)
+
+    proj = config_dict.get("project", {})
+    region = config_dict.get("region", "Global")
+
+    modules = config_dict.get("modules", [])
+    mod_names = []
+    for m in modules:
+        if isinstance(m, dict):
+            mod_names.append(m.get("module", "Unknown"))
+        else:
+            mod_names.append(str(m))
+
+    unique_mods = list(set(mod_names))
+
+    click.secho(f"\n🏷️  Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
+    click.echo(f"Description: {proj.get('description', 'No description provided.')}")
+    click.echo(f"Region:      {region}")
+    click.echo(f"Sources:     {', '.join(unique_mods)}\n")
+
+    # Clean up the temp file
+    if yaml_path != target and os.path.exists(yaml_path):
+        os.remove(yaml_path)
+
 # =============================================================================
 # DEM COMMANDS
 # =============================================================================
