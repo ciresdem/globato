@@ -53,13 +53,6 @@ class GmtSurface(RasterGlobalHook):
         self.radius = radius
         self.upper = upper
 
-    def modify_profile(self, profile):
-        count = 1
-        profile.update(
-            count=count,
-        )
-        return profile
-
     def process_raster(self, src_path, dst_path, entry):
         if not HAS_PYGMT:
             logger.error("[GmtSurface] PyGMT not installed. Cannot run surface.")
@@ -110,7 +103,7 @@ class GmtSurface(RasterGlobalHook):
                 result_arr = np.flipud(result_arr)
 
                 profile = src.profile.copy()
-                profile.update(dtype=rasterio.float32, nodata=nodata)
+                profile.update(dtype=rasterio.float32, nodata=nodata, count=1)
                 print(profile)
 
                 if barrier_geoms:

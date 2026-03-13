@@ -33,6 +33,7 @@ dependencies = [
     "pyproj>3.6.1",
     "pyshp",
     "h5py",
+    "click",
 ]
 
 [project.optional-dependencies]
@@ -59,9 +60,9 @@ globato_hooks = "globato.schemas"
 # globato = "globato"
 
 [project.scripts]
-globato = "globato.cli.main:main"
-fetchez-index = "globato.cli_index:main"
-grits = "globato.cli.grits:main"
+globato = "globato.cli.globato:cli"
+# fetchez-index = "globato.cli_index:main"
+# grits = "globato.cli.grits:main"
 
 # --- Build configuration ---
 
