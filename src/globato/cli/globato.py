@@ -63,7 +63,10 @@ def recipe_run(target):
 
     click.secho(f"Executing recipe: {target}", fg="green")
 
-    Recipe.from_file(yaml_path).run()
+    with open(yaml_path, 'r') as f:
+        config_dict = yaml.safe_load(f)
+
+    Recipe.from_file(config_dict).run()
 
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
