@@ -33,6 +33,7 @@ dependencies = [
     "pyproj>3.6.1",
     "pyshp",
     "h5py",
+    "click",
 ]
 
 [project.optional-dependencies]
