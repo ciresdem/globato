@@ -72,5 +72,5 @@ class RasterZScore(RasterStreamHook):
         mask = (z_score > self.threshold) & (~np.isnan(data))
         data[np.isnan(data)] = ndv
         data[mask] = ndv
-        logger.info(mask)
+        #logger.info(mask)
         return data

@@ -61,8 +61,6 @@ globato_hooks = "globato.schemas"
 
 [project.scripts]
 globato = "globato.cli.globato:cli"
-# fetchez-index = "globato.cli_index:main"
-# grits = "globato.cli.grits:main"
 
 # --- Build configuration ---
 

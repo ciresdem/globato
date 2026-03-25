@@ -32,12 +32,14 @@ class RasterSlopeFilter(RasterStreamHook):
             self.buffer = 2
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
-        valid_mask = (data != ndv) & ~np.isnan(data)
+        z_data = data[0] if data.ndim == 3 else data
+
+        valid_mask = (z_data != ndv) & ~np.isnan(z_data)
         if not np.any(valid_mask):
             return data
 
-        work_data = data.copy()
-        work_data[~valid_mask] = np.nanmean(data) if np.any(valid_mask) else 0
+        work_data = z_data.copy()
+        work_data[~valid_mask] = np.nanmean(z_data) if np.any(valid_mask) else 0
 
         dx = abs(transform[0])
         dy = abs(transform[4])
@@ -54,6 +56,10 @@ class RasterSlopeFilter(RasterStreamHook):
             remove_mask |= (slope_arr > self.max_val)
 
         final_mask = remove_mask & valid_mask
-        data[final_mask] = ndv
+
+        if data.ndim == 3:
+            data[0][final_mask] = ndv
+        else:
+            data[final_mask] = ndv
 
         return data

@@ -242,7 +242,7 @@ class RasterStreamHook(RasterBaseHook):
                         dst.write(final_chunk, 1, window=window)
 
         return True
-
+    process_raster = _process_file_fallback
 
 # =============================================================================
 # 3. THE GLOBAL HOOK
