@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+globato.cli.globato
+~~~~~~~~~~~~~~~~
+
+The main command-line interface for Globato DEM generation tools.
+"""
+
 import os
 import sys
 import tempfile
@@ -9,6 +16,10 @@ import click
 import json
 import yaml
 import logging
+import time
+import numpy as np
+
+from transformez.spatial import TransRegion
 
 from fetchez.recipe import Recipe
 
@@ -168,9 +179,6 @@ def recipe_info(target):
 # =============================================================================
 # DEM COMMANDS
 # =============================================================================
-# =============================================================================
-# DEM COMMANDS (Waffles Legacy Interface)
-# =============================================================================
 @cli.group()
 def dem():
     """Generate custom Digital Elevation Models (Legacy Waffles style)."""
@@ -327,191 +335,6 @@ def dem_info_source(source_name):
                 click.echo(f"    ➔ {p}")
 
     click.echo("=" * 60 + "\n")
-# @cli.group()
-# def dem():
-#     """Generate custom Digital Elevation Models on the fly."""
-
-#     pass
-
-# @dem.command("run")
-# @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N (e.g., -120/-119/34/35)")
-# @click.option("-I", "--increment", required=True, help="Cell size/resolution (e.g., 1s, 1/3s, 10m)")
-# @click.option("-O", "--outdir", default=".", help="Output directory")
-# @click.argument("sources", nargs=-1)
-# def dem_run(region, increment, outdir, sources):
-#     """Generate a DEM from specific data sources without writing a YAML file.
-
-#     Example: globato dem run -R -120/-119/34/35 -I 1s nos_hydro copernicus
-#     """
-
-#     if not sources:
-#         click.secho("Error: You must provide at least one data source (e.g., nos_hydro, gebco).", fg="red")
-#         sys.exit(1)
-
-#     click.secho(f"Building {increment} DEM for region {region} using {', '.join(sources)}...", fg="cyan")
-
-#     config = {
-#         "region": region,
-#         "increment": increment,
-#         "outdir": outdir,
-#         "modules": []
-#     }
-
-#     # Add each source the user requested as a module
-#     for source in sources:
-#         config["modules"].append({source: {}})
-
-#     config["global_hooks"] = [{"ms_cudem": {}}]
-
-#     Recipe.from_file(config).run()
-
-
-# @dem.command("inspect")
-# @click.argument("filename")
-# def dem_inspect(filename):
-#     """Inspect a DEM and view its spatial metadata and provenance."""
-#     try:
-#         import rasterio
-#     except ImportError:
-#         click.secho("❌ Error: 'rasterio' is required to inspect DEMs.", fg="red")
-#         sys.exit(1)
-
-#     if not os.path.exists(filename):
-#         click.secho(f"❌ Error: File not found: {filename}", fg="red")
-#         sys.exit(1)
-
-#     click.secho(f"\n🔍 Inspecting: {filename}", fg="cyan", bold=True)
-#     click.echo("=" * 70)
-
-#     try:
-#         with rasterio.open(filename) as src:
-#             click.echo(f"  CRS        : {src.crs}")
-#             click.echo(f"  Bounds     : {src.bounds.left:.4f}, {src.bounds.right:.4f}, {src.bounds.bottom:.4f}, {src.bounds.top:.4f}")
-#             click.echo(f"  Resolution : {src.res[0]:.8f} x {src.res[1]:.8f}")
-#             click.echo(f"  Dimensions : {src.width} x {src.height} pixels")
-#             click.echo(f"  Bands      : {src.count}")
-
-#             if src.count > 1:
-#                 desc = ", ".join([src.descriptions[i] or f"Band {i+1}" for i in range(src.count)])
-#                 click.echo(f"  Band Names : {desc}")
-
-#             tags = src.tags()
-
-#             stats_keys = [k for k in tags.keys() if k.startswith("STATISTICS_")]
-#             if stats_keys:
-#                 click.echo("-" * 70)
-#                 click.secho("  Global Z-Statistics:", bold=True)
-#                 for k in sorted(stats_keys):
-#                     click.echo(f"    {k.replace('STATISTICS_', '').title():<10}: {tags[k]}")
-
-#             click.echo("-" * 70)
-#             click.secho("  Dataset Provenance (GLOBATO_PROVENANCE):", bold=True)
-
-#             prov_str = tags.get("GLOBATO_PROVENANCE")
-#             if prov_str:
-#                 try:
-#                     registry = json.loads(prov_str)
-#                     if not registry:
-#                         click.echo("    [Empty Registry]")
-#                     else:
-#                         click.echo(f"    Total Sources: {len(registry)}\n")
-#                         for i, item in enumerate(registry, 1):
-#                             display_item = item if len(item) < 60 else f"...{item[-57:]}"
-#                             click.echo(f"    {i:02d}. {display_item}")
-#                 except json.JSONDecodeError:
-#                     click.secho("    [Warning: GLOBATO_PROVENANCE tag is not valid JSON]", fg="yellow")
-#             else:
-#                 click.secho("    [No GLOBATO_PROVENANCE tag found. Was this generated by multi_stack?]", fg="yellow")
-
-#     except Exception as e:
-#         click.secho(f"❌ Error reading TIFF: {e}", fg="red")
-#         sys.exit(1)
-
-#     click.echo("=" * 70 + "\n")
-
-# =============================================================================
-# GRITS (RASTER TOOLS)
-# =============================================================================
-# def run_raster_hook(hook_instance, src, dst, strip_bands=False, region=None):
-#     """Executes a RasterGlobalHook and generates a statistical receipt."""
-
-#     import time
-#     import rasterio
-#     import numpy as np
-
-#     if region:
-#         from transformez.spatial import TransRegion
-#         try:
-#             r_vals = [float(x) for x in region.replace(',', '/').split('/')]
-#             hook_instance.region = TransRegion(r_vals)
-#         except Exception as e:
-#             click.secho(f"❌ Invalid region format: {e}", fg="red")
-#             sys.exit(1)
-
-#     hook_instance.strip_bands = strip_bands
-#     entry = {'src_fn': src, 'dst_fn': dst, 'weight': 1.0}
-
-#     click.secho(f"\n⚙️  Running Raster Op: {hook_instance.name.upper()}", fg="cyan", bold=True)
-#     t0 = time.time()
-
-#     try:
-#         success = hook_instance.process_raster(src, dst, entry)
-#     except Exception as e:
-#         click.secho(f"❌ Error during processing: {e}", fg="red")
-#         sys.exit(1)
-
-#     t1 = time.time()
-
-#     if not success:
-#         click.secho("❌ Operation failed or was skipped.", fg="red")
-#         sys.exit(1)
-
-#     # ==========================================
-#     # GENERATE THE RASTER RECEIPT
-#     # ==========================================
-#     click.echo("📊 Calculating impact statistics...")
-#     try:
-#         with rasterio.open(src) as s, rasterio.open(dst) as d:
-#             s_data = s.read(1)
-#             d_data = d.read(1)
-
-#             s_ndv = s.nodata if s.nodata is not None else -9999
-#             d_ndv = d.nodata if d.nodata is not None else -9999
-
-#             # Create validity masks (Ignore NoData and NaNs)
-#             s_valid = (s_data != s_ndv) & (~np.isnan(s_data))
-#             d_valid = (d_data != d_ndv) & (~np.isnan(d_data))
-
-#             src_count = np.count_nonzero(s_valid)
-#             dst_count = np.count_nonzero(d_valid)
-
-#             # Pixel math: What actually changed?
-#             removed = np.count_nonzero(s_valid & ~d_valid)
-#             added = np.count_nonzero(~s_valid & d_valid)
-
-#             # Pixels that are valid in BOTH, but their Z-value was modified
-#             changed = np.count_nonzero(s_valid & d_valid & (s_data != d_data))
-
-#             click.echo("\n" + "="*50)
-#             click.secho(f"🧾 RASTER RECEIPT: {hook_instance.name}", bold=True, fg="green")
-#             click.echo("="*50)
-#             click.echo(f"⏱️  Time Elapsed : {t1-t0:.2f} seconds")
-#             click.echo(f"📥 Input Valid  : {src_count:,} pixels")
-#             click.echo(f"📤 Output Valid : {dst_count:,} pixels")
-#             click.echo("-" * 50)
-
-#             # Color code the impact!
-#             click.secho(f"➕ Pixels Added : {added:,}", fg="green" if added > 0 else "white")
-#             click.secho(f"➖ Pixels Dropped: {removed:,}", fg="red" if removed > 0 else "white")
-#             click.secho(f"🔄 Values Modded: {changed:,}", fg="yellow" if changed > 0 else "white")
-#             click.echo("="*50 + "\n")
-
-#     except Exception as e:
-#         click.secho(f"⚠️ Could not calculate exact statistics: {e}", fg="yellow")
-
-import time
-import numpy as np
-from transformez.spatial import TransRegion
 
 def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
     """Calculates before/after statistics and prints a beautiful receipt."""
