@@ -61,6 +61,83 @@ def recipe():
 
     pass
 
+@recipe.command("batch")
+@click.argument("template")
+@click.argument("tileset")
+@click.option("--outdir", default=".", help="Base output directory for the tiles.")
+def recipe_batch(template, tileset, outdir):
+    """Run a recipe template over multiple regions defined in a GeoJSON tileset.
+
+    TEMPLATE: The base YAML recipe to use.
+    TILESET:  A GeoJSON file containing polygons/bounding boxes for the tiles.
+
+    Example: globato recipe batch crm_vol6_template.yaml crm_vol6_south.geojson --outdir ./crm_output
+    """
+
+    yaml_path = resolve_recipe(template)
+    if not yaml_path:
+        sys.exit(1)
+
+    with open(yaml_path, 'r') as f:
+        template_dict = yaml.safe_load(f)
+
+    if not os.path.exists(tileset):
+        click.secho(f"❌ Error: Tileset not found: {tileset}", fg="red")
+        sys.exit(1)
+
+    with open(tileset, 'r') as f:
+        geojson = json.load(f)
+
+    features = geojson.get("features", [])
+    if not features:
+        click.secho("❌ Error: No features found in tileset.", fg="red")
+        sys.exit(1)
+
+    click.secho(f"\n🗺️  Batch Processing {len(features)} tiles from {os.path.basename(tileset)}...", fg="cyan", bold=True)
+
+    base_outdir = os.path.abspath(outdir)
+    os.makedirs(base_outdir, exist_ok=True)
+    original_cwd = os.getcwd()
+
+    for i, feature in enumerate(features, 1):
+        try:
+            coords = feature["geometry"]["coordinates"][0]
+            xs = [pt[0] for pt in coords]
+            ys = [pt[1] for pt in coords]
+            w, e, s, n = min(xs), max(xs), min(ys), max(ys)
+
+            props = feature.get("properties", {})
+            tile_name = props.get("NAME") or props.get("ID") or f"tile_{i:03d}"
+
+            click.echo("\n" + "="*60)
+            click.secho(f"🚀 TILE {i}/{len(features)}: {tile_name}", fg="green", bold=True)
+            click.echo(f"   Bounds: [{w:.3f}, {e:.3f}, {s:.3f}, {n:.3f}]")
+
+            tile_dir = os.path.join(base_outdir, tile_name)
+            os.makedirs(tile_dir, exist_ok=True)
+            os.chdir(tile_dir)
+
+            config = template_dict.copy()
+            proj = config.setdefault("project", {})
+            proj["name"] = f"{proj.get('name', 'Batch')}_{tile_name}"
+            config["region"] = [w, e, s, n]
+
+            tile_config_fn = f"{tile_name}_recipe.yaml"
+            with open(tile_config_fn, 'w') as f:
+                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+
+            Recipe.from_file(config).run()
+
+        except Exception as e:
+            click.secho(f"❌ Failed on tile {tile_name}: {e}", fg="red")
+        finally:
+            os.chdir(original_cwd)
+
+    click.secho("\n✅ Batch Processing Complete!", fg="green", bold=True)
+
+    if yaml_path != template and os.path.exists(yaml_path):
+        os.remove(yaml_path)
+
 @recipe.command("run")
 @click.argument("target")
 @click.option("--region", help="Override the recipe's bounding box (W/E/S/N)")
@@ -324,7 +401,7 @@ def dem_run(region, increment, outname, crs, algo, stack_mode, save_recipe, sour
         click.echo(f"🚀 Run it later using: globato recipe run {out_yaml}")
     else:
         click.secho(f"🚀 Building DEM '{outname}' at {increment}...", fg="cyan", bold=True)
-        Recipe.from_dict(config).run()
+        Recipe.from_file(config).run()
 
 
 @dem.command("list-sources")
