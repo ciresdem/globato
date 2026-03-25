@@ -207,7 +207,16 @@ class DataStream(FetchHook):
 
             dtype = entry.get("data_type")
 
-            reader = StreamFactory.get_reader(src, data_type=dtype, **self.reader_kwargs)
+            # try and sanitize raster chunk_sizes so we don't crash
+            kwargs_copy = self.reader_kwargs.copy()
+            if dtype in ["raster", "bag"] or src.lower().endswith(('.tif', '.tiff', '.nc', '.vrt', '.bag')):
+                c_size = kwargs_copy.get("chunk_size")
+                # If they ask for a chunk > 8192 on a raster, it was meant for points. Fallback to default.
+                if c_size and str(c_size).isdigit() and int(c_size) > 8192:
+                    logger.debug(f"Ignoring massive chunk_size ({c_size}) for raster. Using native blocks.")
+                    kwargs_copy.pop("chunk_size")
+
+            reader = StreamFactory.get_reader(src, data_type=dtype, **kwargs_copy)
             if not reader:
                 continue
 
@@ -219,14 +228,13 @@ class DataStream(FetchHook):
             if raw_stream:
                 if hasattr(reader, "get_srs"):
                     entry["src_srs"] = reader.get_srs() or "EPSG:4326"
-                # If it's a point cloud reader...
+
                 entry["stream"] = ensure_schema(raw_stream, module_weight=w, module_unc=u)
                 entry["stream_type"] = "xyz_recarray"
 
                 if self.stream_type == "raster":
                     from globato.hooks.transforms.point_pixels import Point2PixelStream
-                    # Pass all resolution/buffer args into PointPixels
-                    pp_hook = Point2PixelStream(**self.reader_kwargs)
+                    pp_hook = Point2PixelStream(**kwargs_copy)
                     pp_hook.run([(mod, entry)])
 
         return entries

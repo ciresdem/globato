@@ -222,6 +222,8 @@ class GeoHillshade(RasterStreamHook):
             rgb_colors = self._apply_gamma(rgb_colors)
 
         blended = self._blend_arrays(hs, rgb_colors)
+        blended = np.nan_to_num(blended, nan=1.0)
+        blended = np.clip(blended, 0.0, 1.0)
         blended_uint8 = (blended * 255).astype(np.uint8)
 
         write_data = np.transpose(blended_uint8, (2, 0, 1))

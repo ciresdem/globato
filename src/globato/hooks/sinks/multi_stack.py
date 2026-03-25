@@ -82,6 +82,12 @@ class MultiStackAccumulator:
 
         self._init_raster()
 
+        self.dataset = rasterio.open(self.sums_fn, "r+")
+        self.pixel_binner = PointPixels(
+            src_region=self.region,
+            x_size=self.xcount,
+            y_size=self.ycount
+        )
 
         logger.info(
             f"Initializing Multi_Stack internal arrays at {self.xcount}/{self.ycount}"
@@ -123,42 +129,31 @@ class MultiStackAccumulator:
     def is_registered(self, dataset_id):
         """Check the GeoTIFF header to see if dataset is already stacked."""
 
-        if not os.path.exists(self.sums_fn):
+        if not hasattr(self, 'dataset') or self.dataset.closed:
             return False
 
         with self.lock:
-            with rasterio.open(self.sums_fn, "r") as src:
-                reg_str = src.tags().get("GLOBATO_PROVENANCE", "[]")
-                registry = json.loads(reg_str)
-                return dataset_id in registry
+            reg_str = self.dataset.tags().get("GLOBATO_PROVENANCE", "[]")
+            registry = json.loads(reg_str)
+            return dataset_id in registry
 
     def mark_registered(self, dataset_id):
         """Add dataset to the GeoTIFF header registry."""
 
         with self.lock:
-            with rasterio.open(self.sums_fn, "r+") as dst:
-                reg_str = dst.tags().get("GLOBATO_PROVENANCE", "[]")
-                registry = json.loads(reg_str)
-                if dataset_id not in registry:
-                    registry.append(dataset_id)
-                    dst.update_tags(GLOBATO_PROVENANCE=json.dumps(registry))
-                    logger.debug(
-                        f"Registered {os.path.basename(dataset_id)} in stack provenance."
-                    )
+            reg_str = self.dataset.tags().get("GLOBATO_PROVENANCE", "[]")
+            registry = json.loads(reg_str)
+            if dataset_id not in registry:
+                registry.append(dataset_id)
+                self.dataset.update_tags(GLOBATO_PROVENANCE=json.dumps(registry))
 
     def update(self, points):
         """Process a chunk of points: Bin in memory -> Update Disk."""
 
-        pixel_binner = PointPixels(
-            src_region=self.region,
-            x_size=self.xcount,
-            y_size=self.ycount
-        )
-
         if points is None or len(points) == 0:
             return
 
-        arrays, sub_win, _ = pixel_binner(points, mode="sums")
+        arrays, sub_win, _ = self.pixel_binner(points, mode="sums")
         if arrays['z'] is None:
             return
 
@@ -166,100 +161,104 @@ class MultiStackAccumulator:
         window = Window(col_off, row_off, width, height)
 
         with self.lock:
-            with rasterio.open(self.sums_fn, 'r+') as dst:
-                current_data = dst.read(window=window)
+            # with rasterio.open(self.sums_fn, 'r+') as dst:
+            current_data = self.dataset.read(window=window)
 
-                def get_band(name):
-                    return current_data[self.BAND_MAP[name]-1]
+            def get_band(name):
+                return current_data[self.BAND_MAP[name]-1]
 
-                valid_new = arrays["count"] > 0
+            valid_new = arrays["count"] > 0
 
-                # current_data[current_data == -9999] = 0
-                # current_data[np.isnan(current_data)] = 0
+            # current_data[current_data == -9999] = 0
+            # current_data[np.isnan(current_data)] = 0
 
-                # ONLY zero out pixels that are actively receiving new data!
-                for i in range(current_data.shape[0]):
-                    band = current_data[i]
-                    mask = valid_new & ((band == -9999) | np.isnan(band))
-                    band[mask] = 0
+            # ONLY zero out pixels that are actively receiving new data!
+            for i in range(current_data.shape[0]):
+                band = current_data[i]
+                mask = valid_new & ((band == -9999) | np.isnan(band))
+                band[mask] = 0
 
-                if self.mode in ["mean", "weighted_mean"]:
-                    get_band("z")[valid_new] += arrays["z"][valid_new]
+            if self.mode in ["mean", "weighted_mean"]:
+                get_band("z")[valid_new] += arrays["z"][valid_new]
 
-                    # Safely fallback for weight keys
-                    wt_arr = arrays.get("weights", arrays.get("weight", 0))
-                    get_band("weights")[valid_new] += wt_arr[valid_new]
+                # Safely fallback for weight keys
+                wt_arr = arrays.get("weights", arrays.get("weight", 0))
+                get_band("weights")[valid_new] += wt_arr[valid_new]
 
-                    get_band("count")[valid_new] += arrays["count"][valid_new]
-                    get_band("uncertainty")[valid_new] += np.square(arrays["uncertainty"][valid_new])
+                get_band("count")[valid_new] += arrays["count"][valid_new]
+                get_band("uncertainty")[valid_new] += np.square(arrays["uncertainty"][valid_new])
+
+                if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
+                     get_band("src_uncertainty")[valid_new] += arrays["src_uncertainty"][valid_new]
+
+                get_band('x')[valid_new] += arrays["x"][valid_new]
+                get_band('y')[valid_new] += arrays["y"][valid_new]
+
+            elif self.mode in ["supercede", "mixed"]:
+                cur_cnt = get_band("count")
+                cur_wt = get_band("weights")
+
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    arr_w_avg = np.where(valid_new, arrays["weight"] / arrays["count"], 0)
+                    cur_w_avg = np.where(cur_cnt > 0, cur_wt / cur_cnt, 0)
+
+                if self.mode == "supercede":
+                    sup_mask = valid_new & (arr_w_avg > cur_w_avg)
+                    avg_mask = np.zeros_like(sup_mask, dtype=bool)
+                else:
+                    arr_tier = np.digitize(arr_w_avg, self.wts)
+                    cur_tier = np.digitize(cur_w_avg, self.wts)
+                    cur_tier[cur_cnt == 0] = -1
+
+                    sup_mask = valid_new & (arr_tier > cur_tier)
+                    avg_mask = valid_new & (arr_tier == cur_tier)
+
+                if np.any(sup_mask):
+                    get_band("z")[sup_mask] = arrays["z"][sup_mask]
+                    get_band("weights")[sup_mask] = arrays["weight"][sup_mask]
+                    get_band("count")[sup_mask] = arrays["count"][sup_mask]
+                    get_band("uncertainty")[sup_mask] = np.square(arrays["uncertainty"][sup_mask])
 
                     if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
-                         get_band("src_uncertainty")[valid_new] += arrays["src_uncertainty"][valid_new]
+                        get_band("src_uncertainty")[sup_mask] = arrays["src_uncertainty"][sup_mask]
 
-                    get_band('x')[valid_new] += arrays["x"][valid_new]
-                    get_band('y')[valid_new] += arrays["y"][valid_new]
+                    get_band("x")[sup_mask] = arrays["x"][sup_mask]
+                    get_band("y")[sup_mask] = arrays["y"][sup_mask]
 
-                elif self.mode in ["supercede", "mixed"]:
-                    cur_cnt = get_band("count")
-                    cur_wt = get_band("weights")
+                if np.any(avg_mask):
+                    get_band("z")[avg_mask] += arrays["z"][avg_mask]
+                    get_band("weights")[avg_mask] += arrays["weight"][avg_mask]
+                    get_band("count")[avg_mask] += arrays["count"][avg_mask]
+                    get_band("uncertainty")[avg_mask] += np.square(arrays["uncertainty"][avg_mask])
 
-                    with np.errstate(divide="ignore", invalid="ignore"):
-                        arr_w_avg = np.where(valid_new, arrays["weight"] / arrays["count"], 0)
-                        cur_w_avg = np.where(cur_cnt > 0, cur_wt / cur_cnt, 0)
+                    if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
+                        get_band("src_uncertainty")[avg_mask] += arrays["src_uncertainty"][avg_mask]
 
-                    if self.mode == "supercede":
-                        sup_mask = valid_new & (arr_w_avg > cur_w_avg)
-                        avg_mask = np.zeros_like(sup_mask, dtype=bool)
-                    else:
-                        arr_tier = np.digitize(arr_w_avg, self.wts)
-                        cur_tier = np.digitize(cur_w_avg, self.wts)
-                        cur_tier[cur_cnt == 0] = -1
+                    get_band("x")[avg_mask] += arrays["x"][avg_mask]
+                    get_band("y")[avg_mask] += arrays["y"][avg_mask]
 
-                        sup_mask = valid_new & (arr_tier > cur_tier)
-                        avg_mask = valid_new & (arr_tier == cur_tier)
+            elif self.mode == "min":
+                cur_z = get_band("z")
+                cur_z[~valid_new & (cur_z == 0)] = 999999
+                update_mask = valid_new & (arrays["z"] < cur_z)
+                get_band("z")[update_mask] = arrays["z"][update_mask]
+                get_band("count")[update_mask] = 1
 
-                    if np.any(sup_mask):
-                        get_band("z")[sup_mask] = arrays["z"][sup_mask]
-                        get_band("weights")[sup_mask] = arrays["weight"][sup_mask]
-                        get_band("count")[sup_mask] = arrays["count"][sup_mask]
-                        get_band("uncertainty")[sup_mask] = np.square(arrays["uncertainty"][sup_mask])
+            elif self.mode == "max":
+                cur_z = get_band("z")
+                cur_z[~valid_new & (cur_z == 0)] = -999999
+                update_mask = valid_new & (arrays["z"] > cur_z)
+                get_band("z")[update_mask] = arrays["z"][update_mask]
+                get_band("count")[update_mask] = 1
 
-                        if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
-                            get_band("src_uncertainty")[sup_mask] = arrays["src_uncertainty"][sup_mask]
-
-                        get_band("x")[sup_mask] = arrays["x"][sup_mask]
-                        get_band("y")[sup_mask] = arrays["y"][sup_mask]
-
-                    if np.any(avg_mask):
-                        get_band("z")[avg_mask] += arrays["z"][avg_mask]
-                        get_band("weights")[avg_mask] += arrays["weight"][avg_mask]
-                        get_band("count")[avg_mask] += arrays["count"][avg_mask]
-                        get_band("uncertainty")[avg_mask] += np.square(arrays["uncertainty"][avg_mask])
-
-                        if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
-                            get_band("src_uncertainty")[avg_mask] += arrays["src_uncertainty"][avg_mask]
-
-                        get_band("x")[avg_mask] += arrays["x"][avg_mask]
-                        get_band("y")[avg_mask] += arrays["y"][avg_mask]
-
-                elif self.mode == "min":
-                    cur_z = get_band("z")
-                    cur_z[~valid_new & (cur_z == 0)] = 999999
-                    update_mask = valid_new & (arrays["z"] < cur_z)
-                    get_band("z")[update_mask] = arrays["z"][update_mask]
-                    get_band("count")[update_mask] = 1
-
-                elif self.mode == "max":
-                    cur_z = get_band("z")
-                    cur_z[~valid_new & (cur_z == 0)] = -999999
-                    update_mask = valid_new & (arrays["z"] > cur_z)
-                    get_band("z")[update_mask] = arrays["z"][update_mask]
-                    get_band("count")[update_mask] = 1
-
-                dst.write(current_data, window=window)
+            # dst.write(current_data, window=window)
+            self.dataset.write(current_data, window=window)
 
     def finalize(self, ndv=-9999):
         """Convert accumulated sums from .sums.tif into the final output .tif."""
+
+        if self.dataset and not self.dataset.closed:
+            self.dataset.close()
 
         if self.verbose:
             logger.info(
@@ -414,6 +413,7 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
+        logger.info(dataset_id)
         for chunk in stream:
             count += len(chunk)
             if self._accumulator:
