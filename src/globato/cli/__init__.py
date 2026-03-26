@@ -21,16 +21,8 @@ from .regions import regions_group
 @click.group()
 def cli():
     """Globato: The ContinUous-DEM Generation Framework.
-
-    \b
-    Commands:
-      recipe  : Run reproducible, declarative YAML pipelines.
-      dem     : Generate custom DEM surfaces (Legacy Waffles).
-      raster  : Manipulate and process existing grids (Legacy Grits).
-      pointz  : Filter and process point clouds (Legacy Dlim).
-      regions : Generate and manipulate spatial tilesets.
-      fetch   : Quickly download raw data from public APIs.
     """
+
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 cli.add_command(recipe_group, name="recipe")
