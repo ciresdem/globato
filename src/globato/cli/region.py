@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.cli.regions
+globato.cli.region
 ~~~~~~~~~~~~~~~~~~~
 Spatial management commands for generating, formatting, and splitting bounding boxes.
 """
@@ -15,8 +15,8 @@ import sys
 from transformez.spatial import TransRegion
 from fetchez.spatial import parse_region
 
-@click.group(name="regions")
-def regions_group():
+@click.group(name="region")
+def region_group():
     """Generate and manipulate spatial bounding boxes and tilesets."""
 
     pass
@@ -30,14 +30,14 @@ def _parse_region(region_str):
         click.secho(f"❌ Error parsing region '{region_str}': {e}", fg="red")
         sys.exit(1)
 
-@regions_group.command("echo")
+@region_group.command("echo")
 @click.argument("region_str")
 @click.option("--format", "-f", type=click.Choice(['bbox', 'wkt', 'geojson', 'fn']), default="bbox", help="Output format.")
-def regions_echo(region_str, format):
+def region_echo(region_str, format):
     """Parse a region and echo it to stdout.
 
     Useful for geocoding a location and piping it to another command.
-    Example: globato regions echo loc:"San Diego, CA" -f wkt
+    Example: globato region echo loc:"San Diego, CA" -f wkt
     """
 
     region = _parse_region(region_str)
@@ -49,14 +49,14 @@ def regions_echo(region_str, format):
         click.echo(region.format(format))
 
 
-@regions_group.command("buffer")
+@region_group.command("buffer")
 @click.argument("region_str")
 @click.option("--pct", type=float, default=5.0, help="Percentage to buffer the region (default: 5.0).")
 @click.option("--format", "-f", type=click.Choice(['bbox', 'wkt', 'geojson', 'fn']), default="bbox")
-def regions_buffer(region_str, pct, format):
+def region_buffer(region_str, pct, format):
     """Expand a bounding box by a given percentage.
 
-    Example: globato regions buffer -120/-119/34/35 --pct 10
+    Example: globato region buffer -120/-119/34/35 --pct 10
     """
 
     region = _parse_region(region_str)
@@ -69,15 +69,15 @@ def regions_buffer(region_str, pct, format):
         click.echo(buffered.format(format))
 
 
-@regions_group.command("split")
+@region_group.command("split")
 @click.argument("region_str")
 @click.option("--size", type=float, required=True, help="Tile size in decimal degrees (e.g., 0.25 for 1/4 degree tiles).")
 @click.option("--out", "-O", required=True, help="Output GeoJSON file to save the tileset.")
 @click.option("--prefix", default="tile", help="Prefix for the generated tile names (default: 'tile').")
-def regions_split(region_str, size, out, prefix):
+def region_split(region_str, size, out, prefix):
     """Split a massive region into a GeoJSON tileset for batch processing.
 
-    Example: globato regions split loc:"California" --size 0.5 -O cali_tiles.geojson
+    Example: globato region split loc:"California" --size 0.5 -O cali_tiles.geojson
     """
     region = _parse_region(region_str)
 
@@ -128,17 +128,17 @@ def regions_split(region_str, size, out, prefix):
     click.echo(f"💡 Run these using: globato recipe batch my_recipe.yaml {out}")
 
 
-@regions_group.command("transform")
+@region_group.command("transform")
 @click.argument("region_str")
 @click.option("--t-srs", required=True, help="Target spatial reference system (e.g., EPSG:3857).")
 @click.option("--s-srs", default="EPSG:4326", help="Source spatial reference system (default: EPSG:4326).")
 @click.option("--format", "-f", type=click.Choice(['bbox', 'wkt', 'geojson', 'fn']), default="bbox", help="Output format.")
-def regions_transform(region_str, t_srs, s_srs, format):
+def region_transform(region_str, t_srs, s_srs, format):
     """Transform a region to a new coordinate reference system.
 
     Densifies the boundary before projecting to ensure safe encapsulation.
 
-    Example: globato regions transform loc:"San Francisco" --t-srs EPSG:3857
+    Example: globato region transform loc:"San Francisco" --t-srs EPSG:3857
     """
 
     region = _parse_region(region_str)
