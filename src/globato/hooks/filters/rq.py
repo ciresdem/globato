@@ -100,7 +100,7 @@ class ReferenceQuality(GlobatoFilter):
         if not mod_cls:
             return None
 
-        buffered_region = region.buffer(0.1)
+        buffered_region = region.copy().buffer(pct=5)
         fetcher = mod_cls(src_region=buffered_region)
         fetcher.run()
         run_fetchez([fetcher])
@@ -136,7 +136,7 @@ class ReferenceQuality(GlobatoFilter):
 
         out_path = os.path.join(os.path.dirname(files[0]), f"rq_ref_{self.name}.tif")
 
-        target_region = region.buffer(0.05)
+        target_region = region.copy().buffer(pct=5)
         nx = int(np.ceil((target_region[1] - target_region[0]) / self.res))
         ny = int(np.ceil((target_region[3] - target_region[2]) / self.res))
 

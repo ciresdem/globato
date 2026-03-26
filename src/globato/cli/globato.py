@@ -79,7 +79,10 @@ def recipe_batch(template, tileset, outdir):
         sys.exit(1)
 
     with open(yaml_path, 'r') as f:
-        template_dict = yaml.safe_load(f)
+        template_str = f.read()
+
+    # with open(yaml_path, 'r') as f:
+    #     template_dict = yaml.safe_load(f)
 
     if not os.path.exists(tileset):
         click.secho(f"❌ Error: Tileset not found: {tileset}", fg="red")
@@ -111,15 +114,18 @@ def recipe_batch(template, tileset, outdir):
 
             click.echo("\n" + "="*60)
             click.secho(f"🚀 TILE {i}/{len(features)}: {tile_name}", fg="green", bold=True)
-            click.echo(f"   Bounds: [{w:.3f}, {e:.3f}, {s:.3f}, {n:.3f}]")
+            click.secho(f"   Bounds: [{w:.3f}, {e:.3f}, {s:.3f}, {n:.3f}]", fg="green")
 
             tile_dir = os.path.join(base_outdir, tile_name)
             os.makedirs(tile_dir, exist_ok=True)
             os.chdir(tile_dir)
 
-            config = template_dict.copy()
+            config_str = template_str.replace("{name}", tile_name)
+            # config = template_dict.copy()
+            config = yaml.safe_load(config_str)
             proj = config.setdefault("project", {})
-            proj["name"] = f"{proj.get('name', 'Batch')}_{tile_name}"
+            if "Batch" in proj.get("name", "Batch"):
+                proj["name"] = f"{proj.get('name', 'Batch')}_{tile_name}"
             config["region"] = [w, e, s, n]
 
             tile_config_fn = f"{tile_name}_recipe.yaml"
@@ -142,9 +148,10 @@ def recipe_batch(template, tileset, outdir):
 @click.argument("target")
 @click.option("--region", help="Override the recipe's bounding box (W/E/S/N)")
 @click.option("--res", help="Override the recipe's target resolution (e.g., 1s, 30m)")
+@click.option("--name", help="Inject a custom {name} variable (defaults to recipe filename)")
 @click.option("--out", help="Override the recipe's output name (e.g., my-dem)")
 @click.option("--save-as", help="Save the customized recipe to a new YAML file without running it.")
-def recipe_run(target, region, res, out, save_as):
+def recipe_run(target, region, res, name, out, save_as):
     """Run a DEM recipe from a local file, URL, or community keyword.
 
     You can use community recipes as templates by overriding the region and resolution!
@@ -156,7 +163,13 @@ def recipe_run(target, region, res, out, save_as):
         sys.exit(1)
 
     with open(yaml_path, 'r') as f:
-        config_dict = yaml.safe_load(f)
+        template_str = f.read()
+
+    if not name:
+        name = os.path.splitext(os.path.basename(target))[0]
+
+    config_str = template_str.replace("{name}", name)
+    config_dict = yaml.safe_load(config_str)
 
     if region:
         try:

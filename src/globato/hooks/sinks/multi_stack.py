@@ -413,7 +413,7 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
-        logger.info(dataset_id)
+        # logger.info(dataset_id)
         for chunk in stream:
             count += len(chunk)
             if self._accumulator:
@@ -422,7 +422,7 @@ class MultiStackHook(FetchHook):
         logger_str = (
             f"Passed {utils.colorize(count, utils.BOLD)} data points from {utils.colorize(utils.str_truncate_middle(dataset_id), utils.BLUE)}"
         )
-        #logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
+        # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
         logger.info(logger_str)
 
         # The stream is exhausted; permanently mark this dataset as completed
