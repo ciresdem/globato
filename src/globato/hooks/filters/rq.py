@@ -127,6 +127,7 @@ class ReferenceQuality(GlobatoFilter):
         if os.path.exists(self.ref_source) and os.path.isfile(self.ref_source):
             return [self.ref_source]
 
+        ModuleRegistry.load_all()
         logger.info(f"[RQ] Fetching reference data: {self.ref_source}...")
         mod_cls = ModuleRegistry.get_class(self.ref_source)
 
