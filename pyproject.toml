@@ -60,7 +60,7 @@ globato_hooks = "globato.schemas"
 # globato = "globato"
 
 [project.scripts]
-globato = "globato.cli.globato:cli"
+globato = "globato.cli:cli"
 
 # --- Build configuration ---
 
