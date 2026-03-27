@@ -99,7 +99,6 @@ class ReferenceQuality(GlobatoFilter):
 
         region = getattr(mod, 'region')
         if not self.ref_fn:
-
             files = self._fetch_reference_files(mod.region)
             if not files:
                 logger.warning("[RQ] No reference data found. Skipping.")
