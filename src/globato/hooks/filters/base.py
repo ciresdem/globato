@@ -17,6 +17,7 @@ import numpy as np
 
 from fetchez.hooks import FetchHook
 from fetchez import utils
+from globato.utils import add_field_to_recarray
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class GlobatoFilter(FetchHook):
         try:
             for chunk in stream:
                 if "classification" not in chunk.dtype.names:
-                    chunk = utils.add_field_to_recarray(chunk, "classification", np.uint8, 0)
+                    chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
 
                 if self.exclude_classes:
                     # True = Available to filter.

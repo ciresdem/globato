@@ -21,7 +21,7 @@ from transformez.cli import transformez_cli
 
 
 @click.group()
-@click.version_option(package_name='transformez')
+@click.version_option(package_name='globato')
 def cli():
     """Globato: The ContinUous-DEM Generation Framework."""
 

@@ -44,7 +44,6 @@ def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
                 s_count = np.sum(s_valid)
                 d_count = np.sum(d_valid)
 
-                # Pixel state changes
                 modified = np.sum(s_valid & d_valid & (s_data != d_data))
                 removed = np.sum(s_valid & ~d_valid)
                 added = np.sum(~s_valid & d_valid)
@@ -113,8 +112,10 @@ def raster_io(f):
 # =============================================================================
 @click.group(name="raster")
 def raster_group():
-    """Raster manipulation tools (Powered by Grits)."""
+    """Raster manipulation tools (Legacy Grits)."""
+
     pass
+
 
 @raster_group.command("diff")
 @raster_io
@@ -128,6 +129,7 @@ def raster_diff(src, dst, strip_bands, aux, mode, threshold):
     hook = RasterDiff(aux_path=aux, mode=mode, threshold=threshold)
     run_raster_hook(hook, src, dst, strip_bands)
 
+
 @raster_group.command("slope")
 @raster_io
 @click.option("--min", "min_val", type=float, help="Min Slope")
@@ -139,6 +141,7 @@ def raster_slope(src, dst, strip_bands, min_val, max_val):
     hook = RasterSlopeFilter(min_val=min_val, max_val=max_val)
     run_raster_hook(hook, src, dst, strip_bands)
 
+
 @raster_group.command("cut")
 @raster_io
 @click.option("-R", "--region", required=True, help="Region W/E/S/N")
@@ -149,6 +152,7 @@ def raster_cut(src, dst, strip_bands, region):
     hook = RasterCut()
     run_raster_hook(hook, src, dst, strip_bands, region=region)
 
+
 @raster_group.command("flats")
 @raster_io
 @click.option("--threshold", type=float, default=1.0, help="Minimum size of a flat-zone")
@@ -158,6 +162,7 @@ def raster_flats(src, dst, strip_bands, threshold):
     from globato.hooks.rasters.flats import RasterFlats
     hook = RasterFlats(size_threshold=threshold)
     run_raster_hook(hook, src, dst, strip_bands)
+
 
 @raster_group.command("fill")
 @raster_io
@@ -170,6 +175,7 @@ def raster_fill(src, dst, strip_bands, dist, smooth):
     hook = RasterFill(max_dist=dist, smoothing=smooth)
     run_raster_hook(hook, src, dst, strip_bands)
 
+
 @raster_group.command("morph")
 @raster_io
 @click.option("--op", type=click.Choice(["erosion", "dilation", "opening", "closing"]), default="erosion")
@@ -181,6 +187,7 @@ def raster_morph(src, dst, strip_bands, op, kernel):
     hook = RasterMorphology(op=op, kernel=kernel)
     run_raster_hook(hook, src, dst, strip_bands)
 
+
 @raster_group.command("interp")
 @raster_io
 @click.option("--method", type=click.Choice(["linear", "cubic", "nearest"]), default="linear")
@@ -190,6 +197,7 @@ def raster_interp(src, dst, strip_bands, method):
     from globato.hooks.rasters.scipy_griddata import ScipyInterp
     hook = ScipyInterp(method=method)
     run_raster_hook(hook, src, dst, strip_bands)
+
 
 @raster_group.command("blend")
 @raster_io
@@ -205,6 +213,7 @@ def raster_blend(src, dst, strip_bands, aux, blend_dist, core_dist, slope_scale,
     hook = RasterBlend(aux_path=aux, blend_dist=blend_dist, core_dist=core_dist,
                        slope_scale=slope_scale, random_scale=random_scale)
     run_raster_hook(hook, src, dst, strip_bands)
+
 
 @raster_group.command("zscore")
 @raster_io
