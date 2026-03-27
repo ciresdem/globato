@@ -14,11 +14,9 @@
   <a href="https://cudem.zulip.org"><img src="https://img.shields.io/badge/zulip-join_chat-brightgreen.svg" alt="Project Chat"></a>
 </p>
 
-# Globato: The ContinUous-DEM Generation Framework
+**Globato** is the user-facing geospatial engine of the Continuous-DEMs ecosystem. It is designed for the rapid development, blending, and processing of high-accuracy Topo-Bathy Digital Elevation Models (DEMs).
 
-**Globato** is the user-facing geospatial engine of the ContinUous-DEMs ecosystem. It is designed for the rapid development, blending, and processing of high-accuracy Topo-Bathy Digital Elevation Models (DEMs).
-
-Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and vertical datums) libraries, `globato` abstracts away the complexity of geospatial ETL pipelines. It allows users to generate massive, seamless DEMs using declarative YAML recipes or intuitive command-line tools—all while scaling infinitely on standard hardware.
+Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and vertical datums) libraries, `globato` abstracts away the complexity of DEM development. It allows users to generate massive, seamless DEMs using declarative YAML recipes or intuitive command-line tools—all while scaling infinitely on standard hardware.
 
 ## Key Features
 
@@ -68,14 +66,6 @@ globato raster clip -R -120/-119/34/35 my_dem.tif clipped_dem.tif
 ```
 
 ## The Vision & Community
-The transition to this modern, modular architecture (supported by the NSF POSE program) is just the beginning. Our vision is to cultivate a thriving open-source community around high-accuracy elevation modeling.
-
-### Future Roadmap:
-
-* Expanding the official dem-recipes GitHub repository with community-contributed pipelines.
-
-* Tighter integration with IVERT for automated ICESat-2 QA/QC validation.
-
-* Additional native Python hooks for advanced point-cloud classification and hydro-flattening.
+The transition to this modern, modular architecture is just the beginning. Our vision is to cultivate a thriving open-source community around high-accuracy elevation modeling.
 
 We welcome contributions! Whether you want to write a new data-fetching module, build a custom visualization hook, or simply share a YAML recipe for your local coastline, check out our [GitHub Repository](https://github.com/continuous-dems) or join our [Zulip Chatspace](https://cudem.zulipchat.com/) to get involved.
