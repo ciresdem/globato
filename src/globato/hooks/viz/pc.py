@@ -86,9 +86,9 @@ class PointCloudViz(FetchHook):
             valid_pts, noise_pts = points[~noise_mask], points[noise_mask]
 
             if len(valid_pts) > 0:
-                ax.scatter(valid_pts['x'], valid_pts['y'], c='lightgray', s=1, alpha=0.5, label='Valid')
+                ax.scatter(valid_pts['x'], valid_pts['y'], c='lightgray', s=2, alpha=0.5, label=f"Valid ({len(valid_pts)} points)")
             if len(noise_pts) > 0:
-                ax.scatter(noise_pts['x'], noise_pts['y'], c='red', s=5, marker='x', label='Rejected (Class 7)')
+                ax.scatter(noise_pts['x'], noise_pts['y'], c='red', s=.5, marker='x', label=f"Rejected ({len(noise_pts)} points)")
 
             ax.set_title(f"Filter Results: {len(noise_pts):,} Outliers Found")
             ax.legend()
