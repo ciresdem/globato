@@ -50,11 +50,11 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
     try:
         from globato.hooks.viz.geohillshade import GeoHillshade
     except ImportError as e:
-        click.secho(f"❌ Error importing GeoHillshade: {e}", fg="red")
+        click.secho(f"Error importing GeoHillshade: {e}", fg="red")
         sys.exit(1)
 
     if not os.path.exists(src):
-        click.secho(f"❌ Error: Input file not found: {src}", fg="red")
+        click.secho(f"Error: Input file not found: {src}", fg="red")
         sys.exit(1)
 
     hook = GeoHillshade(
@@ -70,7 +70,7 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
         split_cpt=split_cpt
     )
 
-    click.secho(f"\n🎨 Generating Colored Hillshade: {os.path.basename(src)}...", fg="cyan", bold=True)
+    click.secho(f"\nGenerating Colored Hillshade: {os.path.basename(src)}...", fg="cyan", bold=True)
     click.echo(f"   Colormap: {cmap} | Exag: {exag}x | Blend: {blend}")
 
     start_time = time.time()
@@ -81,10 +81,10 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
     elapsed = time.time() - start_time
 
     if success:
-        click.secho(f"\n✅ Visualization Complete! Saved to: {dst}", fg="green", bold=True)
+        click.secho(f"\nVisualization Complete! Saved to: {dst}", fg="green", bold=True)
         click.echo(f"   Time: {elapsed:.2f} seconds\n")
     else:
-        click.secho("\n❌ Failed to generate hillshade.", fg="red")
+        click.secho("\nFailed to generate hillshade.", fg="red")
         sys.exit(1)
 
 
@@ -94,9 +94,8 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
 @click.option("-R", "--region", help="Spatial crop (required if using spatial filters like rq).")
 @click.option("--3d", "is_3d", is_flag=True, help="Render an interactive 3D plot (auto-decimates large data).")
 @click.option("--outliers", is_flag=True, help="Highlight rejected points (Class 7) in red.")
-@click.option("--cmap", default="viridis", help="Colormap for Z-elevation (default: viridis).")
-@click.option("--max-points", type=int, default=100000, help="Max points to render before decimating.")
-def viz_points(src, filters, region, is_3d, outliers, cmap, max_points):
+@click.option("--out", default="{base}_viz.png", help="Output image filename.")
+def viz_points(src, filters, region, is_3d, outliers, out):
     """Visualize a point cloud for quick sanity checks and filter tuning.
 
     Examples:
@@ -104,116 +103,77 @@ def viz_points(src, filters, region, is_3d, outliers, cmap, max_points):
       globato viz points mbdb -R loc:"Miami" -F rq:threshold=5 --outliers
     """
 
-    import numpy as np
-    import matplotlib.pyplot as plt
     from globato.hooks.formats.stream_factory import StreamFactory
     from fetchez.core import run_fetchez
 
-    if is_3d:
-        from mpl_toolkits.mplot3d import Axes3D
+    try:
+        from globato.hooks.viz.pc import PointCloudViz
+    except ImportError as e:
+        click.secho(f"Error importing PointCloudViz: {e}", fg="red")
+        sys.exit(1)
 
     HookRegistry.load_all()
     active_filters = []
     parsed_region = TransRegion.from_string(region) if region else None
-    dummy_mod = type("Dummy", (), {"region": parsed_region})()
+
+    dummy_mod = type("Dummy", (), {"region": parsed_region, "name": "cli_viz"})()
 
     for f_str in filters:
         f_name, f_kwargs = _parse_filter_string(f_str)
         mod_cls = HookRegistry.get_class(f_name)
         if not mod_cls:
-            click.secho(f"❌ Error: Unknown filter '{f_name}'", fg="red")
+            click.secho(f"Error: Unknown filter '{f_name}'", fg="red")
             sys.exit(1)
 
         f = mod_cls(**f_kwargs)
         if hasattr(f, 'setup') and f.setup(dummy_mod, {}) is False:
-            click.secho(f"❌ Error: Filter '{f.name}' failed to initialize. Did you forget a --region (-R)?", fg="red")
+            click.secho(f"Error: Filter '{f.name}' failed to initialize. Did you forget a --region (-R)?", fg="red")
             sys.exit(1)
         active_filters.append(f)
 
-    click.secho(f"📥 Loading point cloud: {src}...", fg="cyan")
+    click.secho(f"Loading point cloud: {src}...", fg="cyan")
 
+    entries = []
     if os.path.exists(src):
         reader = StreamFactory.get_reader(src)
         stream = reader.yield_chunks() if reader else []
+        entries.append((dummy_mod, {'dst_fn': src, 'stream': stream}))
     else:
         mod_cls = HookRegistry.get_class(src)
         if not mod_cls or not parsed_region:
-            click.secho("❌ Error: Invalid file, or missing -R for module streaming.", fg="red")
+            click.secho("Error: Invalid file, or missing -R for module streaming.", fg="red")
             sys.exit(1)
         fetcher = mod_cls(src_region=parsed_region)
         fetcher.run()
         run_fetchez([fetcher])
-        stream = []
         for entry in fetcher.results:
             if entry.get("dst_fn"):
                 r = StreamFactory.get_reader(entry["dst_fn"])
                 if r:
-                    stream.extend(r.yield_chunks())
+                    entries.append((dummy_mod, {'dst_fn': entry["dst_fn"], 'stream': r.yield_chunks()}))
 
-    processed_chunks = []
-    for chunk in stream:
-        if 'classification' not in chunk.dtype.names:
-            #chunk = utils.add_field_to_recarray(chunk, 'classification', np.zeros(len(chunk), dtype=int))
-            chunk = rfn.append_fields(chunk, 'classification', np.zeros(len(chunk), dtype=int), usemask=False)
+    if not entries:
+        click.secho("Error: No valid data streams found.", fg="red")
+        sys.exit(1)
 
-        for f in active_filters:
-            mask = f.filter_chunk(chunk)
-            chunk['classification'][mask] = getattr(f, 'set_class', 7)
+    for f in active_filters:
+        entries = f.run(entries)
 
-        processed_chunks.append(chunk)
+    if not dummy_mod.region:
+        dummy_mod.region = "Global"
+
+    viz_hook = PointCloudViz(output=out, outliers=outliers, is_3d=is_3d)
+    entries = viz_hook.run(entries)
+
+    total_pts = 0
+    for mod, entry in entries:
+        stream = entry.get('stream')
+        if stream:
+            for chunk in stream:
+                total_pts += len(chunk)
+
+    if total_pts == 0:
+        click.secho("Error: No points survived the filter pipeline.", fg="red")
 
     for f in active_filters:
         if hasattr(f, 'teardown'): f.teardown()
-
-    if not processed_chunks:
-        click.secho("❌ Error: No points found.", fg="red")
-        sys.exit(1)
-
-    points = rfn.stack_arrays(processed_chunks, asrecarray=True, usemask=False)
-    total_pts = len(points)
-    click.secho(f"📊 Ready to render {total_pts:,} points.", fg="green")
-
-    fig = plt.figure(figsize=(10, 8))
-
-    if outliers:
-        click.echo("🎨 Rendering Outlier Showcase...")
-        ax = fig.add_subplot(111)
-        noise_mask = points['classification'] == 7
-        valid_pts, noise_pts = points[~noise_mask], points[noise_mask]
-
-        if len(valid_pts) > 0:
-            ax.scatter(valid_pts['x'], valid_pts['y'], c='lightgray', s=1, alpha=0.5, label='Valid')
-        if len(noise_pts) > 0:
-            ax.scatter(noise_pts['x'], noise_pts['y'], c='red', s=5, marker='x', label='Rejected (Class 7)')
-
-        ax.set_title(f"Filter Results: {len(noise_pts):,} Outliers Found")
-        ax.legend()
-        ax.set_aspect('equal', 'datalim')
-
-    elif is_3d:
-        click.echo("🧊 Rendering Interactive 3D View...")
-        ax = fig.add_subplot(111, projection='3d')
-        render_pts = points
-        if total_pts > max_points:
-            click.secho(f"⚠️ Decimating to {max_points:,} points for 3D performance...", fg="yellow")
-            indices = np.random.choice(total_pts, max_points, replace=False)
-            render_pts = points[indices]
-
-        p = ax.scatter(render_pts['x'], render_pts['y'], render_pts['z'], c=render_pts['z'], cmap=cmap, s=2, alpha=0.8)
-        fig.colorbar(p, ax=ax, label='Elevation (Z)')
-        ax.set_title(f"3D Sanity Check ({len(render_pts):,} points)")
-
-    else:
-        click.echo("🗺️ Rendering Fast 2D Top-Down View...")
-        ax = fig.add_subplot(111)
-        if total_pts > max_points:
-            hb = ax.hexbin(points['x'], points['y'], C=points['z'], gridsize=100, cmap=cmap, reduce_C_function=np.mean)
-            fig.colorbar(hb, ax=ax, label='Mean Elevation (Z)')
-        else:
-            sc = ax.scatter(points['x'], points['y'], c=points['z'], cmap=cmap, s=2)
-            fig.colorbar(sc, ax=ax, label='Elevation (Z)')
-        ax.set_title(f"2D Elevation Map ({total_pts:,} points)")
-        ax.set_aspect('equal', 'datalim')
-
-    plt.tight_layout()
-    plt.show()
