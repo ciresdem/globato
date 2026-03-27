@@ -5,8 +5,7 @@
 globato.api
 ~~~~~~~~~~~
 High-level Python API for Globato.
-Provides a fluent interface for streaming, processing, and accessing geospatial data
-without needing to construct full Fetchez pipelines.
+Provides interface for streaming, processing, and accessing geospatial data.
 """
 
 import os
@@ -25,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 class GlobatoStream:
     """A wrapper around a data stream generator.
-    Allows for chaining processing steps (fluent API).
+
+    Allows for chaining processing steps.
     """
 
     def __init__(self, iterator: Iterator[np.ndarray], src_srs: str = "EPSG:4326"):
@@ -70,9 +70,7 @@ class GlobatoStream:
         return self.map(stream_crop_chunk, region=region)
 
     def to_dataframe(self, limit: int = None) -> pd.DataFrame:
-        """Consumes the stream and returns a Pandas DataFrame.
-        Warning: This loads data into memory!
-        """
+        """Consumes the stream and returns a Pandas DataFrame."""
 
         chunks = []
         count = 0
@@ -97,9 +95,7 @@ class GlobatoStream:
         return df
 
     def to_polars(self):
-        """Consumes the stream and returns a Polars DataFrame.
-        Blazing fast, highly memory efficient alternative to Pandas.
-        """
+        """Consumes the stream and returns a Polars DataFrame."""
 
         import polars as pl
 
@@ -164,7 +160,7 @@ def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
                      except Exception as e:
                          logger.warning(f"Failed to stream {fn}: {e}")
 
-        return GlobatoStream(_module_chain_gen(), src_srs="EPSG:4326") # Modules usually normalize to 4326
+        return GlobatoStream(_module_chain_gen(), src_srs="EPSG:4326")
 
     else:
         raise TypeError(f"Unknown source type: {type(source)}")

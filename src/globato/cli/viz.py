@@ -39,7 +39,7 @@ def viz_group():
 @click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
 @click.option("--split-cpt", type=float, default=0.0, help="Hinge point for divergent colormaps (default: 0.0).")
 def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, z_min, z_max, split_cpt):
-    """Generate a beautiful, georeferenced colored hillshade.
+    """Generate a georeferenced colored hillshade.
 
     SRC: Input DEM (GeoTIFF or NetCDF)
     DST: Output colored hillshade (GeoTIFF)
@@ -150,7 +150,8 @@ def viz_points(src, filters, region, is_3d, outliers, cmap, max_points):
     processed_chunks = []
     for chunk in stream:
         if 'classification' not in chunk.dtype.names:
-            chunk = rfn.append_fields(chunk, 'classification', np.zeros(len(chunk), dtype=int), usemask=False)#, asis=True)
+            #chunk = utils.add_field_to_recarray(chunk, 'classification', np.zeros(len(chunk), dtype=int))
+            chunk = rfn.append_fields(chunk, 'classification', np.zeros(len(chunk), dtype=int), usemask=False)
 
         for f in active_filters:
             mask = f.filter_chunk(chunk)

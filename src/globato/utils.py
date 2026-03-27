@@ -16,10 +16,14 @@ import os
 import sys
 import shutil
 import subprocess
+import logging
 
 from tqdm import tqdm
 import numpy as np
 from numpy.lib.recfunctions import append_fields
+
+logger = logging.getLogger(__name__)
+
 
 # System Command Functions
 cmd_exists = lambda x: any(os.access(os.path.join(path, x), os.X_OK)
@@ -64,7 +68,7 @@ def run_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
         p.stdout.close()
 
         if verbose:
-            echo_msg(f'Ran cmd {cmd.rstrip()} and returned {p.returncode}')
+            logger.info(f'Ran cmd {cmd.rstrip()} and returned {p.returncode}')
 
     return out, p.returncode
 
@@ -113,6 +117,8 @@ def cmd_check(cmd_str, cmd_vers_str):
 def add_field_to_recarray(rec, name, dtype, default_val):
     """Append a new field to a structured array/recarray."""
 
-    new_col = np.full(len(rec), default_val, dtype=dtype)
+    if name not in chunk.dtype.names:
+        new_col = np.full(len(rec), default_val, dtype=dtype)
 
-    return append_fields(rec, name, new_col, usemask=False, asrecarray=True)
+        return append_fields(rec, name, new_col, usemask=False, asrecarray=True)
+    return rec
