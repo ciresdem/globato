@@ -46,6 +46,7 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
 
     Example: globato viz hillshade my_dem.tif my_hillshade.tif --cmap etopo --exag 3 --blend soft_light
     """
+
     try:
         from globato.hooks.viz.geohillshade import GeoHillshade
     except ImportError as e:
@@ -102,6 +103,7 @@ def viz_points(src, filters, region, is_3d, outliers, cmap, max_points):
       globato viz points data.xyz --3d
       globato viz points mbdb -R loc:"Miami" -F rq:threshold=5 --outliers
     """
+
     import numpy as np
     import matplotlib.pyplot as plt
     from globato.hooks.formats.stream_factory import StreamFactory
@@ -145,7 +147,8 @@ def viz_points(src, filters, region, is_3d, outliers, cmap, max_points):
         for entry in fetcher.results:
             if entry.get("dst_fn"):
                 r = StreamFactory.get_reader(entry["dst_fn"])
-                if r: stream.extend(r.yield_chunks())
+                if r:
+                    stream.extend(r.yield_chunks())
 
     processed_chunks = []
     for chunk in stream:

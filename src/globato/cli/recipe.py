@@ -42,10 +42,12 @@ def resolve_recipe(target):
         click.secho(f"Error resolving recipe '{target}': {e}", fg="red")
         return None
 
+
 @click.group(name="recipe")
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
     pass
+
 
 @recipe_group.command("batch")
 @click.argument("template")
@@ -130,6 +132,7 @@ def recipe_batch(template, tileset, outdir):
     if yaml_path != template and os.path.exists(yaml_path):
         os.remove(yaml_path)
 
+
 @recipe_group.command("run")
 @click.argument("target")
 @click.option("--region", help="Override the recipe's bounding box (W/E/S/N)")
@@ -193,6 +196,7 @@ def recipe_run(target, region, res, name, out, save_as):
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
 
+
 @recipe_group.command("list")
 def recipe_list():
     """List all official community recipes available on GitHub."""
@@ -248,10 +252,10 @@ def recipe_info(target):
     click.echo(f"Region:      {region}")
     click.echo(f"Sources:     {', '.join(unique_mods)}\n")
 
-    # Clean up the temp file
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
 
+
 @recipe_group.command("list")
 def recipe_list():
     """List all official community recipes available on GitHub."""
@@ -307,6 +311,5 @@ def recipe_info(target):
     click.echo(f"Region:      {region}")
     click.echo(f"Sources:     {', '.join(unique_mods)}\n")
 
-    # Clean up the temp file
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
