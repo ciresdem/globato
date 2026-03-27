@@ -27,6 +27,7 @@ def cli():
 
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
+
 cli.add_command(recipe_group, name="recipe")
 cli.add_command(dem_group, name="dem")
 cli.add_command(raster_group, name="raster")
@@ -35,6 +36,7 @@ cli.add_command(fetch_group, name="fetch")
 cli.add_command(pointz_group, name="pointz")
 cli.add_command(viz_group, name="viz")
 cli.add_command(transformez_cli, name="transform")
+
 
 if __name__ == "__main__":
     cli()

@@ -18,11 +18,13 @@ from .region import _parse_region
 
 logger = logging.getLogger(__name__)
 
+
 @click.group(name="fetch")
 def fetch_group():
     """Discover and download raw elevation/bathymetry data."""
 
     pass
+
 
 @fetch_group.command("list")
 @click.option("--search", "-s", help="Filter modules by name or keyword.")
@@ -32,7 +34,7 @@ def fetch_list(search):
     ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
-    click.secho(f"\n📦 Available Fetchez Modules:", fg="cyan", bold=True)
+    click.secho(f"\nAvailable Fetchez Modules:", fg="cyan", bold=True)
     click.echo("=" * 50)
 
     count = 0
@@ -70,11 +72,11 @@ def fetch_run(module_name, region, outdir, extra_args):
     mod_cls = ModuleRegistry.get_class(module_name)
 
     if not mod_cls:
-        click.secho(f"❌ Error: Unknown module '{module_name}'. Run 'globato fetch list' to see available options.", fg="red")
+        click.secho(f"Error: Unknown module '{module_name}'. Run 'globato fetch list' to see available options.", fg="red")
         sys.exit(1)
 
     parsed_region = _parse_region(region)
-    click.secho(f"🌍 Target Region: [{parsed_region.xmin:.4f}, {parsed_region.xmax:.4f}, {parsed_region.ymin:.4f}, {parsed_region.ymax:.4f}]", fg="blue")
+    click.secho(f"Target Region: [{parsed_region.xmin:.4f}, {parsed_region.xmax:.4f}, {parsed_region.ymin:.4f}, {parsed_region.ymax:.4f}]", fg="blue")
 
     kwargs = {}
     for arg in extra_args:
@@ -91,7 +93,7 @@ def fetch_run(module_name, region, outdir, extra_args):
     original_cwd = os.getcwd()
     os.chdir(outdir)
 
-    click.secho(f"🚀 Initializing {module_name} fetcher...", fg="cyan", bold=True)
+    click.secho(f"Initializing {module_name} fetcher...", fg="cyan", bold=True)
     if kwargs:
         click.echo(f"   Using custom arguments: {kwargs}")
 
@@ -101,9 +103,9 @@ def fetch_run(module_name, region, outdir, extra_args):
         fetcher.run()
         run_fetchez([fetcher])
 
-        click.secho(f"\n✅ Download complete! Files saved to: {outdir}", fg="green", bold=True)
+        click.secho(f"\nDownload complete! Files saved to: {outdir}", fg="green", bold=True)
 
     except Exception as e:
-        click.secho(f"\n❌ Fetch failed: {e}", fg="red")
+        click.secho(f"\nFetch failed: {e}", fg="red")
     finally:
         os.chdir(original_cwd)

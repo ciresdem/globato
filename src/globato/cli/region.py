@@ -15,6 +15,7 @@ import sys
 from transformez.spatial import TransRegion
 from fetchez.spatial import parse_region
 
+
 @click.group(name="region")
 def region_group():
     """Generate and manipulate spatial bounding boxes and tilesets."""
@@ -27,8 +28,9 @@ def _parse_region(region_str):
     try:
         return TransRegion(*parse_region(region_str)[0])
     except Exception as e:
-        click.secho(f"❌ Error parsing region '{region_str}': {e}", fg="red")
+        click.secho(f"Error parsing region '{region_str}': {e}", fg="red")
         sys.exit(1)
+
 
 @region_group.command("echo")
 @click.argument("region_str")
@@ -79,9 +81,9 @@ def region_split(region_str, size, out, prefix):
 
     Example: globato region split loc:"California" --size 0.5 -O cali_tiles.geojson
     """
+
     region = _parse_region(region_str)
 
-    # Calculate rows and columns
     width = region.xmax - region.xmin
     height = region.ymax - region.ymin
 
@@ -94,16 +96,16 @@ def region_split(region_str, size, out, prefix):
     for r in range(rows):
         for c in range(cols):
             tile_w = region.xmin + (c * size)
-            tile_e = min(tile_w + size, region.xmax)  # Don't overhang the original east bound
+            tile_e = min(tile_w + size, region.xmax)
             tile_s = region.ymin + (r * size)
-            tile_n = min(tile_s + size, region.ymax)  # Don't overhang the original north bound
+            tile_n = min(tile_s + size, region.ymax)
 
             geom = {
                 "type": "Polygon",
                 "coordinates": [[[tile_w, tile_s], [tile_w, tile_n], [tile_e, tile_n], [tile_e, tile_s], [tile_w, tile_s]]]
             }
 
-            # Format a nice tile name: e.g., tile_001
+            # Format a tile name: e.g., tile_001
             tile_name = f"{prefix}_{count:03d}"
 
             features.append({
@@ -124,8 +126,8 @@ def region_split(region_str, size, out, prefix):
     with open(out, 'w') as f:
         json.dump(feature_collection, f, indent=2)
 
-    click.secho(f"✅ Generated {len(features)} tiles ({cols}x{rows}) and saved to: {out}", fg="green")
-    click.echo(f"💡 Run these using: globato recipe batch my_recipe.yaml {out}")
+    click.secho(f"Generated {len(features)} tiles ({cols}x{rows}) and saved to: {out}", fg="green")
+    click.echo(f"Run these using: globato recipe batch my_recipe.yaml {out}")
 
 
 @region_group.command("transform")

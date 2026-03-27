@@ -42,10 +42,12 @@ def resolve_recipe(target):
         click.secho(f"Error resolving recipe '{target}': {e}", fg="red")
         return None
 
+
 @click.group(name="recipe")
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
     pass
+
 
 @recipe_group.command("batch")
 @click.argument("template")
@@ -71,7 +73,7 @@ def recipe_batch(template, tileset, outdir):
     #     template_dict = yaml.safe_load(f)
 
     if not os.path.exists(tileset):
-        click.secho(f"❌ Error: Tileset not found: {tileset}", fg="red")
+        click.secho(f"Error: Tileset not found: {tileset}", fg="red")
         sys.exit(1)
 
     with open(tileset, 'r') as f:
@@ -79,10 +81,10 @@ def recipe_batch(template, tileset, outdir):
 
     features = geojson.get("features", [])
     if not features:
-        click.secho("❌ Error: No features found in tileset.", fg="red")
+        click.secho("Error: No features found in tileset.", fg="red")
         sys.exit(1)
 
-    click.secho(f"\n🗺️  Batch Processing {len(features)} tiles from {os.path.basename(tileset)}...", fg="cyan", bold=True)
+    click.secho(f"\n  Batch Processing {len(features)} tiles from {os.path.basename(tileset)}...", fg="cyan", bold=True)
 
     base_outdir = os.path.abspath(outdir)
     os.makedirs(base_outdir, exist_ok=True)
@@ -99,7 +101,7 @@ def recipe_batch(template, tileset, outdir):
             tile_name = props.get("NAME") or props.get("ID") or f"tile_{i:03d}"
 
             click.echo("\n" + "="*60)
-            click.secho(f"🚀 TILE {i}/{len(features)}: {tile_name}", fg="green", bold=True)
+            click.secho(f"TILE {i}/{len(features)}: {tile_name}", fg="green", bold=True)
             click.secho(f"   Bounds: [{w:.3f}, {e:.3f}, {s:.3f}, {n:.3f}]", fg="green")
 
             tile_dir = os.path.join(base_outdir, tile_name)
@@ -121,14 +123,15 @@ def recipe_batch(template, tileset, outdir):
             Recipe.from_file(config).run()
 
         except Exception as e:
-            click.secho(f"❌ Failed on tile {tile_name}: {e}", fg="red")
+            click.secho(f"Failed on tile {tile_name}: {e}", fg="red")
         finally:
             os.chdir(original_cwd)
 
-    click.secho("\n✅ Batch Processing Complete!", fg="green", bold=True)
+    click.secho("\nBatch Processing Complete!", fg="green", bold=True)
 
     if yaml_path != template and os.path.exists(yaml_path):
         os.remove(yaml_path)
+
 
 @recipe_group.command("run")
 @click.argument("target")
@@ -162,7 +165,7 @@ def recipe_run(target, region, res, name, out, save_as):
             w, e, s, n = map(float, region.replace(",", "/").split("/"))
             config_dict["region"] = [w, e, s, n]
         except ValueError:
-            click.secho("❌ Error: Region must be formatted as W/E/S/N", fg="red")
+            click.secho("Error: Region must be formatted as W/E/S/N", fg="red")
             sys.exit(1)
 
     if res:
@@ -179,13 +182,13 @@ def recipe_run(target, region, res, name, out, save_as):
         proj = config_dict.setdefault("project", {})
         proj["name"] = proj.get("name", "Recipe") + "_Custom"
         proj["description"] = f"[Template: {target}] " + proj.get("description", "")
-        click.secho(f"✨ Applied custom overrides to recipe template.", fg="yellow")
+        click.secho(f"Applied custom overrides to recipe template.", fg="yellow")
 
     if save_as:
         with open(save_as, 'w') as f:
             yaml.dump(config_dict, f, sort_keys=False, default_flow_style=False)
-        click.secho(f"✅ Customized recipe saved to: {save_as}", fg="green")
-        click.echo(f"🚀 Run it later using: globato recipe run {save_as}")
+        click.secho(f"Customized recipe saved to: {save_as}", fg="green")
+        click.echo(f"Run it later using: globato recipe run {save_as}")
     else:
         click.secho(f"Executing recipe: {target}", fg="green")
         Recipe.from_file(config_dict).run()
@@ -193,6 +196,7 @@ def recipe_run(target, region, res, name, out, save_as):
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
 
+
 @recipe_group.command("list")
 def recipe_list():
     """List all official community recipes available on GitHub."""
@@ -207,12 +211,12 @@ def recipe_list():
         response.raise_for_status()
         files = response.json()
 
-        click.secho("\n📚 Available Community Recipes:", fg="cyan", bold=True)
+        click.secho("\nAvailable Community Recipes:", fg="cyan", bold=True)
         for f in files:
             if f["name"].endswith(".yaml"):
                 click.echo(f"  ➔ {f['name'].replace('.yaml', '')}")
 
-        click.echo("\n💡 Run 'globato recipe info <name>' to see what a recipe does.")
+        click.echo("\nRun 'globato recipe info <name>' to see what a recipe does.")
 
     except Exception as e:
         click.secho(f"Failed to fetch recipes: {e}", fg="red")
@@ -243,15 +247,15 @@ def recipe_info(target):
 
     unique_mods = list(set(mod_names))
 
-    click.secho(f"\n🏷️  Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
+    click.secho(f"\n Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
     click.echo(f"Description: {proj.get('description', 'No description provided.')}")
     click.echo(f"Region:      {region}")
     click.echo(f"Sources:     {', '.join(unique_mods)}\n")
 
-    # Clean up the temp file
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
 
+
 @recipe_group.command("list")
 def recipe_list():
     """List all official community recipes available on GitHub."""
@@ -266,12 +270,12 @@ def recipe_list():
         response.raise_for_status()
         files = response.json()
 
-        click.secho("\n📚 Available Community Recipes:", fg="cyan", bold=True)
+        click.secho("\nAvailable Community Recipes:", fg="cyan", bold=True)
         for f in files:
             if f["name"].endswith(".yaml"):
                 click.echo(f"  ➔ {f['name'].replace('.yaml', '')}")
 
-        click.echo("\n💡 Run 'globato recipe info <name>' to see what a recipe does.")
+        click.echo("\nRun 'globato recipe info <name>' to see what a recipe does.")
 
     except Exception as e:
         click.secho(f"Failed to fetch recipes: {e}", fg="red")
@@ -302,11 +306,10 @@ def recipe_info(target):
 
     unique_mods = list(set(mod_names))
 
-    click.secho(f"\n🏷️  Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
+    click.secho(f"\n Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
     click.echo(f"Description: {proj.get('description', 'No description provided.')}")
     click.echo(f"Region:      {region}")
     click.echo(f"Sources:     {', '.join(unique_mods)}\n")
 
-    # Clean up the temp file
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
