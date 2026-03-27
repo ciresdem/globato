@@ -117,7 +117,7 @@ def cmd_check(cmd_str, cmd_vers_str):
 def add_field_to_recarray(rec, name, dtype, default_val):
     """Append a new field to a structured array/recarray."""
 
-    if name not in chunk.dtype.names:
+    if name not in rec.dtype.names:
         new_col = np.full(len(rec), default_val, dtype=dtype)
 
         return append_fields(rec, name, new_col, usemask=False, asrecarray=True)
