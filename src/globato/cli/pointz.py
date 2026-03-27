@@ -107,7 +107,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
             click.secho(f"Error: Unknown filter '{f_name}'", fg="red", err=True)
             sys.exit(1)
 
-        if "res" not in f_kwargs: f_kwargs["res"] = 0.001
+        # if "res" not in f_kwargs: f_kwargs["res"] = 0.001
         active_filters.append(mod_cls(**f_kwargs))
 
     streams = []
