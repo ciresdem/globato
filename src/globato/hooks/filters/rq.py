@@ -66,7 +66,7 @@ class ReferenceQuality(GlobatoFilter):
     meta_desc = "Filter points by comparing z values to a reference raster."
 
     def __init__(self, reference="gmrt", threshold=50, mode="percent",
-                 builder="grid", res=0.00416, target_srs=None,
+                 builder="grid", res=0.0008333333333333334, target_srs=None,
                  iho_order="1", **kwargs):
         super().__init__(**kwargs)
         self.ref_source = reference
