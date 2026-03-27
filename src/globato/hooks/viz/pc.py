@@ -59,13 +59,12 @@ class PointCloudViz(FetchHook):
 
         return entries
 
-    def _viz_stream(self, stream, out_fn, max_points=100000, cmap="viridis", outliers=False, is_3d=False):#region=None, filters=[],is_3d=False):
+    def _viz_stream(self, stream, out_fn, max_points=100000, cmap="viridis", outliers=False, is_3d=False):
         logger.info(f"Loading point cloud from stream: {stream}...")
 
         processed_chunks = []
         for chunk in stream:
             if 'classification' not in chunk.dtype.names:
-                #chunk = utils.add_field_to_recarray(chunk, 'classification', np.zeros(len(chunk), dtype=int))
                 chunk = rfn.append_fields(chunk, 'classification', np.zeros(len(chunk), dtype=int), usemask=False)
             processed_chunks.append(chunk)
 
