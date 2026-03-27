@@ -69,7 +69,7 @@ def pointz_list_filters():
     HookRegistry.load_all()
     registry = HookRegistry.get_registry()
 
-    click.secho("\n🚿 Available PointZ Filters:", fg="cyan", bold=True)
+    click.secho("\n Available PointZ Filters:", fg="cyan", bold=True)
     click.echo("=" * 50)
     for name, meta in sorted(registry.items()):
         if meta.get("category") == "stream-filter":
@@ -143,7 +143,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
             click.secho("Error: You must provide a --region (-R) when streaming a module.", fg="red", err=True)
             sys.exit(1)
 
-        click.secho(f"🌍 Fetching live data from '{source}'...", fg="cyan", err=True)
+        click.secho(f"Fetching live data from '{source}'...", fg="cyan", err=True)
         fetcher = mod_cls(src_region=parsed_region)
         fetcher.run()
         run_fetchez([fetcher])
