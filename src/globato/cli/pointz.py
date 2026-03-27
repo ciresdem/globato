@@ -29,6 +29,7 @@ def pointz_group():
 
     pass
 
+
 def _parse_filter_string(f_str):
     """Parses 'outlierz:percentile=95,res=50' into a name and kwargs dict."""
 
@@ -47,6 +48,7 @@ def _parse_filter_string(f_str):
                 kwargs[k] = v
     return name, kwargs
 
+
 def _yield_stdin_chunks(chunk_size=100000):
     """A lightweight generator to stream XYZ data from standard input."""
 
@@ -58,6 +60,7 @@ def _yield_stdin_chunks(chunk_size=100000):
             yield chunk.to_records(index=False)
     except Exception as e:
         logger.error(f"Error reading from stdin: {e}")
+
 
 @pointz_group.command("list-filters")
 def pointz_list_filters():
@@ -73,6 +76,7 @@ def pointz_list_filters():
             desc = meta.get("desc", "No description provided.")
             click.echo(f"  {click.style(name, bold=True, fg='yellow'):<15} : {desc}")
     click.echo("=" * 50 + "\n")
+
 
 @pointz_group.command("run")
 @click.argument("source")
@@ -100,7 +104,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
         f_name, f_kwargs = _parse_filter_string(f_str)
         mod_cls = HookRegistry.get_class(f_name)
         if not mod_cls:
-            click.secho(f"❌ Error: Unknown filter '{f_name}'", fg="red", err=True)
+            click.secho(f"Error: Unknown filter '{f_name}'", fg="red", err=True)
             sys.exit(1)
 
         if "res" not in f_kwargs: f_kwargs["res"] = 0.001
@@ -114,7 +118,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
             "generator": _yield_stdin_chunks(chunk_size),
             "src_srs": s_srs or "EPSG:4326"
         })
-        click.secho("📥 Reading from standard input...", fg="cyan", err=True)
+        click.secho("Reading from standard input...", fg="cyan", err=True)
 
     elif os.path.exists(source):
         reader = StreamFactory.get_reader(source, chunk_size=chunk_size)
@@ -127,16 +131,16 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
                 "generator": reader.yield_chunks(),
                 "src_srs": detected_srs or "EPSG:4326"
             })
-        click.secho(f"📥 Reading local file: {source}", fg="cyan", err=True)
+        click.secho(f"Reading local file: {source}", fg="cyan", err=True)
 
     else:
         mod_cls = HookRegistry.get_class(source)
         if not mod_cls:
-            click.secho(f"❌ Error: '{source}' is not a file or known module.", fg="red", err=True)
+            click.secho(f"Error: '{source}' is not a file or known module.", fg="red", err=True)
             sys.exit(1)
 
         if not parsed_region:
-            click.secho("❌ Error: You must provide a --region (-R) when streaming a module.", fg="red", err=True)
+            click.secho("Error: You must provide a --region (-R) when streaming a module.", fg="red", err=True)
             sys.exit(1)
 
         click.secho(f"🌍 Fetching live data from '{source}'...", fg="cyan", err=True)
@@ -159,7 +163,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
                     })
 
     if not streams:
-        click.secho("❌ Error: No valid data streams could be established.", fg="red", err=True)
+        click.secho("Error: No valid data streams could be established.", fg="red", err=True)
         sys.exit(1)
 
     out_port = open(out, 'w') if out else sys.stdout
@@ -171,7 +175,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
         for f in active_filters:
             if hasattr(f, 'setup'):
                 if f.setup(dummy_mod, {}) is False:
-                    click.secho(f"❌ Error: Filter '{f.name}' failed to initialize. It likely requires a --region (-R).", fg="red", err=True)
+                    click.secho(f"Error: Filter '{f.name}' failed to initialize. It likely requires a --region (-R).", fg="red", err=True)
                     sys.exit(1)
 
         for stream_dict in streams:
@@ -180,14 +184,14 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
 
             reproject_hook = None
             if t_srs and current_srs.lower() != t_srs.lower():
-                click.secho(f"🌐 Reprojecting via hook: {current_srs} ➔ {t_srs}", fg="cyan", err=True)
+                click.secho(f"Reprojecting via hook: {current_srs} ➔ {t_srs}", fg="cyan", err=True)
                 reproject_hook = StreamReproject(dst_srs=t_srs, src_srs=current_srs)
 
                 pipeline = reproject_hook._get_pipeline(current_srs, region=parsed_region)
                 if pipeline:
                     stream_gen = reproject_hook._apply_transform(stream_gen, pipeline)
                 else:
-                    click.secho("⚠️ Warning: Could not establish reprojection pipeline. Skipping transform.", fg="yellow", err=True)
+                    click.secho("Warning: Could not establish reprojection pipeline. Skipping transform.", fg="yellow", err=True)
 
             for chunk in stream_gen:
                 total_in += len(chunk)
@@ -217,4 +221,4 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
 
         if out: out_port.close()
 
-        click.secho(f"\n✅ PointZ Complete: Processed {total_in:,} | Output {total_out:,} points.", fg="green", bold=True, err=True)
+        click.secho(f"\nPointZ Complete: Processed {total_in:,} | Output {total_out:,} points.", fg="green", bold=True, err=True)

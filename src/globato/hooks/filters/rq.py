@@ -226,7 +226,7 @@ class ReferenceQuality(GlobatoFilter):
         if self.total_points > 0:
             pct_dropped = (self.dropped_points / self.total_points) * 100
             logger.info(
-                f"✅ [RQ] Complete: Removed {self.dropped_points:,} outliers ({pct_dropped:.2f}%) from {self.total_points:,} total points."
+                f"[RQ] Complete: Removed {self.dropped_points:,} outliers ({pct_dropped:.2f}%) from {self.total_points:,} total points."
             )
 
         if hasattr(self, 'src'):
