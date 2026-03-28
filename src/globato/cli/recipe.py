@@ -313,3 +313,200 @@ def recipe_info(target):
 
     if yaml_path != target and os.path.exists(yaml_path):
         os.remove(yaml_path)
+
+
+def _parse_source(src_str):
+    """Parses 'module:key=val+hook:k=v' or local paths into a dictionary for the recipe."""
+
+    # Split the module definition from any appended hooks using '+'
+    components = src_str.split("+")
+    mod_part = components[0]
+    hook_parts = components[1:]
+
+    parts = mod_part.split(":", 1)
+    mod_name = parts[0]
+    args = {}
+
+    if len(parts) > 1:
+        for kv in parts[1].split(","):
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                try:
+                    v = float(v) if "." in v else int(v)
+                except ValueError:
+                    if v.lower() in ['true', 'yes']: v = True
+                    elif v.lower() in ['false', 'no']: v = False
+                args[k] = v
+
+    if os.path.exists(mod_name):
+        if os.path.isfile(mod_name):
+            args['paths'] = mod_name
+            mod_name = 'file'
+        elif os.path.isdir(mod_name):
+            args['path'] = mod_name
+            mod_name = 'local_fs'
+
+    mod_dict = {
+        "module": mod_name,
+    }
+    if args:
+        mod_dict["args"] = args
+
+    mod_dict["hooks"] = [{"name": "stream_data"}]
+
+    for h_str in hook_parts:
+        h_parts = h_str.split(":", 1)
+        h_name = h_parts[0]
+        h_args = {}
+
+        if len(h_parts) > 1:
+            for kv in h_parts[1].split(","):
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    try:
+                        v = float(v) if "." in v else int(v)
+                    except ValueError:
+                        if v.lower() in ['true', 'yes']: v = True
+                        elif v.lower() in ['false', 'no']: v = False
+                    h_args[k] = v
+
+        hook_dict = {"name": h_name}
+        if h_args:
+            hook_dict["args"] = h_args
+
+        mod_dict["hooks"].append(hook_dict)
+
+    return mod_dict
+
+
+def _list_sources(ctx, param, value):
+    """Eager callback to list available data sources and exit."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    from fetchez.registry import ModuleRegistry
+    ModuleRegistry.load_all()
+    registry = ModuleRegistry.get_registry()
+
+    click.secho("\nCurated Globato Data Sources:", fg="cyan", bold=True)
+    click.echo("=" * 60)
+
+    count = 0
+    for name, meta in sorted(registry.items()):
+        if meta.get("mod", "").startswith("globato.modules") or meta.get("category") == "Globato":
+            if name in meta.get("aliases", []):
+                continue
+
+            desc = meta.get("desc", "No description provided.")
+            click.echo(f"  {click.style(name, bold=True, fg='yellow'):<25} : {desc}")
+            count += 1
+
+    click.echo("-" * 60)
+    click.secho("\nLocal File Support:", fg="cyan", bold=True)
+    click.echo("=" * 60)
+    click.echo("  You can also pass local files and directories directly!")
+    click.echo("  Files will be wrapped in the 'file' module.")
+    click.echo("  Directories will be crawled using the 'local_fs' module.")
+    click.echo("  Example: globato recipe build -R ... ./my_data.tif ./my_folder:ext=.xyz")
+
+    click.echo(f"\nTry 'globato recipe build --info-source <name>' for details. Total: {count}\n")
+    ctx.exit()
+
+
+def _info_source(ctx, param, value):
+    """Eager callback to inspect a specific data source and exit."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    from fetchez.registry import ModuleRegistry
+    ModuleRegistry.load_all()
+    registry = ModuleRegistry.get_registry()
+
+    source_name = value
+    if source_name not in registry:
+        click.secho(f"Error: '{source_name}' is not a recognized source.", fg="red")
+        ctx.exit(1)
+
+    meta = registry[source_name]
+
+    if not (meta.get("mod", "").startswith("globato.modules") or meta.get("category") == "Globato"):
+        click.secho(f" Note: '{source_name}' is a core Fetchez module, not a curated Globato DEM source.", fg="yellow")
+
+    click.secho(f"\nSOURCE: {source_name.upper()}", fg="cyan", bold=True)
+    click.echo("=" * 60)
+    click.echo(f"  Description : {meta.get('desc', 'N/A')}")
+    click.echo(f"  Tags        : {', '.join(meta.get('tags', []))}")
+
+    mod_cls = ModuleRegistry.get_class(source_name)
+    if mod_cls:
+        import inspect
+        sig = inspect.signature(mod_cls.__init__)
+        params = []
+        for p_name, param in sig.parameters.items():
+            if p_name not in ["self", "kwargs", "src_region", "callback", "outdir", "name"]:
+                default = param.default if param.default is not inspect.Parameter.empty else "None"
+                params.append(f"{p_name}={default}")
+        if params:
+            click.echo(f"  Arguments   : {', '.join(params)}")
+    click.echo("\n")
+    ctx.exit()
+
+
+@recipe_group.command("build")
+@click.option("--list-sources", is_flag=True, is_eager=True, expose_value=False, callback=_list_sources, help="List available data sources and exit.")
+@click.option("--info-source", metavar="NAME", is_eager=True, expose_value=False, callback=_info_source, help="Show details for a specific data source and exit.")
+@click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
+@click.option("-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)")
+@click.option("-O", "--outname", default="globato_dem", help="Output Basename (default: globato_dem)")
+@click.option("-P", "--crs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)")
+@click.option("-M", "--algo", default="interp_gmt", help="Interpolation algorithm (interp_gmt, raster_fill, etc.)")
+@click.option("-A", "--stack-mode", type=click.Choice(['mean', 'min', 'max', 'mixed', 'supercede']), default="mixed", help="Stacking mode")
+@click.option("--save-only", is_flag=True, help="Save the generated YAML recipe to disk WITHOUT running it.")
+@click.argument("sources", nargs=-1)
+def recipe_build(region, increment, outname, crs, algo, stack_mode, save_only, sources):
+    """Build and run a recipe on the fly using modules or local files.
+
+    SOURCES can be Fetchez modules or local files.
+    Append hooks using '+' (stream_data is added automatically).
+
+    Examples:
+      globato recipe build -R -120/-119/34/35 -E 1s ./my_lidar.laz copernicus:weight=1.5
+      globato recipe build -R -120/-119/34/35 -E 1s mbdb+rq:threshold=50+outlierz --save-only
+    """
+
+    if not sources:
+        click.secho("Error: You must provide at least one data source.", fg="red")
+        sys.exit(1)
+
+    config = {
+        "project": {"name": outname},
+        "region": region,
+        "modules": [_parse_source(s) for s in sources],
+        "global_hooks": [
+            {
+                "name": "multi_stack",
+                "args": {"res": increment, "crs": crs, "mode": stack_mode, "output": f"{outname}_stack.tif"}
+            },
+            {
+                "name": "ms_cudem",
+                "args": {"algo": algo}
+            }
+        ]
+    }
+
+    yaml_str = yaml.dump(config, sort_keys=False)
+
+    if save_only:
+        out_yaml = f"{outname}_recipe.yaml"
+        with open(out_yaml, "w") as f:
+            f.write(yaml_str)
+        click.secho(f"Recipe saved to {out_yaml}. Run it later with 'globato recipe run {out_yaml}'", fg="green", bold=True)
+        sys.exit(0)
+
+    click.secho(f"Building and executing on-the-fly recipe: {outname}", fg="cyan", bold=True)
+
+    try:
+        Recipe.from_dict(config).run()
+    except Exception as e:
+        click.secho(f"\nPipeline failed: {e}", fg="red")
+        sys.exit(1)

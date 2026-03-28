@@ -59,7 +59,7 @@ class ReferenceQuality(GlobatoFilter):
         threshold (float): Max allowed difference.
         mode (str): 'diff' (absolute) or 'percent' (relative).
         builder (str): 'vrt' or 'grid'.
-        res (float): Resolution for 'grid' builder (default: 0.004 ~400m).
+        res (float): Resolution for 'grid' builder (default: 0.000833333 ~3 arc-seconds).
     """
 
     name = "rq"
