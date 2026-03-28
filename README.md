@@ -42,7 +42,7 @@ Don't want to write a YAML file? You can build a DEM directly from the terminal 
 
 ```bash
 # Generate a 1 arc-second DEM of Southern California using NOAA NOS and Copernicus data
-globato dem run -R -120/-119/34/35 -I 1s nos_hydro copernicus
+globato recipe build -R -120/-119/34/35 -I 1s nos_hydro copernicus
 ```
 
 2. **Run Community Recipes**

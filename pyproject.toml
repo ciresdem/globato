@@ -43,6 +43,15 @@ verde = ["verde"]
 
 full = ["globato[gmt, gdal, verde]"]
 
+[dependency-groups]
+dev = [
+    "mypy",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
 [project.urls]
 Homepage = "https://github.com/continuous-dems/globato"
 Repository = "https://github.com/continuous-dems/globato"
