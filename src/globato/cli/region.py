@@ -33,7 +33,7 @@ def _parse_region(region_str):
 
 
 @region_group.command("echo")
-@click.argument("region_str")
+@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
 @click.option("--format", "-f", type=click.Choice(['bbox', 'wkt', 'geojson', 'fn']), default="bbox", help="Output format.")
 def region_echo(region_str, format):
     """Parse a region and echo it to stdout.
@@ -52,7 +52,7 @@ def region_echo(region_str, format):
 
 
 @region_group.command("buffer")
-@click.argument("region_str")
+@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
 @click.option("--pct", type=float, default=5.0, help="Percentage to buffer the region (default: 5.0).")
 @click.option("--format", "-f", type=click.Choice(['bbox', 'wkt', 'geojson', 'fn']), default="bbox")
 def region_buffer(region_str, pct, format):
@@ -72,7 +72,7 @@ def region_buffer(region_str, pct, format):
 
 
 @region_group.command("split")
-@click.argument("region_str")
+@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
 @click.option("--size", type=float, required=True, help="Tile size in decimal degrees (e.g., 0.25 for 1/4 degree tiles).")
 @click.option("--out", "-O", required=True, help="Output GeoJSON file to save the tileset.")
 @click.option("--prefix", default="tile", help="Prefix for the generated tile names (default: 'tile').")
@@ -131,7 +131,7 @@ def region_split(region_str, size, out, prefix):
 
 
 @region_group.command("transform")
-@click.argument("region_str")
+@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
 @click.option("--t-srs", required=True, help="Target spatial reference system (e.g., EPSG:3857).")
 @click.option("--s-srs", default="EPSG:4326", help="Source spatial reference system (default: EPSG:4326).")
 @click.option("--format", "-f", type=click.Choice(['bbox', 'wkt', 'geojson', 'fn']), default="bbox", help="Output format.")

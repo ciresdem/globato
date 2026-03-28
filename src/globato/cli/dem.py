@@ -8,22 +8,34 @@ globato.cli.dem
 The command-line interface for the dem group
 """
 
+import os
 import sys
 import click
 import yaml
 
 from fetchez.recipe import Recipe
 
+
 @click.group(name="dem")
 def dem_group():
     """Generate custom Digital Elevation Models (Legacy Waffles style)."""
+
     pass
 
+
 def _parse_source(src_str):
-    """Parses 'module:key=val,key2=val2' into a dictionary for the recipe."""
-    parts = src_str.split(":", 1)
+    """Parses 'module:key=val+hook:k=v' or local paths into a dictionary for the recipe."""
+
+    # Split the module definition from any appended hooks using '+'
+    components = src_str.split("+")
+    mod_part = components[0]
+    hook_parts = components[1:]
+
+    # 1. Parse the Module Part
+    parts = mod_part.split(":", 1)
     mod_name = parts[0]
     args = {}
+
     if len(parts) > 1:
         for kv in parts[1].split(","):
             if "=" in kv:
@@ -31,9 +43,53 @@ def _parse_source(src_str):
                 try:
                     v = float(v) if "." in v else int(v)
                 except ValueError:
-                    pass
+                    if v.lower() in ['true', 'yes']: v = True
+                    elif v.lower() in ['false', 'no']: v = False
                 args[k] = v
-    return {"module": mod_name, "args": args}
+
+    # Auto-detect local files and directories
+    if os.path.exists(mod_name):
+        if os.path.isfile(mod_name):
+            args['paths'] = mod_name
+            mod_name = 'file'
+        elif os.path.isdir(mod_name):
+            args['path'] = mod_name
+            mod_name = 'local_fs'
+
+    # 2. Build the Base Dictionary (Automatically injecting stream_data)
+    mod_dict = {
+        "module": mod_name,
+    }
+    if args:
+        mod_dict["args"] = args
+
+    mod_dict["hooks"] = [{"name": "stream_data"}]
+
+    # 3. Parse and Append Additional Hooks
+    for h_str in hook_parts:
+        h_parts = h_str.split(":", 1)
+        h_name = h_parts[0]
+        h_args = {}
+
+        if len(h_parts) > 1:
+            for kv in h_parts[1].split(","):
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    try:
+                        v = float(v) if "." in v else int(v)
+                    except ValueError:
+                        if v.lower() in ['true', 'yes']: v = True
+                        elif v.lower() in ['false', 'no']: v = False
+                    h_args[k] = v
+
+        hook_dict = {"name": h_name}
+        if h_args:
+            hook_dict["args"] = h_args
+
+        mod_dict["hooks"].append(hook_dict)
+
+    return mod_dict
+
 
 @dem_group.command("run")
 @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
@@ -45,10 +101,16 @@ def _parse_source(src_str):
 @click.option("--save-recipe", is_flag=True, help="Save the generated YAML recipe to disk without running.")
 @click.argument("sources", nargs=-1)
 def dem_run(region, increment, outname, crs, algo, stack_mode, save_recipe, sources):
-    """Generate a DEM using curated Globato sources.
+    """Generate a DEM using curated Globato sources or local files.
 
-    Example: globato dem run -R -120/-119/34/35 -E 1s -O socal_dem glob_copernicus:weight=1.5 glob_multibeam
+    SOURCES can be modules or local files.
+    Append hooks using '+' (stream_data is added automatically).
+
+    Examples:
+      globato dem run -R -120/-119/34/35 -E 1s -O custom_dem ./my_lidar.laz copernicus:weight=1.5
+      globato dem run -R -120/-119/34/35 -E 1s mbdb+rq:threshold=50+outlierz
     """
+
     if not sources:
         click.secho("Error: You must provide at least one data source.", fg="red")
         sys.exit(1)
@@ -126,7 +188,14 @@ def dem_list_sources():
             count += 1
 
     click.echo("-" * 60)
-    click.echo(f"Try 'globato dem info-source <name>' for details. Total: {count}\n")
+    click.secho("\nLocal File Support:", fg="cyan", bold=True)
+    click.echo("=" * 60)
+    click.echo("  You can also pass local files and directories directly!")
+    click.echo("  Files will be wrapped in the 'file' module.")
+    click.echo("  Directories will be crawled using the 'local_fs' module.")
+    click.echo("  Example: globato dem run ... ./my_data.tif ./my_folder:ext=.xyz")
+
+    click.echo(f"\nTry 'globato dem info-source <name>' for details. Total Curated Sources: {count}\n")
 
 
 @dem_group.command("info-source")
