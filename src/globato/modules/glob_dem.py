@@ -29,11 +29,11 @@ from globato.hooks.formats.stream_factory import DataStream
 from globato.hooks.filters.dropclass import DropClass
 from globato.hooks.sinks.simple_stack import SimpleStack
 
-try:
-    from transformez.grid_engine import GridEngine, GridWriter
-    HAS_GRID_ENGINE = True
-except ImportError:
-    HAS_GRID_ENGINE = False
+# try:
+#     from transformez.grid_engine import GridEngine  # , GridWriter
+#     HAS_GRID_ENGINE = True
+# except ImportError:
+#     HAS_GRID_ENGINE = False
 
 logger = logging.getLogger(__name__)
 
@@ -89,15 +89,15 @@ class GlobDEM(FetchModule):
         Results in a single entry pointing to the generated GeoTIFF.
         """
 
-        if not HAS_GRID_ENGINE:
-            logger.error("GlobDEM requires 'transformez' package.")
-            return
+        # if not HAS_GRID_ENGINE:
+        #     logger.error("GlobDEM requires 'transformez' package.")
+        #     return
 
         if not self.region:
             logger.error("Region required for GlobDEM.")
             return
 
-        downloaded_files = []
+        # downloaded_files = []
 
         w, e, s, n = self.region
         pad = self.target_res * 10

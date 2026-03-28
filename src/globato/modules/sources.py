@@ -59,7 +59,7 @@ class GlobFabDEM(BaseFabDEM):
         self.add_hook(
             ReferenceQuality(
                 reference="gebco_cog",
-                threshold=50,       # Large deviations from GEBCO = Creep
+                threshold=50,
                 mode="diff",
                 set_class=7
             )
@@ -68,8 +68,8 @@ class GlobFabDEM(BaseFabDEM):
         #self.hooks.append(SimpleStack())
         self.add_hook(
             SimpleStack(
-                output="_clean.tif", # Hooks often support simple templating
-                res="1s",                  # Keep original resolution
+                output="_clean.tif",
+                res="1s",
                 mode="mean"
             )
         )
@@ -162,7 +162,6 @@ class ValidateBAG(FetchHook):
 
             is_valid = False
             try:
-                # 1. Check Magic Number
                 with open(fn, 'rb') as f:
                     header = f.read(4)
                     if header == b'\x89HDF':
@@ -171,8 +170,9 @@ class ValidateBAG(FetchHook):
                 if is_valid:
                     with rasterio.Env(CPL_LOG='/dev/null'):
                         with rasterio.open(fn) as src:
+                            logger.info(src)
                             pass
-            except Exception as e:
+            except Exception:
                 is_valid = False
 
             if not is_valid:
