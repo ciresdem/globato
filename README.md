@@ -23,8 +23,7 @@ Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and 
 * **Infinite Memory Scaling:** `globato` uses a pure-Python, generator-based streaming architecture to process massive rasters and point clouds chunk-by-chunk, eliminating out-of-memory crashes.
 * **Declarative Pipelines:** Define your data sources, regions, and processing hooks in a simple YAML recipe, ensuring 100% reproducibility.
 * **API Caching:** Remote API queries (NOAA, Copernicus, etc.) are hashed and cached locally. Tweak your blending weights or hillshade parameters and re-run your DEM in seconds without re-downloading data.
-* **Native Processing:** Generate complex shaded reliefs, sieves, and morphological filters using native Python.
-* **Super-Modules:** Access advanced, automated workflows like `glob_coast`, which dynamically resolves and generates high-resolution coastline masks on the fly.
+* **On-The-Fly Datum Shifts:** True 3D projection and vertical datum transformations (e.g., MLLW to NAVD88) applied directly to data streams.
 
 ## Installation
 
@@ -37,32 +36,70 @@ pip install globato
 ## The globato CLI
 `globato` provides a powerful, user-friendly Command Line Interface to generate DEMs, run community recipes, manipulate rasters, and more.
 
-1. **Generate a DEM on the Fly**
-Don't want to write a YAML file? You can build a DEM directly from the terminal by specifying your region, resolution, and desired data sources:
+1. **recipe (The DEM Engine)**
+Generate, execute, and batch-process DEM recipes.
 
 ```bash
-# Generate a 1 arc-second DEM of Southern California using NOAA NOS and Copernicus data
-globato recipe build -R -120/-119/34/35 -I 1s nos_hydro copernicus
+# Build a recipe on the fly from the terminal
+globato recipe build -R -120/-119/34/35 -E 1s mbdb copernicus 
+
+# Build a recipe and save it to YAML to learn the syntax
+globato recipe build -R loc:"Miami" -E 1/3s mbdb+rq:threshold=50 --save-only
+
+# Run a saved recipe
+globato recipe run my_dem_recipe.yaml
 ```
 
-2. **Run Community Recipes**
-You can execute pre-configured YAML recipes directly from your local machine, a URL, or the official ContinUous-DEMs community repository.
+2. **pointz (The Point Cloud Engine)**
+Stream, filter, and reproject point clouds using standard UNIX pipelines.
 
 ```bash
-# Run a local recipe
-globato recipe run my_local_dem.yaml
+# Download multibeam data, filter it, project to Web Mercator, and save to XYZ
+globato pointz run mbdb -R loc:"Tampa" -F rq:threshold=10 -T EPSG:3857 > clean.xyz
 
-
-# Run an official community recipe directly from GitHub (*to be implemented*)
-globato recipe run western_ak
+# Pipe existing local data through Globato's statistical outlier filter
+cat raw_survey.xyz | globato pointz run - -F outlierz > clean.xyz
 ```
 
-3. **Raster Tools**
-globato includes a suite of raster manipulation tools for cropping, inspecting, and modifying your outputs:
+3. **viz (The Plotting Engine)**
+Generate instant visualizations for sanity checks without opening QGIS.
 
 ```bash
-globato raster info my_dem.tif
-globato raster clip -R -120/-119/34/35 my_dem.tif clipped_dem.tif
+# Render a beautiful, georeferenced colored hillshade from a DEM
+globato viz hillshade my_dem.tif output_hs.tif --cmap etopo --blend soft_light
+
+# Open an interactive 3D window to inspect a local point cloud
+globato viz points raw_lidar.laz --3d
+
+# Fetch live multibeam data, apply a filter, and highlight the rejected noise in red!
+globato viz points mbdb -R loc:"San Diego" -F rq:threshold=5 --outliers
+```
+
+4. **raster (The Grid Engine)**
+Perform advanced morphological operations and blending on existing grids.
+
+```bash
+# Blend a high-res coastal DEM into a lower-res background auxiliary grid
+globato raster blend hi_res.tif blended_out.tif --aux background.tif --blend-dist 50
+```
+
+5. **fetch (The Download Engine)**
+Discover and download raw elevation data directly from federal/global APIs.
+
+```bash
+globato fetch list --search lidar
+globato fetch run tnm -R -120/-119/34/35 -O ./my_data
+```
+
+6. **region (The Spatial Engine)**
+Perform spatial math, geocoding, and tileset generation.
+
+```bash
+# Geocode a city and get the bounding box
+globato region echo loc:"Seattle, WA"
+
+# Split a massive bounding box into a 0.25-degree GeoJSON tileset for batch processing
+globato region split loc:"California" --size 0.25 -O cali_tiles.geojson
 ```
 
 ## The Vision & Community

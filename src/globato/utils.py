@@ -17,6 +17,7 @@ import sys
 import shutil
 import subprocess
 import logging
+import io
 
 from tqdm import tqdm
 import numpy as np
@@ -51,7 +52,7 @@ def run_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
 
         if data_fun is not None:
             if verbose:
-                echo_msg('Piping data to cmd subprocess...')
+                logger.info('Piping data to cmd subprocess...')
             data_fun(p.stdin)
             p.stdin.close()
 
@@ -80,7 +81,8 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
     >> data_fun = lambda p: datalist_dump(wg, dst_port = p, ...)
     """
 
-    if verbose: echo_msg(f'Running cmd {cmd.rstrip()}...')
+    if verbose:
+        logger.info(f'Running cmd {cmd.rstrip()}...')
 
     pipe_stdin = subprocess.PIPE if data_fun is not None else None
 
@@ -90,7 +92,8 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
     )
 
     if data_fun is not None:
-        if verbose: echo_msg('Piping data to cmd subprocess...')
+        if verbose:
+            logger.info('Piping data to cmd subprocess...')
         data_fun(p.stdin)
         p.stdin.close()
 
@@ -102,7 +105,7 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
 
     p.stdout.close()
     if verbose:
-        echo_msg(f'Ran cmd {cmd.rstrip()}, returned {p.returncode}.')
+        logger.info(f'Ran cmd {cmd.rstrip()}, returned {p.returncode}.')
 
 
 def cmd_check(cmd_str, cmd_vers_str):
