@@ -6,7 +6,6 @@ globato.hooks.hooks.osm_landmask
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Fetches OSM Coastline data and polygonizes it into a landmask.
-Hybrid: Uses OGR to read, Shapely to process, and Fiona to write.
 
 :copyright: (c) 2016 - 2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
@@ -14,6 +13,7 @@ Hybrid: Uses OGR to read, Shapely to process, and Fiona to write.
 
 import os
 import logging
+import json
 import math
 import fiona
 import shapely.wkb
@@ -22,13 +22,6 @@ from shapely.ops import linemerge, unary_union
 from fetchez.hooks import FetchHook
 from fetchez.core import Fetch, urlencode
 from fetchez import utils
-
-try:
-    from osgeo import ogr
-
-    HAS_OSGEO = True
-except ImportError:
-    HAS_OSGEO = False
 
 try:
     from fetchez.modules.gmrt import gmrt_fetch_point
@@ -52,12 +45,6 @@ class OSMLandmask(FetchHook):
         self.filename = filename
 
     def run(self, entries):
-        if not HAS_OSGEO:
-            logger.error(
-                "You must have gdal installed to run this module. Install gdal on your system and run 'pip install gdal'"
-            )
-            return {}
-
         regions = [getattr(mod, "region", None) for mod, _ in entries]
         valid_regions = [r for r in regions if r]
 
@@ -101,17 +88,17 @@ class OSMLandmask(FetchHook):
         bbox = f"{s},{w},{n},{e}"
 
         query = f"""
-        [timeout:120][out:xml][bbox:{bbox}];
+        [timeout:120][out:json][bbox:{bbox}];
         (
           way["natural"="coastline"];
           relation["natural"="coastline"];
         );
         (._;>;);
-        out meta;
+        out geom;
         """
         params = urlencode({"data": query})
         url = f"{OSM_API}?{params}"
-        dest = f"temp_osm_{w}_{s}.xml"
+        dest = f"temp_osm_{w}_{s}.json"
         f = Fetch(url)
         if f.fetch_file(dest, verbose=False) == 0:
             return dest
@@ -197,24 +184,26 @@ class OSMLandmask(FetchHook):
                 })
 
     def _polygonize(self, osm_file, dst_file, region):
-        """The Hybrid Engine: OGR Reader -> Shapely Processor -> Fiona Writer"""
-
-        ds = ogr.Open(osm_file)
-        if not ds:
-            self._handle_fallback(dst_file, region)
-            return
-
-        layer = ds.GetLayer(1) # Layer 1 is usually 'lines' in OSM driver
-        if not layer:
-            self._handle_fallback(dst_file, region)
-            return
+        """Polygonize the osm data"""
 
         lines = []
-        for feat in layer:
-            geom_ref = feat.GetGeometryRef()
-            if geom_ref:
-                shapely_geom = shapely.wkb.loads(bytes(geom_ref.ExportToWkb()))
-                lines.append(shapely_geom)
+
+        try:
+            # 1. Native Python JSON Parsing (NO GDAL REQUIRED!)
+            with open(osm_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            for element in data.get('elements', []):
+                # 'out geom' embeds the lat/lon directly into the way elements!
+                if element.get('type') == 'way' and 'geometry' in element:
+                    coords = [(pt['lon'], pt['lat']) for pt in element['geometry']]
+                    if len(coords) >= 2:
+                        lines.append(LineString(coords))
+
+        except Exception as e:
+            logger.error(f"Failed to parse OSM JSON natively: {e}")
+            self._handle_fallback(dst_file, region)
+            return
 
         if not lines:
             self._handle_fallback(dst_file, region)

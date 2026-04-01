@@ -86,7 +86,7 @@ class GlobCoast(FetchModule):
         # Sieve the raster to remove salt & pepper ocean noise
         sieve_cls = self.add_hook(RasterSieveHook())
         if sieve_cls:
-            self.add_hook(sieve_cls(chunk="full", size=80))
+            self.add_hook(sieve_cls(chunk="full", size=2))
 
         # Convert the cleaned raster to vector polygons
         poly_cls = self.add_hook(RasterPolygonizeHook(target_value=1))
