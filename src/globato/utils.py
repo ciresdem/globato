@@ -125,3 +125,71 @@ def add_field_to_recarray(rec, name, dtype, default_val):
 
         return append_fields(rec, name, new_col, usemask=False, asrecarray=True)
     return rec
+
+
+def parse_hook_string(hook_str, default_name=None):
+    """Parses 'name:key=val:key2=val2' into a dictionary for hooks."""
+    parts = hook_str.split(":")
+    name = parts[0] if len(parts) > 0 and "=" not in parts[0] else default_name
+
+    args = {}
+    for part in parts[1:] if name == parts[0] else parts:
+        if "=" in part:
+            k, v = part.split("=", 1)
+            try:
+                v = float(v) if "." in v else int(v)
+            except ValueError:
+                if v.lower() in ['true', 'yes']: v = True
+                elif v.lower() in ['false', 'no']: v = False
+            args[k] = v
+
+    hook = {"name": name}
+    if args:
+        hook["args"] = args
+    return hook
+
+
+def parse_source_string(src_str):
+    """Parses 'module:key=val+hook:k=v+hook2' or local paths into a module dictionary."""
+
+    components = src_str.split("+")
+    mod_part = components[0]
+    hook_parts = components[1:]
+
+    # 1. Parse the Module Part
+    parts = mod_part.split(":", 1)
+    mod_name = parts[0]
+    args = {}
+
+    if len(parts) > 1:
+        for kv in parts[1].split(","):
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                try:
+                    v = float(v) if "." in v else int(v)
+                except ValueError:
+                    if v.lower() in ['true', 'yes']: v = True
+                    elif v.lower() in ['false', 'no']: v = False
+                args[k] = v
+
+    # Auto-detect local files and directories
+    if os.path.exists(mod_name):
+        if os.path.isfile(mod_name):
+            args['paths'] = mod_name
+            mod_name = 'file'
+        elif os.path.isdir(mod_name):
+            args['path'] = mod_name
+            mod_name = 'local_fs'
+
+    mod_dict = {
+        "module": mod_name,
+        "hooks": [{"name": "stream_data"}] # Always auto-inject stream_data
+    }
+    if args:
+        mod_dict["args"] = args
+
+    # 2. Parse and Append Additional Hooks using the standard hook parser
+    for h_str in hook_parts:
+        mod_dict["hooks"].append(parse_hook_string(h_str))
+
+    return mod_dict

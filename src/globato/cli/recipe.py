@@ -18,6 +18,8 @@ import json
 
 from fetchez.recipe import Recipe
 
+from globato.utils import parse_source_string, parse_hook_string
+
 RECIPE_REPO_BASE = "https://raw.githubusercontent.com/continuous-dems/dem-recipes/refs/heads/main/dems/"
 
 
@@ -381,6 +383,7 @@ def _parse_source(src_str):
 
 def _list_sources(ctx, param, value):
     """Eager callback to list available data sources and exit."""
+
     if not value or ctx.resilient_parsing:
         return
 
@@ -415,6 +418,7 @@ def _list_sources(ctx, param, value):
 
 def _info_source(ctx, param, value):
     """Eager callback to inspect a specific data source and exit."""
+
     if not value or ctx.resilient_parsing:
         return
 
@@ -452,46 +456,88 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
+def _parse_hook(hook_str, default_name=None):
+    """Parses 'name:key=val:key2=val2' into a dictionary for global_hooks."""
+
+    parts = hook_str.split(":")
+    name = parts[0] if len(parts) > 0 and "=" not in parts[0] else default_name
+
+    args = {}
+    for part in parts[1:] if name == parts[0] else parts:
+        if "=" in part:
+            k, v = part.split("=", 1)
+            try:
+                v = float(v) if "." in v else int(v)
+            except ValueError:
+                if v.lower() in ['true', 'yes']: v = True
+                elif v.lower() in ['false', 'no']: v = False
+            args[k] = v
+
+    hook = {"name": name}
+    if args:
+        hook["args"] = args
+    return hook
+
 @recipe_group.command("build")
 @click.option("--list-sources", is_flag=True, is_eager=True, expose_value=False, callback=_list_sources, help="List available data sources and exit.")
 @click.option("--info-source", metavar="NAME", is_eager=True, expose_value=False, callback=_info_source, help="Show details for a specific data source and exit.")
 @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
 @click.option("-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)")
 @click.option("-O", "--outname", default="globato_dem", help="Output Basename (default: globato_dem)")
+@click.option("-F", "--format", default="GTiff", help="Output Format (GTiff, NetCDF, etc.). Default: GTiff.")
 @click.option("-P", "--crs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)")
-@click.option("-M", "--algo", default="interp_gmt", help="Interpolation algorithm (interp_gmt, raster_fill, etc.)")
+@click.option("-N", "--nodata", type=float, default=-9999.0, help="NoData Value. Default: -9999.")
+@click.option("-M", "--algo", default="ms_cudem", help="Interpolation algorithm and options (e.g., interp_gmt:tension=0.35)")
 @click.option("-A", "--stack-mode", type=click.Choice(['mean', 'min', 'max', 'mixed', 'supercede']), default="mixed", help="Stacking mode")
+@click.option("-T", "--filter", "filters", multiple=True, help="Apply Grits Filter (e.g. 'blur:radius=3'). May be set multiple times.")
+@click.option("-C", "--clip", help="Clip output to polygon file. e.g. 'clip_ply.shp'")
 @click.option("--save-only", is_flag=True, help="Save the generated YAML recipe to disk WITHOUT running it.")
 @click.argument("sources", nargs=-1)
-def recipe_build(region, increment, outname, crs, algo, stack_mode, save_only, sources):
-    """Build and run a recipe on the fly using modules or local files.
-
-    SOURCES can be Fetchez modules or local files.
-    Append hooks using '+' (stream_data is added automatically).
-
-    Examples:
-      globato recipe build -R -120/-119/34/35 -E 1s ./my_lidar.laz copernicus:weight=1.5
-      globato recipe build -R -120/-119/34/35 -E 1s mbdb+rq:threshold=50+outlierz --save-only
-    """
+def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mode, filters, clip, save_only, sources):
+    """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
 
     if not sources:
         click.secho("Error: You must provide at least one data source.", fg="red")
         sys.exit(1)
 
+    global_hooks = []
+
+    # The Base Stack
+    global_hooks.append({"name": "drop_class"})
+    global_hooks.append({
+        "name": "multi_stack",
+        "args": {"res": increment, "crs": crs, "mode": stack_mode, "nodata": nodata, "output": f"{outname}_stack.tif"}
+    })
+    global_hooks.append({"name": "focus_sink", "args": {"target": "multi_stack"}})
+    global_hooks.append({"name": "raster_stream", "args": {"stream_type": "raster", "chunk_size": 2048, "stage": "collection"}})
+
+    # Add requested Filters (-T)
+    for f in filters:
+        global_hooks.append(parse_hook_string(f))
+
+    global_hooks.append({"name": "ms_blend", "args": {"weight_threshold": .5, "blend_dist": 20, "random_scale": .25}})
+
+    # Add requested Interpolation Algorithm (-M)
+    algo_hook = _parse_hook(algo)
+    if algo_hook["name"] == "ms_cudem":
+        algo_hook.setdefault("args", {})["resolutions"] = increment
+
+    algo_hook.setdefault("args", {})["output"] = f"{outname}.tif"
+    global_hooks.append(algo_hook)
+
+    # Add Clipping (-C)
+    if clip:
+        clip_hook = _parse_hook(clip, default_name="raster_clip")
+        if clip_hook["name"] != "raster_clip":
+            clip_hook["args"]["barrier"] = clip_hook.pop("name")
+            clip_hook["name"] = "raster_clip"
+        global_hooks.append(clip_hook)
+
     config = {
         "project": {"name": outname},
         "region": region,
-        "modules": [_parse_source(s) for s in sources],
-        "global_hooks": [
-            {
-                "name": "multi_stack",
-                "args": {"res": increment, "crs": crs, "mode": stack_mode, "output": f"{outname}_stack.tif"}
-            },
-            {
-                "name": "ms_cudem",
-                "args": {"algo": algo}
-            }
-        ]
+        "modules": [parse_source_string(s) for s in sources],
+        "global_hooks": global_hooks
     }
 
     yaml_str = yaml.dump(config, sort_keys=False)
@@ -500,13 +546,8 @@ def recipe_build(region, increment, outname, crs, algo, stack_mode, save_only, s
         out_yaml = f"{outname}_recipe.yaml"
         with open(out_yaml, "w") as f:
             f.write(yaml_str)
-        click.secho(f"Recipe saved to {out_yaml}. Run it later with 'globato recipe run {out_yaml}'", fg="green", bold=True)
+        click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
         sys.exit(0)
 
-    click.secho(f"Building and executing on-the-fly recipe: {outname}", fg="cyan", bold=True)
-
-    try:
-        Recipe.from_dict(config).run()
-    except Exception as e:
-        click.secho(f"\nPipeline failed: {e}", fg="red")
-        sys.exit(1)
+    click.secho(f"Executing dynamic recipe: {outname}", fg="cyan", bold=True)
+    Recipe.from_file(config).run()

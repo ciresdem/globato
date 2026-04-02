@@ -39,9 +39,11 @@ dependencies = [
 [project.optional-dependencies]
 gmt = ["pygmt"]
 gdal = ["gdal"]
-verde = ["verde"]
+# verde = ["verde"]
+# naturalneighbor = ["naturalneighbor"]
+interpolations = ["verde", "naturalneighbor", "pykrige"]
 
-full = ["globato[gmt, gdal, verde]"]
+full = ["globato[gmt,gdal,interpolations]"]
 
 [dependency-groups]
 dev = [
