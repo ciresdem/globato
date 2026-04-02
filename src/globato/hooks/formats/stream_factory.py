@@ -23,6 +23,7 @@ from .lidar import LASReader
 from .multibeam import MBSReader
 from .xyz import XYZReader
 from .gtpc import GTPCReader
+from .datalist import DatalistReader
 from .schema import ensure_schema
 from transformez.spatial import TransRegion
 
@@ -101,6 +102,9 @@ class StreamFactory:
         if ext == ".gtpc":
             return GTPCReader(src_fn, **kwargs).yield_chunks()
 
+        if ext == ".datalist":
+            return DatalistReader(src_fn, **kwargs).yield_chunks()
+
         # If unknown extension, try to open with GDAL.
         try:
             from osgeo import gdal
@@ -164,6 +168,9 @@ class StreamFactory:
         if ext == ".gtpc":
             return GTPCReader(src_fn, **kwargs)
 
+        if ext == ".datalist":
+            return DatalistReader(src_fn, **kwargs)
+
         # If unknown extension, try to open with GDAL.
         try:
             from osgeo import gdal
@@ -209,6 +216,7 @@ class DataStream(FetchHook):
 
             # try and sanitize raster chunk_sizes so we don't crash
             kwargs_copy = self.reader_kwargs.copy()
+            kwargs_copy["region"] = getattr(mod, "region", None)
             if dtype in ["raster", "bag"] or src.lower().endswith(('.tif', '.tiff', '.nc', '.vrt', '.bag')):
                 c_size = kwargs_copy.get("chunk_size")
                 # If they ask for a chunk > 8192 on a raster, it was meant for points. Fallback to default.

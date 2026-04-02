@@ -210,7 +210,7 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
 
                 if len(chunk) > 0:
                     total_out += len(chunk)
-                    np.savetxt(out_port, chunk[['x', 'y', 'z']], fmt='%.6f', delimiter=' ')
+                    np.savetxt(out_port, chunk[['x', 'y', 'z', 'w', 'u']], fmt='%.6f', delimiter=' ')
 
     except BrokenPipeError:
         sys.stderr.close()

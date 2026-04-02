@@ -83,10 +83,11 @@ class GlobCoast(FetchModule):
         if weights:
             self.weights.update(weights)
 
+        # We need to fix this hook, it creates too many artifacts currently...
         # Sieve the raster to remove salt & pepper ocean noise
-        sieve_cls = self.add_hook(RasterSieveHook())
-        if sieve_cls:
-            self.add_hook(sieve_cls(chunk="full", size=2))
+        # sieve_cls = self.add_hook(RasterSieveHook())
+        # if sieve_cls:
+        #     self.add_hook(sieve_cls(chunk="full", size=2))
 
         # Convert the cleaned raster to vector polygons
         poly_cls = self.add_hook(RasterPolygonizeHook(target_value=1))
@@ -96,7 +97,7 @@ class GlobCoast(FetchModule):
         if fill_inland_holes:
             try:
                 from globato.hooks.vectors.fill_holes import VectorFillHoles
-                self.add_hook(VectorFillHoles(min_area=0.0))
+                self.add_hook(VectorFillHoles(min_area=10.0))
             except ImportError:
                 logger.warning("VectorFillHoles hook not found. Ponds will not be filled.")
 
