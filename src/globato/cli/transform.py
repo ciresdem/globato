@@ -14,10 +14,13 @@ from transformez import api
 
 logger = logging.getLogger(__name__)
 
+
 @click.group(name="transform")
 def transform_group():
     """Apply vertical datum transformations and generate shift grids."""
+
     pass
+
 
 @transform_group.command("run")
 @click.argument("input_file", required=False)
@@ -37,6 +40,7 @@ def transform_run(input_file, region, increment, input_datum, output_datum, out,
       Transform a DEM : globato transform run my_dem.tif -I mllw -O 5703
       Generate a Grid : globato transform run -R loc:"Miami" -E 1s -I mllw -O 4979
     """
+
     if input_file:
         click.secho(f"Transforming raster: {input_file}", fg="cyan", bold=True)
         click.echo(f"   Shift: {input_datum} ➔ {output_datum}")
@@ -86,6 +90,7 @@ def transform_run(input_file, region, increment, input_datum, output_datum, out,
 @transform_group.command("list")
 def transform_list():
     """List all supported vertical datums, surfaces, and geoids."""
+
     try:
         from transformez.definitions import Datums
 

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(name="viz")
 def viz_group():
-    """Visualize DEMs and Point Clouds (Legacy Perspecto)."""
+    """Visualize DEMs and Point Clouds."""
 
     pass
 

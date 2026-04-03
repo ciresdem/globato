@@ -112,7 +112,7 @@ def raster_io(f):
 # =============================================================================
 @click.group(name="raster")
 def raster_group():
-    """Raster manipulation tools (Legacy Grits)."""
+    """Raster manipulation tools."""
 
     pass
 

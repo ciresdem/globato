@@ -145,8 +145,6 @@ def recipe_list():
     """List all official community recipes available on GitHub."""
 
     click.echo("Fetching community recipes catalog from GitHub...")
-
-    # Hit the GitHub API for the directory contents
     api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
 
     try:
@@ -204,8 +202,6 @@ def recipe_list():
     """List all official community recipes available on GitHub."""
 
     click.echo("Fetching community recipes catalog from GitHub...")
-
-    # Hit the GitHub API for the directory contents
     api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
 
     try:
@@ -419,6 +415,7 @@ def _parse_hook(hook_str, default_name=None):
         hook["args"] = args
     return hook
 
+
 @recipe_group.command("build")
 @click.option("--list-sources", is_flag=True, is_eager=True, expose_value=False, callback=_list_sources, help="List available data sources and exit.")
 @click.option("--info-source", metavar="NAME", is_eager=True, expose_value=False, callback=_info_source, help="Show details for a specific data source and exit.")
@@ -491,15 +488,14 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
 
             yaml_str = yaml.dump(config, sort_keys=False)
 
-            if save_only:
-                out_yaml = f"{tile_outname}_recipe.yaml"
-                with open(out_yaml, "w") as f:
-                    f.write(yaml_str)
-                click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
-                sys.exit(0)
+            out_yaml = f"{tile_outname}_recipe.yaml"
+            with open(out_yaml, "w") as f:
+                f.write(yaml_str)
+            click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
 
-            click.secho(f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True)
-            Recipe.from_file(config).run()
+            if not save_only:
+                click.secho(f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True)
+                Recipe.from_file(config).run()
 
     except ValueError as e:
         click.secho(str(e), fg="red")
