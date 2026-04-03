@@ -25,6 +25,7 @@ from . import cpt as cpt_utils
 
 logger = logging.getLogger(__name__)
 
+
 class GeoHillshade(RasterStreamHook):
     """Generate a Georeferenced Hillshade/Relief chunk-by-chunk.
 
@@ -91,6 +92,9 @@ class GeoHillshade(RasterStreamHook):
         import rasterio
         try:
             with rasterio.open(src_fn) as src:
+                if hasattr(src, 'crs') and not src.crs.is_geographic:
+                    self.scale = 1.0
+
                 tags = src.tags(1)
                 if 'STATISTICS_MINIMUM' in tags and 'STATISTICS_MAXIMUM' in tags:
                     self.z_min = float(tags['STATISTICS_MINIMUM'])
@@ -114,6 +118,7 @@ class GeoHillshade(RasterStreamHook):
 
     def _resolve_colormap(self):
         """Resolves and stretches the colormap to z_min/z_max."""
+
         import matplotlib.pyplot as plt
 
         try:

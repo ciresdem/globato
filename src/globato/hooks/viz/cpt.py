@@ -145,12 +145,16 @@ def generate_etopo_cpt(gmin, gmax, output_file='tmp.cpt'):
 
 def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
     """Stretches an existing CPT to global limits, preserving the split hinge point."""
-    if cpt_file is None: return None
+
+    if cpt_file is None:
+        return None
+
     trs, colors = [], []
     with open(cpt_file, 'r') as f:
         for line in f:
             parts = line.split()
-            if not parts: continue
+            if not parts:
+                continue
 
             if float_or(parts[0]) is not None:
                 trs.append(float(parts[0]))
@@ -161,7 +165,8 @@ def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
                 elif '/' in parts[1]:
                     colors.append([int(float(x)) for x in parts[1].split('/')])
 
-    if not trs: return None
+    if not trs:
+        return None
 
     new_elevs = []
     t_min, t_max = min(trs), max(trs)
@@ -170,12 +175,14 @@ def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
         split_val = float(split_cpt)
         for t in trs:
             if t <= split_val:
-                if split_val == t_min: val = gmin
+                if split_val == t_min:
+                    val = gmin
                 else:
                     pct = (t - t_min) / (split_val - t_min)
                     val = gmin + pct * (split_val - gmin)
             else:
-                if t_max == split_val: val = gmax
+                if t_max == split_val:
+                    val = gmax
                 else:
                     pct = (t - split_val) / (t_max - split_val)
                     val = split_val + pct * (gmax - split_val)
@@ -205,6 +212,7 @@ def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
 
     return output_fn
 
+
 def fetch_cpt_city(query='grass/haxby', out_dir=None):
     """Wraps fetchez to get the data."""
 
@@ -218,6 +226,7 @@ def fetch_cpt_city(query='grass/haxby', out_dir=None):
 
     core.run_fetchez([fetcher], threads=1)
     return fetcher.results[0]["dst_fn"]
+
 
 def load_cmap(cpt_file, name="globato_cpt"):
     """Reads a CPT file and converts it to a Matplotlib Colormap respecting irregular Z spacing!"""
@@ -258,19 +267,33 @@ def load_cmap(cpt_file, name="globato_cpt"):
         if z_range == 0:
             return LinearSegmentedColormap.from_list(name, colors, N=256)
 
-        # Matplotlib requires strictly increasing mapping points
-        last_x = -1.0
-        epsilon = 1e-9
+        unique_x = []
+        c_left = []
+        c_right = []
 
         for z, color in zip(z_vals, colors):
             x = (z - z_min) / z_range
-            if x <= last_x: x = last_x + epsilon
             x = max(0.0, min(1.0, x))
 
-            cdict['red'].append((x, color[0], color[0]))
-            cdict['green'].append((x, color[1], color[1]))
-            cdict['blue'].append((x, color[2], color[2]))
-            last_x = x
+            if unique_x:
+                if x < unique_x[-1]:
+                    x = unique_x[-1]
+
+                if x == unique_x[-1]:
+                    c_right[-1] = color
+                    continue
+
+            unique_x.append(x)
+            c_left.append(color)
+            c_right.append(color)
+
+        unique_x[0] = 0.0
+        unique_x[-1] = 1.0
+
+        for x, cl, cr in zip(unique_x, c_left, c_right):
+            cdict['red'].append((x, cl[0], cr[0]))
+            cdict['green'].append((x, cl[1], cr[1]))
+            cdict['blue'].append((x, cl[2], cr[2]))
 
         return LinearSegmentedColormap(name, cdict)
 
