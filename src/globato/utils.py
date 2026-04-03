@@ -188,8 +188,35 @@ def parse_source_string(src_str):
     if args:
         mod_dict["args"] = args
 
-    # 2. Parse and Append Additional Hooks using the standard hook parser
+    # Parse and Append Additional Hooks using the standard hook parser
     for h_str in hook_parts:
         mod_dict["hooks"].append(parse_hook_string(h_str))
 
     return mod_dict
+
+
+def yield_parsed_regions(region_str):
+    """Universally parses a region string, location, or geojson file.
+
+    Yields (TransRegion, feature_name) for every region found.
+    """
+
+    from fetchez.spatial import parse_region
+    from transformez.spatial import TransRegion
+
+    if not region_str:
+        yield None, None
+        return
+
+    try:
+        raw_regions = parse_region(region_str)
+    except Exception as e:
+        raise ValueError(f"Error parsing region '{region_str}': {e}")
+
+    # If parse_region returned multiple items, it's a batch job!
+    is_batch = len(raw_regions) > 1
+
+    for i, r in enumerate(raw_regions):
+        t_reg = TransRegion(*r)
+        feat_name = f"tile_{i:03d}" if is_batch else None
+        yield t_reg, feat_name

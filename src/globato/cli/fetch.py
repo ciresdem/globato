@@ -14,7 +14,7 @@ import logging
 
 from fetchez.registry import ModuleRegistry
 from fetchez.core import run_fetchez
-from .region import _parse_region
+from globato.utils import yield_parsed_regions
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,6 @@ def fetch_list(search):
     for name, cls in sorted(registry.items()):
         meta = ModuleRegistry.get_info(name)
 
-        # 🛑 THE FIX: Only show modules curated for Globato!
         if meta.get("category") != "Globato":
             continue
 
@@ -79,41 +78,47 @@ def fetch_run(module_name, region, outdir, extra_args):
         click.secho(f"Error: Unknown module '{module_name}'. Run 'globato fetch list' to see available options.", fg="red")
         sys.exit(1)
 
-    # 🛑 THE FIX: Prevent execution of non-Globato modules
     meta = ModuleRegistry.get_info(module_name)
     if meta.get("category") != "Globato":
         click.secho(f"Error: '{module_name}' is a raw Fetchez module, not a curated Globato source.", fg="red")
         click.secho("Please use the 'fetchez' CLI to download raw data, or select a curated source from 'globato fetch list'.", fg="yellow")
         sys.exit(1)
 
-    parsed_region = _parse_region(region)
-    click.secho(f"Target Region: [{parsed_region.xmin:.4f}, {parsed_region.xmax:.4f}, {parsed_region.ymin:.4f}, {parsed_region.ymax:.4f}]", fg="blue")
-
-    kwargs = {}
-    for arg in extra_args:
-        if "=" in arg:
-            k, v = arg.split("=", 1)
-            try:
-                v = float(v) if '.' in v else int(v)
-            except ValueError:
-                pass
-            kwargs[k] = v
-
-    outdir = os.path.abspath(outdir)
-    os.makedirs(outdir, exist_ok=True)
-    original_cwd = os.getcwd()
-    os.chdir(outdir)
-
-    click.secho(f"Initializing {module_name} fetcher...", fg="cyan", bold=True)
-    if kwargs:
-        click.echo(f"   Using custom arguments: {kwargs}")
-
     try:
-        fetcher = mod_cls(src_region=parsed_region, **kwargs)
-        fetcher.run()
-        run_fetchez([fetcher])
-        click.secho(f"\nFetch complete! Data saved to: {outdir}", fg="green", bold=True)
-    except Exception as e:
-        click.secho(f"\nFetch failed: {e}", fg="red", bold=True)
-    finally:
-        os.chdir(original_cwd)
+        for parsed_region, feat_name in yield_parsed_regions(region):
+            prefix = f"{feat_name}: " if feat_name else ""
+
+            click.secho(f"Target Region: [{parsed_region.xmin:.4f}, {parsed_region.xmax:.4f}, {parsed_region.ymin:.4f}, {parsed_region.ymax:.4f}]", fg="blue")
+
+            kwargs = {}
+            for arg in extra_args:
+                if "=" in arg:
+                    k, v = arg.split("=", 1)
+                    try:
+                        v = float(v) if '.' in v else int(v)
+                    except ValueError:
+                        pass
+                    kwargs[k] = v
+
+            outdir = os.path.abspath(outdir)
+            os.makedirs(outdir, exist_ok=True)
+            original_cwd = os.getcwd()
+            os.chdir(outdir)
+
+            click.secho(f"Initializing {module_name} fetcher...", fg="cyan", bold=True)
+            if kwargs:
+                click.echo(f"   Using custom arguments: {kwargs}")
+
+            try:
+                fetcher = mod_cls(src_region=parsed_region, **kwargs)
+                fetcher.run()
+                run_fetchez([fetcher])
+                click.secho(f"\nFetch complete! Data saved to: {outdir}", fg="green", bold=True)
+            except Exception as e:
+                click.secho(f"\nFetch failed: {e}", fg="red", bold=True)
+            finally:
+                os.chdir(original_cwd)
+
+    except ValueError as e:
+        click.secho(str(e), fg="red")
+        sys.exit(1)
