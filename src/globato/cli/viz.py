@@ -164,7 +164,6 @@ def viz_points(src, filters, region, is_3d, outliers, out):
             if entry.get("dst_fn"):
                 r = StreamFactory.get_reader(entry["dst_fn"])
                 if r:
-                    # Apply _prepare_stream to guarantee schema!
                     entries.append((dummy_mod, {'dst_fn': entry["dst_fn"], 'stream': _prepare_stream(r.yield_chunks())}))
 
     if not entries:

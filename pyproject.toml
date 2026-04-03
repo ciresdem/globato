@@ -34,6 +34,8 @@ dependencies = [
     "pyshp",
     "h5py",
     "click",
+    "pyyaml",
+    "requests",
 ]
 
 [project.optional-dependencies]
@@ -42,8 +44,10 @@ gdal = ["gdal"]
 # verde = ["verde"]
 # naturalneighbor = ["naturalneighbor"]
 interpolations = ["verde", "naturalneighbor", "pykrige"]
+ml = ["scikit-learn"]
+h3 = ["h3"]
 
-full = ["globato[gmt,gdal,interpolations]"]
+full = ["globato[gmt,gdal,interpolations,ml]"]
 
 [dependency-groups]
 dev = [
@@ -52,6 +56,12 @@ dev = [
 test = [
     "pytest",
     "pytest-cov",
+    "requests-mock",
+]
+docs = [
+    "sphinx",
+    "pydata-sphinx-theme",
+    "myst-parser",
 ]
 
 [project.urls]

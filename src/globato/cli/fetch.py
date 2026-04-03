@@ -4,7 +4,7 @@
 """
 globato.cli.fetch
 ~~~~~~~~~~~~~~~~~
-Direct data discovery and downloading using the fetchez engine.
+Direct data discovery and downloading for curated Globato DEM sources.
 """
 
 import os
@@ -21,51 +21,55 @@ logger = logging.getLogger(__name__)
 
 @click.group(name="fetch")
 def fetch_group():
-    """Discover and download raw elevation/bathymetry data."""
-
+    """Discover and download curated elevation/bathymetry data."""
     pass
 
 
 @fetch_group.command("list")
 @click.option("--search", "-s", help="Filter modules by name or keyword.")
 def fetch_list(search):
-    """List all available data modules in the fetchez registry."""
+    """List all curated Globato DEM data modules."""
 
     ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
-    click.secho(f"\nAvailable Fetchez Modules:", fg="cyan", bold=True)
-    click.echo("=" * 50)
+    click.secho(f"\nAvailable Curated Globato Sources:", fg="cyan", bold=True)
+    click.echo("=" * 60)
 
     count = 0
     for name, cls in sorted(registry.items()):
+        meta = ModuleRegistry.get_info(name)
+
+        # 🛑 THE FIX: Only show modules curated for Globato!
+        if meta.get("category") != "Globato":
+            continue
+
         if search and search.lower() not in name.lower():
             continue
 
-        meta = ModuleRegistry.get_info(name)
         desc = meta.get('desc', 'No description available')
 
-        click.secho(f"  {name}", fg="green", bold=True, nl=False)
+        click.secho(f"  {name:<15}", fg="green", bold=True, nl=False)
         click.echo(f" - {desc}")
         count += 1
 
-    click.echo("=" * 50)
-    click.echo(f"Total modules found: {count}\n")
+    click.echo("=" * 60)
+    click.echo(f"Total curated sources found: {count}")
+    click.echo("(Note: For raw, uncurated data access, use the 'fetchez' CLI directly)\n")
 
 
 @fetch_group.command("run")
 @click.argument("module_name")
-@click.option("-R", "--region", required=True, help="Bounding box or location (e.g., loc:'Miami').")
-@click.option("--outdir", "-O", default=".", help="Output directory for downloaded files.")
-# Pass arbitrary kwargs like `datatype=3` into the fetchez module
+@click.option("-R", "--region", required=True, help="Spatial bounding box (W/E/S/N or loc:\"Name\").")
+@click.option("-O", "--outdir", default=".", help="Output directory to save data (default: current directory).")
 @click.argument("extra_args", nargs=-1)
 def fetch_run(module_name, region, outdir, extra_args):
-    """Download data for a specific region.
+    """Download data from a curated Globato source.
 
-    MODULE_NAME: The data source (e.g., gebco_cog, copernicus, tnm)
-    EXTRA_ARGS: Optional key=value pairs to pass to the module (e.g., datatype=3)
+    MODULE_NAME: The curated source name (e.g., glob_bag, glob_fabdem)
+    EXTRA_ARGS: Optional key=value pairs to pass to the module.
 
-    Example: globato fetch run copernicus -R loc:"Denver, CO" -O ./denver_data
+    Example: globato fetch run glob_fabdem -R loc:"Denver, CO" -O ./denver_data
     """
 
     ModuleRegistry.load_all()
@@ -73,6 +77,13 @@ def fetch_run(module_name, region, outdir, extra_args):
 
     if not mod_cls:
         click.secho(f"Error: Unknown module '{module_name}'. Run 'globato fetch list' to see available options.", fg="red")
+        sys.exit(1)
+
+    # 🛑 THE FIX: Prevent execution of non-Globato modules
+    meta = ModuleRegistry.get_info(module_name)
+    if meta.get("category") != "Globato":
+        click.secho(f"Error: '{module_name}' is a raw Fetchez module, not a curated Globato source.", fg="red")
+        click.secho("Please use the 'fetchez' CLI to download raw data, or select a curated source from 'globato fetch list'.", fg="yellow")
         sys.exit(1)
 
     parsed_region = _parse_region(region)
@@ -99,13 +110,10 @@ def fetch_run(module_name, region, outdir, extra_args):
 
     try:
         fetcher = mod_cls(src_region=parsed_region, **kwargs)
-
         fetcher.run()
         run_fetchez([fetcher])
-
-        click.secho(f"\nDownload complete! Files saved to: {outdir}", fg="green", bold=True)
-
+        click.secho(f"\nFetch complete! Data saved to: {outdir}", fg="green", bold=True)
     except Exception as e:
-        click.secho(f"\nFetch failed: {e}", fg="red")
+        click.secho(f"\nFetch failed: {e}", fg="red", bold=True)
     finally:
         os.chdir(original_cwd)
