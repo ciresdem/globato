@@ -43,7 +43,7 @@ gmt = ["pygmt"]
 gdal = ["gdal"]
 # verde = ["verde"]
 # naturalneighbor = ["naturalneighbor"]
-interpolations = ["verde", "naturalneighbor", "pykrige"]
+interpolations = ["verde", "pykrige"]
 ml = ["scikit-learn"]
 h3 = ["h3"]
 
