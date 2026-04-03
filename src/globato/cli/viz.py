@@ -15,14 +15,15 @@ import click
 import logging
 from fetchez.registry import HookRegistry
 from transformez.spatial import TransRegion
-from globato.cli.pointz import _parse_filter_string
-import numpy.lib.recfunctions as rfn
+
+from globato.utils import parse_hook_string, add_field_to_recarray
 
 logger = logging.getLogger(__name__)
 
 @click.group(name="viz")
 def viz_group():
-    """Visualize DEMs and Point Clouds (Legacy Perspecto)."""
+    """Visualize DEMs and Point Clouds."""
+
     pass
 
 @viz_group.command("hillshade")
@@ -88,6 +89,14 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
         sys.exit(1)
 
 
+def _prepare_stream(gen):
+    """Safely injects required schema fields (w, u) into raw point streams."""
+    for chunk in gen:
+        chunk = add_field_to_recarray(chunk, 'w', float, 1.0)
+        chunk = add_field_to_recarray(chunk, 'u', float, 0.0)
+        yield chunk
+
+
 @viz_group.command("points")
 @click.argument("src")
 @click.option("-F", "--filter", "filters", multiple=True, help="Apply filters on-the-fly to classify outliers.")
@@ -119,7 +128,11 @@ def viz_points(src, filters, region, is_3d, outliers, out):
     dummy_mod = type("Dummy", (), {"region": parsed_region, "name": "cli_viz"})()
 
     for f_str in filters:
-        f_name, f_kwargs = _parse_filter_string(f_str)
+        # Use the dictionary returned by parse_hook_string
+        hook_dict = parse_hook_string(f_str)
+        f_name = hook_dict["name"]
+        f_kwargs = hook_dict.get("args", {})
+
         mod_cls = HookRegistry.get_class(f_name)
         if not mod_cls:
             click.secho(f"Error: Unknown filter '{f_name}'", fg="red")
@@ -136,7 +149,8 @@ def viz_points(src, filters, region, is_3d, outliers, out):
     entries = []
     if os.path.exists(src):
         reader = StreamFactory.get_reader(src)
-        stream = reader.yield_chunks() if reader else []
+        # Apply _prepare_stream to guarantee schema!
+        stream = _prepare_stream(reader.yield_chunks()) if reader else []
         entries.append((dummy_mod, {'dst_fn': src, 'stream': stream}))
     else:
         mod_cls = HookRegistry.get_class(src)
@@ -150,7 +164,7 @@ def viz_points(src, filters, region, is_3d, outliers, out):
             if entry.get("dst_fn"):
                 r = StreamFactory.get_reader(entry["dst_fn"])
                 if r:
-                    entries.append((dummy_mod, {'dst_fn': entry["dst_fn"], 'stream': r.yield_chunks()}))
+                    entries.append((dummy_mod, {'dst_fn': entry["dst_fn"], 'stream': _prepare_stream(r.yield_chunks())}))
 
     if not entries:
         click.secho("Error: No valid data streams found.", fg="red")

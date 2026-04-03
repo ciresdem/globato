@@ -18,6 +18,8 @@ import json
 
 from fetchez.recipe import Recipe
 
+from globato.utils import parse_source_string, parse_hook_string, yield_parsed_regions
+
 RECIPE_REPO_BASE = "https://raw.githubusercontent.com/continuous-dems/dem-recipes/refs/heads/main/dems/"
 
 
@@ -46,96 +48,13 @@ def resolve_recipe(target):
 @click.group(name="recipe")
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
+
     pass
-
-
-@recipe_group.command("batch")
-@click.argument("template")
-@click.argument("tileset")
-@click.option("--outdir", default=".", help="Base output directory for the tiles.")
-def recipe_batch(template, tileset, outdir):
-    """Run a recipe template over multiple regions defined in a GeoJSON tileset.
-
-    TEMPLATE: The base YAML recipe to use.
-    TILESET:  A GeoJSON file containing polygons/bounding boxes for the tiles.
-
-    Example: globato recipe batch crm_vol6_template.yaml crm_vol6_south.geojson --outdir ./crm_output
-    """
-
-    yaml_path = resolve_recipe(template)
-    if not yaml_path:
-        sys.exit(1)
-
-    with open(yaml_path, 'r') as f:
-        template_str = f.read()
-
-    # with open(yaml_path, 'r') as f:
-    #     template_dict = yaml.safe_load(f)
-
-    if not os.path.exists(tileset):
-        click.secho(f"Error: Tileset not found: {tileset}", fg="red")
-        sys.exit(1)
-
-    with open(tileset, 'r') as f:
-        geojson = json.load(f)
-
-    features = geojson.get("features", [])
-    if not features:
-        click.secho("Error: No features found in tileset.", fg="red")
-        sys.exit(1)
-
-    click.secho(f"\n  Batch Processing {len(features)} tiles from {os.path.basename(tileset)}...", fg="cyan", bold=True)
-
-    base_outdir = os.path.abspath(outdir)
-    os.makedirs(base_outdir, exist_ok=True)
-    original_cwd = os.getcwd()
-
-    for i, feature in enumerate(features, 1):
-        try:
-            coords = feature["geometry"]["coordinates"][0]
-            xs = [pt[0] for pt in coords]
-            ys = [pt[1] for pt in coords]
-            w, e, s, n = min(xs), max(xs), min(ys), max(ys)
-
-            props = feature.get("properties", {})
-            tile_name = props.get("NAME") or props.get("ID") or f"tile_{i:03d}"
-
-            click.echo("\n" + "="*60)
-            click.secho(f"TILE {i}/{len(features)}: {tile_name}", fg="green", bold=True)
-            click.secho(f"   Bounds: [{w:.3f}, {e:.3f}, {s:.3f}, {n:.3f}]", fg="green")
-
-            tile_dir = os.path.join(base_outdir, tile_name)
-            os.makedirs(tile_dir, exist_ok=True)
-            os.chdir(tile_dir)
-
-            config_str = template_str.replace("{name}", tile_name)
-            # config = template_dict.copy()
-            config = yaml.safe_load(config_str)
-            proj = config.setdefault("project", {})
-            if "Batch" in proj.get("name", "Batch"):
-                proj["name"] = f"{proj.get('name', 'Batch')}_{tile_name}"
-            config["region"] = [w, e, s, n]
-
-            tile_config_fn = f"{tile_name}_recipe.yaml"
-            with open(tile_config_fn, 'w') as f:
-                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
-
-            Recipe.from_file(config).run()
-
-        except Exception as e:
-            click.secho(f"Failed on tile {tile_name}: {e}", fg="red")
-        finally:
-            os.chdir(original_cwd)
-
-    click.secho("\nBatch Processing Complete!", fg="green", bold=True)
-
-    if yaml_path != template and os.path.exists(yaml_path):
-        os.remove(yaml_path)
 
 
 @recipe_group.command("run")
 @click.argument("target")
-@click.option("--region", help="Override the recipe's bounding box (W/E/S/N)")
+@click.option("-R", "--region", help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.")
 @click.option("--res", help="Override the recipe's target resolution (e.g., 1s, 30m)")
 @click.option("--name", help="Inject a custom {name} variable (defaults to recipe filename)")
 @click.option("--out", help="Override the recipe's output name (e.g., my-dem)")
@@ -148,53 +67,77 @@ def recipe_run(target, region, res, name, out, save_as):
     """
 
     yaml_path = resolve_recipe(target)
-    if not yaml_path:
-        sys.exit(1)
+    if not yaml_path: sys.exit(1)
 
     with open(yaml_path, 'r') as f:
-        template_str = f.read()
+        base_config = yaml.safe_load(f)
 
-    if not name:
-        name = os.path.splitext(os.path.basename(target))[0]
+    try:
+        for t_reg, feat_name in yield_parsed_regions(region):
+            config = base_config.copy()
 
-    config_str = template_str.replace("{name}", name)
-    config_dict = yaml.safe_load(config_str)
+            if t_reg:
+                config['region'] = t_reg.format("gmt")
 
-    if region:
-        try:
-            w, e, s, n = map(float, region.replace(",", "/").split("/"))
-            config_dict["region"] = [w, e, s, n]
-        except ValueError:
-            click.secho("Error: Region must be formatted as W/E/S/N", fg="red")
-            sys.exit(1)
+            if feat_name:
+                orig_name = config.get('project', {}).get('name', 'globato_dem')
+                config.setdefault('project', {})['name'] = f"{orig_name}_{feat_name}"
+                click.secho(f"\n--- Running Batch Tile: {feat_name} ({config['region']}) ---", fg="cyan", bold=True)
 
-    if res:
-        for hook in config_dict.get("global_hooks", []):
-            if hook.get("name") == "multi_stack":
-                hook.setdefault("args", {})["res"] = res
-            elif hook.get("name") == "ms_cudem":
-                hook.setdefault("args", {})["resolutions"] = res
-        patched = True
-    else:
-        patched = False
+            Recipe.from_file(config).run()
 
-    if patched:
-        proj = config_dict.setdefault("project", {})
-        proj["name"] = proj.get("name", "Recipe") + "_Custom"
-        proj["description"] = f"[Template: {target}] " + proj.get("description", "")
-        click.secho(f"Applied custom overrides to recipe template.", fg="yellow")
+    except ValueError as e:
+        click.secho(str(e), fg="red")
+        sys.exit(1)
 
-    if save_as:
-        with open(save_as, 'w') as f:
-            yaml.dump(config_dict, f, sort_keys=False, default_flow_style=False)
-        click.secho(f"Customized recipe saved to: {save_as}", fg="green")
-        click.echo(f"Run it later using: globato recipe run {save_as}")
-    else:
-        click.secho(f"Executing recipe: {target}", fg="green")
-        Recipe.from_file(config_dict).run()
+    # yaml_path = resolve_recipe(target)
+    # if not yaml_path:
+    #     sys.exit(1)
 
-    if yaml_path != target and os.path.exists(yaml_path):
-        os.remove(yaml_path)
+    # with open(yaml_path, 'r') as f:
+    #     template_str = f.read()
+
+    # if not name:
+    #     name = os.path.splitext(os.path.basename(target))[0]
+
+    # config_str = template_str.replace("{name}", name)
+    # config_dict = yaml.safe_load(config_str)
+
+    # if region:
+    #     try:
+    #         w, e, s, n = map(float, region.replace(",", "/").split("/"))
+    #         config_dict["region"] = [w, e, s, n]
+    #     except ValueError:
+    #         click.secho("Error: Region must be formatted as W/E/S/N", fg="red")
+    #         sys.exit(1)
+
+    # if res:
+    #     for hook in config_dict.get("global_hooks", []):
+    #         if hook.get("name") == "multi_stack":
+    #             hook.setdefault("args", {})["res"] = res
+    #         elif hook.get("name") == "ms_cudem":
+    #             hook.setdefault("args", {})["resolutions"] = res
+    #     patched = True
+    # else:
+    #     patched = False
+
+    # if patched:
+    #     proj = config_dict.setdefault("project", {})
+    #     proj["name"] = proj.get("name", "Recipe") + "_Custom"
+    #     proj["description"] = f"[Template: {target}] " + proj.get("description", "")
+    #     click.secho(f"Applied custom overrides to recipe template.", fg="yellow")
+
+    # if save_as:
+    #     with open(save_as, 'w') as f:
+    #         yaml.dump(config_dict, f, sort_keys=False, default_flow_style=False)
+    #     click.secho(f"Customized recipe saved to: {save_as}", fg="green")
+    #     click.echo(f"Run it later using: globato recipe run {save_as}")
+    # else:
+    #     click.secho(f"Executing recipe: {target}", fg="green")
+    #     Recipe.from_file(config_dict).run()
+
+    # if yaml_path != target and os.path.exists(yaml_path):
+    #     os.remove(yaml_path)
 
 
 @recipe_group.command("list")
@@ -202,8 +145,6 @@ def recipe_list():
     """List all official community recipes available on GitHub."""
 
     click.echo("Fetching community recipes catalog from GitHub...")
-
-    # Hit the GitHub API for the directory contents
     api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
 
     try:
@@ -261,8 +202,6 @@ def recipe_list():
     """List all official community recipes available on GitHub."""
 
     click.echo("Fetching community recipes catalog from GitHub...")
-
-    # Hit the GitHub API for the directory contents
     api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
 
     try:
@@ -381,6 +320,7 @@ def _parse_source(src_str):
 
 def _list_sources(ctx, param, value):
     """Eager callback to list available data sources and exit."""
+
     if not value or ctx.resilient_parsing:
         return
 
@@ -414,7 +354,8 @@ def _list_sources(ctx, param, value):
 
 
 def _info_source(ctx, param, value):
-    """Eager callback to inspect a specific data source and exit."""
+    """inspect a specific data source and exit."""
+
     if not value or ctx.resilient_parsing:
         return
 
@@ -452,61 +393,110 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
+def _parse_hook(hook_str, default_name=None):
+    """Parses 'name:key=val:key2=val2' into a dictionary for global_hooks."""
+
+    parts = hook_str.split(":")
+    name = parts[0] if len(parts) > 0 and "=" not in parts[0] else default_name
+
+    args = {}
+    for part in parts[1:] if name == parts[0] else parts:
+        if "=" in part:
+            k, v = part.split("=", 1)
+            try:
+                v = float(v) if "." in v else int(v)
+            except ValueError:
+                if v.lower() in ['true', 'yes']: v = True
+                elif v.lower() in ['false', 'no']: v = False
+            args[k] = v
+
+    hook = {"name": name}
+    if args:
+        hook["args"] = args
+    return hook
+
+
 @recipe_group.command("build")
 @click.option("--list-sources", is_flag=True, is_eager=True, expose_value=False, callback=_list_sources, help="List available data sources and exit.")
 @click.option("--info-source", metavar="NAME", is_eager=True, expose_value=False, callback=_info_source, help="Show details for a specific data source and exit.")
 @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
 @click.option("-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)")
 @click.option("-O", "--outname", default="globato_dem", help="Output Basename (default: globato_dem)")
+@click.option("-F", "--format", default="GTiff", help="Output Format (GTiff, NetCDF, etc.). Default: GTiff.")
 @click.option("-P", "--crs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)")
-@click.option("-M", "--algo", default="interp_gmt", help="Interpolation algorithm (interp_gmt, raster_fill, etc.)")
+@click.option("-N", "--nodata", type=float, default=-9999.0, help="NoData Value. Default: -9999.")
+@click.option("-M", "--algo", default="ms_cudem", help="Interpolation algorithm and options (e.g., interp_gmt:tension=0.35)")
 @click.option("-A", "--stack-mode", type=click.Choice(['mean', 'min', 'max', 'mixed', 'supercede']), default="mixed", help="Stacking mode")
+@click.option("-T", "--filter", "filters", multiple=True, help="Apply Grits Filter (e.g. 'blur:radius=3'). May be set multiple times.")
+@click.option("-C", "--clip", help="Clip output to polygon file. e.g. 'clip_ply.shp'")
 @click.option("--save-only", is_flag=True, help="Save the generated YAML recipe to disk WITHOUT running it.")
 @click.argument("sources", nargs=-1)
-def recipe_build(region, increment, outname, crs, algo, stack_mode, save_only, sources):
-    """Build and run a recipe on the fly using modules or local files.
-
-    SOURCES can be Fetchez modules or local files.
-    Append hooks using '+' (stream_data is added automatically).
-
-    Examples:
-      globato recipe build -R -120/-119/34/35 -E 1s ./my_lidar.laz copernicus:weight=1.5
-      globato recipe build -R -120/-119/34/35 -E 1s mbdb+rq:threshold=50+outlierz --save-only
-    """
+def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mode, filters, clip, save_only, sources):
+    """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
 
     if not sources:
         click.secho("Error: You must provide at least one data source.", fg="red")
         sys.exit(1)
 
-    config = {
-        "project": {"name": outname},
-        "region": region,
-        "modules": [_parse_source(s) for s in sources],
-        "global_hooks": [
-            {
-                "name": "multi_stack",
-                "args": {"res": increment, "crs": crs, "mode": stack_mode, "output": f"{outname}_stack.tif"}
-            },
-            {
-                "name": "ms_cudem",
-                "args": {"algo": algo}
-            }
-        ]
-    }
-
-    yaml_str = yaml.dump(config, sort_keys=False)
-
-    if save_only:
-        out_yaml = f"{outname}_recipe.yaml"
-        with open(out_yaml, "w") as f:
-            f.write(yaml_str)
-        click.secho(f"Recipe saved to {out_yaml}. Run it later with 'globato recipe run {out_yaml}'", fg="green", bold=True)
-        sys.exit(0)
-
-    click.secho(f"Building and executing on-the-fly recipe: {outname}", fg="cyan", bold=True)
-
     try:
-        Recipe.from_dict(config).run()
-    except Exception as e:
-        click.secho(f"\nPipeline failed: {e}", fg="red")
+        for t_reg, feat_name in yield_parsed_regions(region):
+            r_str = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
+            tile_outname = f"{outname}_{feat_name}" if feat_name else outname
+
+            if feat_name:
+                click.secho(f"\n--- Building Batch Tile: {feat_name} ({r_str}) ---", fg="cyan", bold=True)
+
+            global_hooks = []
+
+            # The Base Stack
+            global_hooks.append({"name": "drop_class"})
+            global_hooks.append({
+                "name": "multi_stack",
+                "args": {"res": increment, "crs": crs, "mode": stack_mode, "nodata": nodata, "output": f"{tile_outname}_stack.tif"}
+            })
+            global_hooks.append({"name": "focus_sink", "args": {"target": "multi_stack"}})
+            global_hooks.append({"name": "raster_stream", "args": {"stream_type": "raster", "chunk_size": 2048, "stage": "collection"}})
+
+            # Add requested Filters (-T)
+            for f in filters:
+                global_hooks.append(parse_hook_string(f))
+
+            global_hooks.append({"name": "ms_blend", "args": {"weight_threshold": .5, "blend_dist": 20, "random_scale": .25}})
+
+            # Add requested Interpolation Algorithm (-M)
+            algo_hook = _parse_hook(algo)
+            if algo_hook["name"] == "ms_cudem":
+                algo_hook.setdefault("args", {})["resolutions"] = increment
+
+            algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
+            global_hooks.append(algo_hook)
+
+            # Add Clipping (-C)
+            if clip:
+                clip_hook = _parse_hook(clip, default_name="raster_clip")
+                if clip_hook["name"] != "raster_clip":
+                    clip_hook["args"]["barrier"] = clip_hook.pop("name")
+                    clip_hook["name"] = "raster_clip"
+                global_hooks.append(clip_hook)
+
+            config = {
+                "project": {"name": tile_outname},
+                "region": region,
+                "modules": [parse_source_string(s) for s in sources],
+                "global_hooks": global_hooks
+            }
+
+            yaml_str = yaml.dump(config, sort_keys=False)
+
+            out_yaml = f"{tile_outname}_recipe.yaml"
+            with open(out_yaml, "w") as f:
+                f.write(yaml_str)
+            click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
+
+            if not save_only:
+                click.secho(f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True)
+                Recipe.from_file(config).run()
+
+    except ValueError as e:
+        click.secho(str(e), fg="red")
         sys.exit(1)

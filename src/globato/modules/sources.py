@@ -123,7 +123,7 @@ class GlobMultibeam(BaseMultibeam):
     meta_category = 'Globato'
 
     def __init__(self, res="1s", **kwargs):
-        super().__init__(name="glob_multibeam", **kwargs)
+        super().__init__(**kwargs)
 
         self.add_hook(FilenameFilter(exclude=".inf", stage="pre"))
         self.add_hook(DataStream())

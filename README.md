@@ -41,13 +41,16 @@ Generate, execute, and batch-process DEM recipes.
 
 ```bash
 # Build a recipe on the fly from the terminal
-globato recipe build -R -120/-119/34/35 -E 1s mbdb copernicus 
+globato recipe build -R -120/-119/34/35 -E 1s mbdb copernicus
 
 # Build a recipe and save it to YAML to learn the syntax
 globato recipe build -R loc:"Miami" -E 1/3s mbdb+rq:threshold=50 --save-only
 
 # Run a saved recipe
 globato recipe run my_dem_recipe.yaml
+
+# Dynamically build and run a recipe with Kriging interpolation and Uncertainty calculation
+globato recipe build -R -80/-79/25/26 -E 1s -M interp_krige -T dem_uncertainty:mode=split_sample mbdb copernicus
 ```
 
 2. **pointz (The Point Cloud Engine)**

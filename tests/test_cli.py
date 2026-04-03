@@ -33,7 +33,7 @@ def test_cli_base_help(runner):
 def test_region_echo_bbox(runner):
     """Test the spatial parsing engine (No network required)."""
 
-    result = runner.invoke(cli, ['region', 'echo', '-R', '-120/-119/34/35', '-f', 'bbox'])
+    result = runner.invoke(cli, ['region', 'echo', '-R', '-120/-119/34/35', '-F', 'gmt'])
 
     assert result.exit_code == 0
     assert '-120.0/-119.0/34.0/35.0' in result.output.strip()

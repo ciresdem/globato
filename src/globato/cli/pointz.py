@@ -13,12 +13,14 @@ import click
 import logging
 import numpy as np
 
-from fetchez.registry import HookRegistry
+from fetchez.registry import HookRegistry, ModuleRegistry
 from fetchez.core import run_fetchez
 
 from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.transforms.reproject import StreamReproject
 from transformez.spatial import TransRegion
+
+from globato.utils import parse_source_string, parse_hook_string
 
 logger = logging.getLogger(__name__)
 
@@ -28,26 +30,6 @@ def pointz_group():
     """Filter, transform, and stream point cloud data (XYZ/LAS)."""
 
     pass
-
-
-def _parse_filter_string(f_str):
-    """Parses 'outlierz:percentile=95,res=50' into a name and kwargs dict."""
-
-    parts = f_str.split(":", 1)
-    name = parts[0]
-    kwargs = {}
-    if len(parts) > 1:
-        for kv in parts[1].split(","):
-            if "=" in kv:
-                k, v = kv.split("=", 1)
-                try:
-                    v = float(v) if "." in v else int(v)
-                except ValueError:
-                    if v.lower() in ['true', 'yes']: v = True
-                    elif v.lower() in ['false', 'no']: v = False
-                kwargs[k] = v
-    return name, kwargs
-
 
 def _yield_stdin_chunks(chunk_size=100000):
     """A lightweight generator to stream XYZ data from standard input."""
@@ -79,88 +61,116 @@ def pointz_list_filters():
 
 
 @pointz_group.command("run")
-@click.argument("source")
-@click.option("-F", "--filter", "filters", multiple=True, help="Apply a filter (e.g., rq:threshold=10). Can be used multiple times.")
+@click.argument("sources", nargs=-1)
+@click.option("-F", "--filter", "global_filters", multiple=True, help="Apply a global filter (e.g., rq:threshold=10) to all sources.")
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
-@click.option("-S", "--s-srs", help="Source SRS (e.g., EPSG:4326). Optional, will auto-detect if possible.")
 @click.option("-T", "--t-srs", help="Target SRS for on-the-fly reprojection.")
 @click.option("-O", "--out", help="Output file (default: stdout).")
 @click.option("--chunk-size", type=int, default=500000, help="Number of points per memory chunk.")
-def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
+def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
     """Stream, filter, and format point cloud data.
 
-    SOURCE can be a local file (data.las), a Fetchez module (mbdb), or '-' for stdin.
+    SOURCES can be local files (data.las), Fetchez modules (mbdb), or '-' for stdin.
+    Use the '+' syntax to attach specific arguments and filters directly to a source!
 
     Examples:
-      globato pointz run data.xyz -F rq:threshold=10 -O clean.xyz
+      globato pointz run data.xyz+rq:threshold=10 -O clean.xyz
       cat raw.xyz | globato pointz run - -F outlierz > clean.xyz
-      globato pointz run mbdb -R loc:"Miami" -T EPSG:3857 > miami_web_mercator.xyz
+      globato pointz run mbdb:want_inf=False+rq:threshold=10 -R loc:"Miami" -T EPSG:3857 > miami.xyz
     """
 
+    if not sources:
+        click.secho("Error: You must provide at least one source.", fg="red", err=True)
+        sys.exit(1)
+
     HookRegistry.load_all()
-    active_filters = []
+    ModuleRegistry.load_all()
 
-    for f_str in filters:
-        f_name, f_kwargs = _parse_filter_string(f_str)
-        mod_cls = HookRegistry.get_class(f_name)
+    active_global_filters = []
+    for f_str in global_filters:
+        hook_dict = parse_hook_string(f_str)
+        mod_cls = HookRegistry.get_class(hook_dict["name"])
         if not mod_cls:
-            click.secho(f"Error: Unknown filter '{f_name}'", fg="red", err=True)
+            click.secho(f"Error: Unknown global filter '{hook_dict['name']}'", fg="red", err=True)
             sys.exit(1)
+        active_global_filters.append(mod_cls(**hook_dict.get("args", {})))
 
-        # if "res" not in f_kwargs: f_kwargs["res"] = 0.001
-        active_filters.append(mod_cls(**f_kwargs))
-
-    streams = []
     parsed_region = TransRegion.from_string(region) if region else None
 
-    if source == "-":
-        streams.append({
-            "generator": _yield_stdin_chunks(chunk_size),
-            "src_srs": s_srs or "EPSG:4326"
-        })
-        click.secho("Reading from standard input...", fg="cyan", err=True)
+    dummy_mod = type("Dummy", (), {"region": parsed_region})()
 
-    elif os.path.exists(source):
-        reader = StreamFactory.get_reader(source, chunk_size=chunk_size)
-        if reader:
-            detected_srs = s_srs
-            if not detected_srs and hasattr(reader, "get_srs"):
-                detected_srs = reader.get_srs()
+    for f in active_global_filters:
+        if hasattr(f, 'setup') and f.setup(dummy_mod, {}) is False:
+            click.secho(f"Error: Global filter '{f.name}' failed to initialize. It likely requires a --region (-R).", fg="red", err=True)
+            sys.exit(1)
 
+    streams = []
+
+    for src_str in sources:
+        if src_str == "-":
             streams.append({
-                "generator": reader.yield_chunks(),
-                "src_srs": detected_srs or "EPSG:4326"
+                "generator": _yield_stdin_chunks(chunk_size),
+                "src_srs": "EPSG:4326",
+                "filters": []
             })
-        click.secho(f"Reading local file: {source}", fg="cyan", err=True)
+            click.secho("Reading from standard input...", fg="cyan", err=True)
+            continue
 
-    else:
-        mod_cls = HookRegistry.get_class(source)
-        if not mod_cls:
-            click.secho(f"Error: '{source}' is not a file or known module.", fg="red", err=True)
-            sys.exit(1)
+        parsed_src = parse_source_string(src_str)
+        mod_name = parsed_src["module"]
+        mod_args = parsed_src.get("args", {})
 
-        if not parsed_region:
-            click.secho("Error: You must provide a --region (-R) when streaming a module.", fg="red", err=True)
-            sys.exit(1)
+        source_filters = []
+        for hook_dict in parsed_src.get("hooks", []):
+            if hook_dict["name"] == "stream_data":
+                continue
+            mod_cls = HookRegistry.get_class(hook_dict["name"])
+            if mod_cls:
+                f_instance = mod_cls(**hook_dict.get("args", {}))
+                if hasattr(f_instance, 'setup'): f_instance.setup(dummy_mod, {})
+                source_filters.append(f_instance)
+            else:
+                click.secho(f"Warning: Unknown hook '{hook_dict['name']}' attached to {mod_name}", fg="yellow", err=True)
 
-        click.secho(f"Fetching live data from '{source}'...", fg="cyan", err=True)
-        fetcher = mod_cls(src_region=parsed_region)
-        fetcher.run()
-        run_fetchez([fetcher])
+        if mod_name in ["file", "local_fs"]:
+            target_path = mod_args.get("paths", mod_args.get("path"))
+            reader = StreamFactory.get_reader(target_path, chunk_size=chunk_size)
+            if reader:
+                streams.append({
+                    "generator": reader.yield_chunks(),
+                    "src_srs": reader.get_srs() if hasattr(reader, "get_srs") and reader.get_srs() else "EPSG:4326",
+                    "filters": source_filters
+                })
+            click.secho(f"Reading local source: {target_path}", fg="cyan", err=True)
+        else:
+            mod_cls = ModuleRegistry.get_class(mod_name)
+            if not mod_cls:
+                click.secho(f"Error: '{mod_name}' is not a file or known module.", fg="red", err=True)
+                sys.exit(1)
 
-        for entry in fetcher.results:
-            dst_fn = entry.get("dst_fn")
-            if dst_fn and os.path.exists(dst_fn):
-                reader = StreamFactory.get_reader(dst_fn, chunk_size=chunk_size)
-                if reader:
-                    detected_srs = s_srs or entry.get("src_srs")
-                    if not detected_srs and hasattr(reader, "get_srs"):
-                        detected_srs = reader.get_srs()
+            if not parsed_region:
+                click.secho(f"Error: You must provide a --region (-R) when streaming the '{mod_name}' module.", fg="red", err=True)
+                sys.exit(1)
 
-                    streams.append({
-                        "generator": reader.yield_chunks(),
-                        "src_srs": detected_srs or "EPSG:4326"
-                    })
+            click.secho(f"Fetching live data from '{mod_name}'...", fg="cyan", err=True)
+            fetcher = mod_cls(src_region=parsed_region, **mod_args)
+            fetcher.run()
+            run_fetchez([fetcher])
+
+            for entry in fetcher.results:
+                dst_fn = entry.get("dst_fn")
+                if dst_fn and os.path.exists(dst_fn):
+                    reader = StreamFactory.get_reader(dst_fn, chunk_size=chunk_size)
+                    if reader:
+                        detected_srs = entry.get("src_srs")
+                        if not detected_srs and hasattr(reader, "get_srs"):
+                            detected_srs = reader.get_srs()
+
+                        streams.append({
+                            "generator": reader.yield_chunks(),
+                            "src_srs": detected_srs or "EPSG:4326",
+                            "filters": source_filters
+                        })
 
     if not streams:
         click.secho("Error: No valid data streams could be established.", fg="red", err=True)
@@ -171,27 +181,18 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
     total_out = 0
 
     try:
-        dummy_mod = type("Dummy", (), {"region": parsed_region})()
-        for f in active_filters:
-            if hasattr(f, 'setup'):
-                if f.setup(dummy_mod, {}) is False:
-                    click.secho(f"Error: Filter '{f.name}' failed to initialize. It likely requires a --region (-R).", fg="red", err=True)
-                    sys.exit(1)
-
         for stream_dict in streams:
             stream_gen = stream_dict["generator"]
             current_srs = stream_dict["src_srs"]
+            local_filters = stream_dict["filters"]
 
-            reproject_hook = None
-            if t_srs and current_srs.lower() != t_srs.lower():
-                click.secho(f"Reprojecting via hook: {current_srs} ➔ {t_srs}", fg="cyan", err=True)
+            if t_srs and current_srs and current_srs.lower() != t_srs.lower():
                 reproject_hook = StreamReproject(dst_srs=t_srs, src_srs=current_srs)
-
                 pipeline = reproject_hook._get_pipeline(current_srs, region=parsed_region)
                 if pipeline:
                     stream_gen = reproject_hook._apply_transform(stream_gen, pipeline)
                 else:
-                    click.secho("Warning: Could not establish reprojection pipeline. Skipping transform.", fg="yellow", err=True)
+                    click.secho("Warning: Could not establish reprojection pipeline.", fg="yellow", err=True)
 
             for chunk in stream_gen:
                 total_in += len(chunk)
@@ -203,7 +204,12 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
                     )
                     chunk = chunk[mask]
 
-                for f in active_filters:
+                for f in local_filters:
+                    if len(chunk) == 0: break
+                    outliers = f.filter_chunk(chunk)
+                    chunk = chunk[~outliers]
+
+                for f in active_global_filters:
                     if len(chunk) == 0: break
                     outliers = f.filter_chunk(chunk)
                     chunk = chunk[~outliers]
@@ -215,10 +221,12 @@ def pointz_run(source, filters, region, s_srs, t_srs, out, chunk_size):
     except BrokenPipeError:
         sys.stderr.close()
     finally:
-        for f in active_filters:
-            if hasattr(f, 'teardown'):
-                f.teardown()
+        for f in active_global_filters:
+            if hasattr(f, 'teardown'): f.teardown()
+
+        for s_dict in streams:
+            for f in s_dict["filters"]:
+                if hasattr(f, 'teardown'): f.teardown()
 
         if out: out_port.close()
-
         click.secho(f"\nPointZ Complete: Processed {total_in:,} | Output {total_out:,} points.", fg="green", bold=True, err=True)
