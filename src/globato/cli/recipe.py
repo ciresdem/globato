@@ -3,86 +3,139 @@
 
 """
 globato.cli.recipe
-~~~~~~~~~~~~~~~~
-
+~~~~~~~~~~~~~~~~~~
 The command-line interface for the recipe group.
+
+list, dump, copy, validate, run, build
 """
 
 import os
 import sys
-import tempfile
-import requests
 import click
 import yaml
-import json
+import logging
 
 from fetchez.recipe import Recipe
-
+from fetchez.registry import RecipeRegistry
 from globato.utils import parse_source_string, parse_hook_string, yield_parsed_regions
 
-RECIPE_REPO_BASE = "https://raw.githubusercontent.com/continuous-dems/dem-recipes/refs/heads/main/dems/"
-
-
-def resolve_recipe(target):
-    """Resolves a local file, URL, or GitHub keyword into a local YAML path."""
-
-    if os.path.exists(target):
-        return target
-
-    url = target if target.startswith("http") else f"{RECIPE_REPO_BASE}/{target.replace('.yaml', '')}.yaml"
-
-    click.echo(f"Fetching recipe from {url}...")
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-
-        fd, temp_path = tempfile.mkstemp(suffix=".yaml", prefix="globato_recipe_")
-        with os.fdopen(fd, 'w') as f:
-            f.write(response.text)
-        return temp_path
-    except Exception as e:
-        click.secho(f"Error resolving recipe '{target}': {e}", fg="red")
-        return None
+logger = logging.getLogger(__name__)
 
 
 @click.group(name="recipe")
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
-
     pass
+
+
+@recipe_group.command("list")
+@click.option("--search", "-s", help="Filter recipes by name or keyword.")
+def recipe_list(search):
+    """List all available curated DEM recipes."""
+
+    RecipeRegistry.load_all()
+    registry = RecipeRegistry.get_registry()
+
+    click.secho(f"\nAvailable Curated Recipes:", fg="cyan", bold=True)
+    click.echo("=" * 60)
+
+    count = 0
+    for name, meta in sorted(registry.items()):
+        if search and search.lower() not in name.lower() and search.lower() not in meta["desc"].lower():
+            continue
+
+        click.secho(f"  {name:<25}", fg="green", bold=True, nl=False)
+        click.echo(f" - {meta['desc']}")
+        count += 1
+
+    click.echo("=" * 60)
+    click.echo(f"Total recipes found: {count}\n")
+
+
+def _load_yaml(target):
+    base_config = None
+    if os.path.exists(target):
+        with open(target, 'r', encoding='utf-8') as f:
+            base_config = yaml.safe_load(f)
+    else:
+        recipe_meta = RecipeRegistry.get_recipe(target)
+        if recipe_meta:
+            base_config = recipe_meta["config"]
+            click.secho(f"Loaded curated recipe: {target}", fg="cyan")
+
+    return(base_config)
 
 
 @recipe_group.command("run")
 @click.argument("target")
 @click.option("-R", "--region", help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.")
-@click.option("--res", help="Override the recipe's target resolution (e.g., 1s, 30m)")
-@click.option("--name", help="Inject a custom {name} variable (defaults to recipe filename)")
-@click.option("--out", help="Override the recipe's output name (e.g., my-dem)")
-@click.option("--save-as", help="Save the customized recipe to a new YAML file without running it.")
-def recipe_run(target, region, res, name, out, save_as):
-    """Run a DEM recipe from a local file, URL, or community keyword.
+@click.option("-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10m).")
+@click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
+@click.option("-O", "--outname", help="Override project name / output basename.")
+def recipe_run(target, region, increment, crs, outname):
+    """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
-    You can use community recipes as templates by overriding the region and resolution!
-    Example: globato recipe run western_ak -R -120/-119/34/35 -E .3s --save-as my_cali_dem.yaml
-    """
+    RecipeRegistry.load_all()
 
-    yaml_path = resolve_recipe(target)
-    if not yaml_path: sys.exit(1)
+    base_config = _load_yaml(target)
+    if not base_config:
+        click.secho(f"Error: Recipe '{target}' not found locally or in the registry.", fg="red")
+        sys.exit(1)
 
-    with open(yaml_path, 'r') as f:
-        base_config = yaml.safe_load(f)
+    if outname:
+        base_config.setdefault("project", {})["name"] = outname
 
+    if increment or crs or outname:
+        for module in base_config.get("modules", []):
+            for hook in module.get("hooks", []):
+                if hook.get("name") == "stream_reproject":
+                    if crs:
+                        hook.setdefault("args", {})["dst_srs"] = crs
+
+        for hook in base_config.get("global_hooks", []):
+            hook_name = hook.get("name")
+            if hook_name == "provenance":
+                if increment:
+                    hook.setdefault("args", {})["res"] = increment
+                if outname:
+                    hook.setdefault("args", {})["output"] = f"{outname}_provenance.tif"
+            if hook_name == "multi_stack":
+                if increment:
+                    hook.setdefault("args", {})["res"] = increment
+                if crs:
+                    hook.setdefault("args", {})["crs"] = crs
+                if outname:
+                    hook.setdefault("args", {})["output"] = f"{outname}_stack.tif"
+
+            if hook_name == "ms_cudem" or hook_name == "interp_gmt" or hook_name == "raster_fill":
+                if increment and hook_name == "ms_cudem":
+                    hook.setdefault("args", {})["resolutions"] = increment
+                if outname:
+                    hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
     try:
         for t_reg, feat_name in yield_parsed_regions(region):
             config = base_config.copy()
 
             if t_reg:
-                config['region'] = t_reg.format("gmt")
+                config['region'] = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
 
             if feat_name:
                 orig_name = config.get('project', {}).get('name', 'globato_dem')
-                config.setdefault('project', {})['name'] = f"{orig_name}_{feat_name}"
-                click.secho(f"\n--- Running Batch Tile: {feat_name} ({config['region']}) ---", fg="cyan", bold=True)
+                batch_name = f"{orig_name}_{feat_name}"
+                config.setdefault('project', {})['name'] = batch_name
+                click.secho(f"\n--- Running Batch Tile: {batch_name} ({config['region']}) ---", fg="cyan", bold=True)
+            elif outname:
+                batch_name = outname
+                click.secho(f"\n--- Running Recipe with Override: {batch_name} ---", fg="cyan", bold=True)
+
+            for hook in base_config.get("global_hooks", []):
+                hook_name = hook.get("name")
+                if hook_name == "provenance":
+                    hook.setdefault("args", {})["output"] = f"{batch_name}_provenance.tif"
+                if hook_name == "multi_stack":
+                    hook.setdefault("args", {})["output"] = f"{batch_name}_stack.tif"
+                if hook_name == "ms_cudem" or hook_name == "interp_gmt" or hook_name == "raster_fill":
+                    hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
 
             Recipe.from_file(config).run()
 
@@ -90,95 +143,19 @@ def recipe_run(target, region, res, name, out, save_as):
         click.secho(str(e), fg="red")
         sys.exit(1)
 
-    # yaml_path = resolve_recipe(target)
-    # if not yaml_path:
-    #     sys.exit(1)
-
-    # with open(yaml_path, 'r') as f:
-    #     template_str = f.read()
-
-    # if not name:
-    #     name = os.path.splitext(os.path.basename(target))[0]
-
-    # config_str = template_str.replace("{name}", name)
-    # config_dict = yaml.safe_load(config_str)
-
-    # if region:
-    #     try:
-    #         w, e, s, n = map(float, region.replace(",", "/").split("/"))
-    #         config_dict["region"] = [w, e, s, n]
-    #     except ValueError:
-    #         click.secho("Error: Region must be formatted as W/E/S/N", fg="red")
-    #         sys.exit(1)
-
-    # if res:
-    #     for hook in config_dict.get("global_hooks", []):
-    #         if hook.get("name") == "multi_stack":
-    #             hook.setdefault("args", {})["res"] = res
-    #         elif hook.get("name") == "ms_cudem":
-    #             hook.setdefault("args", {})["resolutions"] = res
-    #     patched = True
-    # else:
-    #     patched = False
-
-    # if patched:
-    #     proj = config_dict.setdefault("project", {})
-    #     proj["name"] = proj.get("name", "Recipe") + "_Custom"
-    #     proj["description"] = f"[Template: {target}] " + proj.get("description", "")
-    #     click.secho(f"Applied custom overrides to recipe template.", fg="yellow")
-
-    # if save_as:
-    #     with open(save_as, 'w') as f:
-    #         yaml.dump(config_dict, f, sort_keys=False, default_flow_style=False)
-    #     click.secho(f"Customized recipe saved to: {save_as}", fg="green")
-    #     click.echo(f"Run it later using: globato recipe run {save_as}")
-    # else:
-    #     click.secho(f"Executing recipe: {target}", fg="green")
-    #     Recipe.from_file(config_dict).run()
-
-    # if yaml_path != target and os.path.exists(yaml_path):
-    #     os.remove(yaml_path)
-
-
-@recipe_group.command("list")
-def recipe_list():
-    """List all official community recipes available on GitHub."""
-
-    click.echo("Fetching community recipes catalog from GitHub...")
-    api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
-
-    try:
-        response = requests.get(api_url, timeout=5)
-        response.raise_for_status()
-        files = response.json()
-
-        click.secho("\nAvailable Community Recipes:", fg="cyan", bold=True)
-        for f in files:
-            if f["name"].endswith(".yaml"):
-                click.echo(f"  ➔ {f['name'].replace('.yaml', '')}")
-
-        click.echo("\nRun 'globato recipe info <name>' to see what a recipe does.")
-
-    except Exception as e:
-        click.secho(f"Failed to fetch recipes: {e}", fg="red")
-
-
 @recipe_group.command("info")
 @click.argument("target")
 def recipe_info(target):
     """Inspect a recipe's description and sources without running it."""
 
-    yaml_path = resolve_recipe(target)
-    if not yaml_path:
-        sys.exit(1)
+    RecipeRegistry.load_all()
 
-    with open(yaml_path, 'r') as f:
-        config_dict = yaml.safe_load(f)
+    base_config = _load_yaml(target)
 
-    proj = config_dict.get("project", {})
-    region = config_dict.get("region", "Global")
+    proj = base_config.get("project", {})
+    region = base_config.get("region", "Global")
 
-    modules = config_dict.get("modules", [])
+    modules = base_config.get("modules", [])
     mod_names = []
     for m in modules:
         if isinstance(m, dict):
@@ -193,66 +170,91 @@ def recipe_info(target):
     click.echo(f"Region:      {region}")
     click.echo(f"Sources:     {', '.join(unique_mods)}\n")
 
-    if yaml_path != target and os.path.exists(yaml_path):
-        os.remove(yaml_path)
 
+@recipe_group.command("dump")
+@click.argument("name")
+def recipe_dump(name):
+    """Dump the contents of a registered recipe to the terminal."""
 
-@recipe_group.command("list")
-def recipe_list():
-    """List all official community recipes available on GitHub."""
+    RecipeRegistry.load_all()
+    recipe_meta = RecipeRegistry.get_recipe(name)
 
-    click.echo("Fetching community recipes catalog from GitHub...")
-    api_url = "https://api.github.com/repos/continuous-dems/dem-recipes/contents/dems/general"
-
-    try:
-        response = requests.get(api_url, timeout=5)
-        response.raise_for_status()
-        files = response.json()
-
-        click.secho("\nAvailable Community Recipes:", fg="cyan", bold=True)
-        for f in files:
-            if f["name"].endswith(".yaml"):
-                click.echo(f"  ➔ {f['name'].replace('.yaml', '')}")
-
-        click.echo("\nRun 'globato recipe info <name>' to see what a recipe does.")
-
-    except Exception as e:
-        click.secho(f"Failed to fetch recipes: {e}", fg="red")
-
-
-@recipe_group.command("info")
-@click.argument("target")
-def recipe_info(target):
-    """Inspect a recipe's description and sources without running it."""
-
-    yaml_path = resolve_recipe(target)
-    if not yaml_path:
+    if not recipe_meta:
+        click.secho(f"Error: Recipe '{name}' not found in registry.", fg="red")
         sys.exit(1)
 
-    with open(yaml_path, 'r') as f:
-        config_dict = yaml.safe_load(f)
+    click.secho(f"--- Recipe: {name} ---", fg="cyan", bold=True)
+    click.echo(yaml.dump(recipe_meta["config"], sort_keys=False))
 
-    proj = config_dict.get("project", {})
-    region = config_dict.get("region", "Global")
 
-    modules = config_dict.get("modules", [])
-    mod_names = []
-    for m in modules:
-        if isinstance(m, dict):
-            mod_names.append(m.get("module", "Unknown"))
+@recipe_group.command("copy")
+@click.argument("name")
+@click.option("-O", "--outdir", default=".", help="Where to save the recipe.")
+def recipe_copy(name, outdir):
+    """Copy a registered recipe to your local directory for editing."""
+
+    RecipeRegistry.load_all()
+    recipe_meta = RecipeRegistry.get_recipe(name)
+
+    if not recipe_meta:
+        click.secho(f"Error: Recipe '{name}' not found in registry.", fg="red")
+        sys.exit(1)
+
+    out_path = os.path.join(outdir, f"{name}_custom.yaml")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(yaml.dump(recipe_meta["config"], sort_keys=False))
+
+    click.secho(f"Copied '{name}' to {out_path}", fg="green", bold=True)
+    click.echo("You can now edit this file and run it with: globato recipe run " + out_path)
+
+
+@recipe_group.command("validate")
+@click.argument("target")
+def recipe_validate(target):
+    """Check a YAML recipe for syntax errors and missing modules/hooks."""
+
+    from fetchez.registry import ModuleRegistry, HookRegistry
+    ModuleRegistry.load_all()
+    HookRegistry.load_all()
+
+    base_config = _load_yaml(target)
+    if not base_config:
+        click.secho(f"Error: Recipe '{target}' not found locally or in the registry.", fg="red")
+        sys.exit(1)
+
+    errors = 0
+    click.secho(f"Validating {target}...", fg="blue")
+
+    for mod in base_config.get("modules", []):
+        mod_name = mod.get("module")
+        if not ModuleRegistry.get_class(mod_name) and mod_name not in ["file", "local_fs"]:
+            click.secho(f"  Missing Module: '{mod_name}'", fg="red")
+            errors += 1
         else:
-            mod_names.append(str(m))
+            click.secho(f"  Valid Module: '{mod_name}'", fg="green")
 
-    unique_mods = list(set(mod_names))
+        for hook in mod.get("hooks", []):
+            if not HookRegistry.get_class(hook.get("name")):
+                click.secho(f"  Missing Hook: '{hook.get('name')}' (in module {mod_name})", fg="red")
+                errors += 1
+            else:
+                click.secho(f"  Valid Hook: '{hook.get('name')}' (in module {mod_name})", fg="green")
 
-    click.secho(f"\n Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
-    click.echo(f"Description: {proj.get('description', 'No description provided.')}")
-    click.echo(f"Region:      {region}")
-    click.echo(f"Sources:     {', '.join(unique_mods)}\n")
+    for hook in base_config.get("global_hooks", []):
+        if not HookRegistry.get_class(hook.get("name")):
+            click.secho(f"  Missing Global Hook: '{hook.get('name')}'", fg="red")
+            errors += 1
+        else:
+            click.secho(f"  Valid Hook: '{hook.get('name')}'", fg="green")
 
-    if yaml_path != target and os.path.exists(yaml_path):
-        os.remove(yaml_path)
+    if errors == 0:
+        click.secho("Recipe appears valid!", fg="green", bold=True)
+    else:
+        click.secho(f"Failed validation with {errors} errors.", fg="red", bold=True)
+        sys.exit(1)
 
+
+# --- Build command ---
 
 def _parse_source(src_str):
     """Parses 'module:key=val+hook:k=v' or local paths into a dictionary for the recipe."""

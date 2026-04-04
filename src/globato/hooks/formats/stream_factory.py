@@ -190,7 +190,7 @@ class DataStream(FetchHook):
 
     Usage:
       --hook stream_data:stream_type=xyz
-      --hook stream_data:stream_type=raster:x_inc=1s:y_inc=1s
+      --hook stream_data:stream_type=raster:x_inc=1s,y_inc=1s
     """
 
     name = "stream_data"

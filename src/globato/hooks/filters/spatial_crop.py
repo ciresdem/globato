@@ -87,4 +87,4 @@ class SpatialCrop(FetchHook):
 
         if dropped_total > 0:
             action = "Classified" if self.soft else "Dropped"
-            logger.debug(f"[SpatialCrop] {action} {dropped_total} points outside region (Kept {kept_total}).")
+            logger.info(f"[SpatialCrop] {action} {dropped_total} points outside region (Kept {kept_total}).")

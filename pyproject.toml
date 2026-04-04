@@ -75,7 +75,10 @@ globato_modules = "globato.modules"
 globato_hooks = "globato.hooks"
 
 [project.entry-points."fetchez.schemas"]
-globato_hooks = "globato.schemas"
+globato_schemas = "globato.schemas"
+
+[project.entry-points."fetchez.recipes"]
+globato_recipes = "globato.recipes"
 
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
