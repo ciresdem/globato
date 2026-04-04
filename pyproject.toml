@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "fetchez>=0.5.0",
+    "fetchez>=0.5.2",
     "transformez>=0.3.2",
     "numpy>1.24",
     "scipy",
@@ -75,7 +75,10 @@ globato_modules = "globato.modules"
 globato_hooks = "globato.hooks"
 
 [project.entry-points."fetchez.schemas"]
-globato_hooks = "globato.schemas"
+globato_schemas = "globato.schemas"
+
+[project.entry-points."fetchez.recipes"]
+globato_recipes = "globato.recipes"
 
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
