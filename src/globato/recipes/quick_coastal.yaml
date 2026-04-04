@@ -22,9 +22,6 @@ modules:
         args:
           src_srs: "EPSG:4326+3855"
           dst_srs: "EPSG:4326+3855"
-      - name: raster_clip
-        args:
-          barrier: "coastline"
       - name: range_z
         args: {min_z: 0.01} # Strict Topo
 
@@ -106,7 +103,7 @@ modules:
       - name: spatial_crop
 
 global_hooks:
-  # Dynamically fetch OSM coastline to act as a barrier between topo and bathy
+  # fetch OSM coastline to act as a barrier between topo and bathy
   - name: osm_landmask
     args: {filename: "temp_coastline.geojson"}
   - name: audit
@@ -142,14 +139,13 @@ global_hooks:
     args:
       target: "blended_checkpoint"
 
-  # Fast interpolation (No need for CUDEM step-down since GEBCO is global)
-  - name: interp_gmt
+  # Fast interpolation using `raster_fill`
+  - name: raster_fill
     args:
-      tension: 0.35
       # barrier: "temp_coastline.geojson"
       output: "quick_coastal_dem.tif"
 
-  # Generate a beautiful colored hillshade automatically!
+  # Generate a hillshade.
   - name: viz_geoshade
     args:
       cmap: "etopo"
