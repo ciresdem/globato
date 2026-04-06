@@ -72,6 +72,7 @@ def _load_yaml(target):
 @click.option("-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10m).")
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
+@click.option("--outdir", default=".", help="Base output directory for the tiles.")
 def recipe_run(target, region, increment, crs, outname):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
@@ -112,10 +113,15 @@ def recipe_run(target, region, increment, crs, outname):
                     hook.setdefault("args", {})["resolutions"] = increment
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
-    try:
-        for t_reg, feat_name in yield_parsed_regions(region):
-            config = base_config.copy()
 
+    base_outdir = os.path.abspath(outdir)
+    os.makedirs(base_outdir, exist_ok=True)
+    original_cwd = os.getcwd()
+
+    import copy
+    for t_reg, feat_name in yield_parsed_regions(region):
+        try:
+            config = copy.deepcopy(base_config)
             if t_reg:
                 config['region'] = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
 
@@ -128,7 +134,7 @@ def recipe_run(target, region, increment, crs, outname):
                 batch_name = outname
                 click.secho(f"\n--- Running Recipe with Override: {batch_name} ---", fg="cyan", bold=True)
 
-            for hook in base_config.get("global_hooks", []):
+            for hook in config.get("global_hooks", []):
                 hook_name = hook.get("name")
                 if hook_name == "provenance":
                     hook.setdefault("args", {})["output"] = f"{batch_name}_provenance.tif"
@@ -137,11 +143,21 @@ def recipe_run(target, region, increment, crs, outname):
                 if hook_name == "ms_cudem" or hook_name == "interp_gmt" or hook_name == "raster_fill":
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
 
+            tile_dir = os.path.join(base_outdir, batch_name)
+            os.makedirs(tile_dir, exist_ok=True)
+            os.chdir(tile_dir)
+
+            batch_config_fn = f"{batch_name}_recipe.yaml"
+            with open(batch_config_fn, 'w') as f:
+                yaml.dump(config, f, sort_keys=False, default_flow_style=False)
+
             Recipe.from_file(config).run()
 
-    except ValueError as e:
-        click.secho(str(e), fg="red")
-        sys.exit(1)
+        except ValueError as e:
+            click.secho(str(e), fg="red")
+        finally:
+            os.chdir(original_cwd)
+
 
 @recipe_group.command("info")
 @click.argument("target")

@@ -45,6 +45,7 @@ class StreamReproject(FetchHook):
         if actual_src in self._cache:
             return self._cache[actual_src]
 
+        # todo: reproject region if nec.
         parser = SRSParser(actual_src, self.dst_srs, region=region, vert_grid=self.vert_grid)
         t_in, t_out, grid_fn = parser.get_components()
 

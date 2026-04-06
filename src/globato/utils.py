@@ -213,10 +213,9 @@ def yield_parsed_regions(region_str):
     except Exception as e:
         raise ValueError(f"Error parsing region '{region_str}': {e}")
 
-    # If parse_region returned multiple items, it's a batch job!
     is_batch = len(raw_regions) > 1
-
     for i, r in enumerate(raw_regions):
         t_reg = TransRegion(*r)
-        feat_name = f"tile_{i:03d}" if is_batch else None
+        #feat_name = f"tile_{i:03d}" if is_batch else None
+        feat_name = t_reg.format('fn') if is_batch else None
         yield t_reg, feat_name
