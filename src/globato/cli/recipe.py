@@ -12,6 +12,7 @@ list, dump, copy, validate, run, build
 import os
 import sys
 import click
+import json
 import yaml
 import logging
 
@@ -198,7 +199,7 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                     json.dump(completed_tiles, f, indent=2)
 
             except Exception as e:
-                click.secho(f"\n Tile {tile_id} failed: {e}", fg="red", bold=True)
+                click.secho(f"\n Tile {batch_name} failed: {e}", fg="red", bold=True)
                 click.secho("Batch processing halted. Re-run command to resume from this tile.", fg="yellow")
                 sys.exit(1)
 
@@ -548,7 +549,7 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
 
             config = {
                 "project": {"name": tile_outname},
-                "region": region,
+                "region": r_str,
                 "modules": [parse_source_string(s) for s in sources],
                 "global_hooks": global_hooks
             }
