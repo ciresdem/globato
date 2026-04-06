@@ -3,7 +3,7 @@
 		<img src="https://raw.githubusercontent.com/continuous-dems/globato/refs/heads/devel/docs/source/_static/continuous_dems_logo_mini.svg" height="80" alt="Continuous DEMs Logo">
 	</a>
 </p>
-<h1 align="center">Globato</h1>
+<h1 align="center">GloBaTo</h1>
 <p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
 
 <p align="center">
