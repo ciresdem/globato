@@ -73,7 +73,7 @@ def _load_yaml(target):
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
 @click.option("--outdir", default=".", help="Base output directory for the tiles.")
-def recipe_run(target, region, increment, crs, outname):
+def recipe_run(target, region, increment, crs, outname, outdir):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
     RecipeRegistry.load_all()
@@ -133,6 +133,8 @@ def recipe_run(target, region, increment, crs, outname):
             elif outname:
                 batch_name = outname
                 click.secho(f"\n--- Running Recipe with Override: {batch_name} ---", fg="cyan", bold=True)
+            else:
+                batch_name = config.get('project', {}).get('name', 'globato_dem')
 
             for hook in config.get("global_hooks", []):
                 hook_name = hook.get("name")
