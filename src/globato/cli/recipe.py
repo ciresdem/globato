@@ -66,6 +66,27 @@ def _load_yaml(target):
     return(base_config)
 
 
+def _absolutize_local_sources(config, base_dir):
+    """Converts relative local paths in a recipe to absolute paths."""
+
+    for mod in config.get("modules", []):
+        mod_name = mod.get("module")
+        if mod_name in ["file", "local_fs"]:
+            args = mod.setdefault("args", {})
+
+            # Handle local_fs 'path'
+            if "path" in args:
+                args["path"] = os.path.normpath(os.path.join(base_dir, str(args["path"])))
+
+            # Handle file 'paths' (which could be comma-separated)
+            if "paths" in args:
+                paths = str(args["paths"]).split(",")
+                abs_paths = [os.path.normpath(os.path.join(base_dir, p.strip())) for p in paths]
+                args["paths"] = ",".join(abs_paths)
+
+    return config
+
+
 @recipe_group.command("run")
 @click.argument("target")
 @click.option("-R", "--region", help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.")
@@ -117,6 +138,7 @@ def recipe_run(target, region, increment, crs, outname, outdir):
     base_outdir = os.path.abspath(outdir)
     os.makedirs(base_outdir, exist_ok=True)
     original_cwd = os.getcwd()
+    base_config = _absolutize_local_sources(base_config, original_cwd)
 
     import copy
     for t_reg, feat_name in yield_parsed_regions(region):
