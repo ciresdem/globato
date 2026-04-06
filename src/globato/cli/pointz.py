@@ -230,3 +230,32 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
 
         if out: out_port.close()
         click.secho(f"\nPointZ Complete: Processed {total_in:,} | Output {total_out:,} points.", fg="green", bold=True, err=True)
+
+
+@pointz_group.command("info")
+@click.argument("source")
+def pointz_info(source):
+    """Scan a point cloud and return its spatial statistics."""
+
+    parsed_src = parse_source_string(source)
+    #print(parsed_src)
+    reader = StreamFactory.get_reader(source)#, chunk_size=chunk_size)
+
+    total_pts = 0
+    min_x, max_x = np.inf, -np.inf
+    min_y, max_y = np.inf, -np.inf
+    min_z, max_z = np.inf, -np.inf
+
+    with click.progressbar(reader.yield_chunks(), label=f"Scanning {source}") as chunks:
+        for chunk in chunks:
+            if len(chunk) == 0: continue
+            total_pts += len(chunk)
+            min_x, max_x = min(min_x, chunk['x'].min()), max(max_x, chunk['x'].max())
+            min_y, max_y = min(min_y, chunk['y'].min()), max(max_y, chunk['y'].max())
+            min_z, max_z = min(min_z, chunk['z'].min()), max(max_z, chunk['z'].max())
+
+    click.secho(f"\n--- Point Cloud Info: {source} ---", fg="cyan", bold=True)
+    click.echo(f"Total Points : {total_pts:,}")
+    click.echo(f"Bounds (X)   : {min_x:.6f} to {max_x:.6f}")
+    click.echo(f"Bounds (Y)   : {min_y:.6f} to {max_y:.6f}")
+    click.echo(f"Elevation (Z): {min_z:.3f} to {max_z:.3f}")
