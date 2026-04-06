@@ -12,6 +12,7 @@ list, dump, copy, validate, run, build
 import os
 import sys
 import click
+import json
 import yaml
 import logging
 
@@ -66,6 +67,27 @@ def _load_yaml(target):
     return(base_config)
 
 
+def _absolutize_local_sources(config, base_dir):
+    """Converts relative local paths in a recipe to absolute paths."""
+
+    for mod in config.get("modules", []):
+        mod_name = mod.get("module")
+        if mod_name in ["file", "local_fs"]:
+            args = mod.setdefault("args", {})
+
+            # Handle local_fs 'path'
+            if "path" in args:
+                args["path"] = os.path.normpath(os.path.join(base_dir, str(args["path"])))
+
+            # Handle file 'paths' (which could be comma-separated)
+            if "paths" in args:
+                paths = str(args["paths"]).split(",")
+                abs_paths = [os.path.normpath(os.path.join(base_dir, p.strip())) for p in paths]
+                args["paths"] = ",".join(abs_paths)
+
+    return config
+
+
 @recipe_group.command("run")
 @click.argument("target")
 @click.option("-R", "--region", help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.")
@@ -73,7 +95,8 @@ def _load_yaml(target):
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
 @click.option("--outdir", default=".", help="Base output directory for the tiles.")
-def recipe_run(target, region, increment, crs, outname, outdir):
+@click.option("--overwrite", is_flag=True, help="Force rebuild of already completed tiles in a batch run.")
+def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
     RecipeRegistry.load_all()
@@ -117,6 +140,17 @@ def recipe_run(target, region, increment, crs, outname, outdir):
     base_outdir = os.path.abspath(outdir)
     os.makedirs(base_outdir, exist_ok=True)
     original_cwd = os.getcwd()
+    base_config = _absolutize_local_sources(base_config, original_cwd)
+
+    state_file = os.path.join(original_cwd, ".globato_batch_state.json")
+    completed_tiles = []
+
+    if os.path.exists(state_file) and not overwrite:
+        try:
+            with open(state_file, 'r') as f:
+                completed_tiles = json.load(f)
+        except Exception:
+            pass # If the state file is corrupted, we just ignore it
 
     import copy
     for t_reg, feat_name in yield_parsed_regions(region):
@@ -136,6 +170,10 @@ def recipe_run(target, region, increment, crs, outname, outdir):
             else:
                 batch_name = config.get('project', {}).get('name', 'globato_dem')
 
+            if batch_name in completed_tiles and not overwrite:
+                click.secho(f"  Skipping completed tile: {batch_name} (use --overwrite to force)", fg="yellow", bold=True)
+                continue
+
             for hook in config.get("global_hooks", []):
                 hook_name = hook.get("name")
                 if hook_name == "provenance":
@@ -153,7 +191,17 @@ def recipe_run(target, region, increment, crs, outname, outdir):
             with open(batch_config_fn, 'w') as f:
                 yaml.dump(config, f, sort_keys=False, default_flow_style=False)
 
-            Recipe.from_file(config).run()
+            try:
+                Recipe.from_file(config).run()
+
+                completed_tiles.append(batch_name)
+                with open(state_file, 'w') as f:
+                    json.dump(completed_tiles, f, indent=2)
+
+            except Exception as e:
+                click.secho(f"\n Tile {batch_name} failed: {e}", fg="red", bold=True)
+                click.secho("Batch processing halted. Re-run command to resume from this tile.", fg="yellow")
+                sys.exit(1)
 
         except ValueError as e:
             click.secho(str(e), fg="red")
@@ -501,7 +549,7 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
 
             config = {
                 "project": {"name": tile_outname},
-                "region": region,
+                "region": r_str,
                 "modules": [parse_source_string(s) for s in sources],
                 "global_hooks": global_hooks
             }
