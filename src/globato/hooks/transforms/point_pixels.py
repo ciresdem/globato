@@ -55,6 +55,8 @@ class PointPixels:
                 np.min(points['x']), np.max(points['x']),
                 np.min(points['y']), np.max(points['y'])
             ])
+        else:
+            self.src_region = Region(*self.src_region)
 
         if not self.src_region.valid_p():
             self.src_region.buffer(2)

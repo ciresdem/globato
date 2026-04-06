@@ -113,9 +113,9 @@ def recipe_run(target, region, increment, crs, outname):
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
     try:
+        import copy
         for t_reg, feat_name in yield_parsed_regions(region):
-            config = base_config.copy()
-
+            config = copy.deepcopy(base_config)
             if t_reg:
                 config['region'] = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
 
@@ -128,7 +128,7 @@ def recipe_run(target, region, increment, crs, outname):
                 batch_name = outname
                 click.secho(f"\n--- Running Recipe with Override: {batch_name} ---", fg="cyan", bold=True)
 
-            for hook in base_config.get("global_hooks", []):
+            for hook in config.get("global_hooks", []):
                 hook_name = hook.get("name")
                 if hook_name == "provenance":
                     hook.setdefault("args", {})["output"] = f"{batch_name}_provenance.tif"
@@ -142,6 +142,7 @@ def recipe_run(target, region, increment, crs, outname):
     except ValueError as e:
         click.secho(str(e), fg="red")
         sys.exit(1)
+
 
 @recipe_group.command("info")
 @click.argument("target")

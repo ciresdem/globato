@@ -41,7 +41,9 @@ class RasterFlats(RasterStreamHook):
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         """data: (Bands, Rows, Cols)"""
+
         src_arr = data
+        count_removed = 0
         valid_mask = (src_arr != ndv) & (~np.isnan(src_arr))
         if not np.any(valid_mask):
             return src_arr
@@ -52,23 +54,24 @@ class RasterFlats(RasterStreamHook):
         # Determine Threshold
         threshold = self.size_threshold
         if threshold is None:
-            # Auto-detect: Assume flats are statistical outliers in terms of frequency
+            # Assume flats are statistical outliers in terms of frequency
             outlier_val, _ = self.get_outliers(uv_counts, percentile=99)
             threshold = outlier_val if not np.isnan(outlier_val) else 100
 
-            flat_values = uv[uv_counts > threshold]
+        flat_values = uv[uv_counts > threshold]
 
-            # Create Mask
-            if ndv is not None:
-                flat_values = flat_values[flat_values != ndv]
+        # Create Mask
+        if ndv is not None:
+            flat_values = flat_values[flat_values != ndv]
 
-            if flat_values.size > 0:
-                mask = np.isin(src_arr, flat_values)
+        if flat_values.size > 0:
+            mask = np.isin(src_arr, flat_values)
 
-                # Count and Apply
-                n_removed = np.count_nonzero(mask)
-                if n_removed > 0:
-                    count_removed += n_removed
-                    src_arr[mask] = ndv
-                    logger.info(f"[Flats] Removed {count_removed} flat pixels.")
+            # Count and Apply
+            n_removed = np.count_nonzero(mask)
+            if n_removed > 0:
+                count_removed += n_removed
+                src_arr[mask] = ndv
+
+        logger.info(f"[Flats] Removed {count_removed} flat pixels.")
         return src_arr
