@@ -160,7 +160,7 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             for entry in fetcher.results:
                 dst_fn = entry.get("dst_fn")
                 if dst_fn and os.path.exists(dst_fn):
-                    reader = StreamFactory.get_reader(dst_fn, chunk_size=chunk_size)
+                    reader = StreamFactory.get_reader(dst_fn, data_type=entry.get("data_type", None), chunk_size=chunk_size)
                     if reader:
                         detected_srs = entry.get("src_srs")
                         if not detected_srs and hasattr(reader, "get_srs"):
