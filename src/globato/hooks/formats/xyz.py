@@ -69,14 +69,22 @@ class XYZReader:
         self.x_scale = float_or(x_scale, 1)
         self.y_scale = float_or(y_scale, 1)
         self.z_scale = float_or(z_scale, 1)
-        self.x_offset = float_or(x_offset, 0)
+        self.x_offset = x_offset
+        self.rem = False
+        if self.x_offset == 'REM':
+            self.x_offset = 0
+            self.rem = True
+        else:
+            self.x_offset = float_or(x_offset, 0)
         self.y_offset = float_or(y_offset, 0)
-
         self.chunk_size = chunk_size
         self.transform = (self.x_scale != 1 or self.y_scale != 1 or self.z_scale != 1 or
                           self.x_offset != 0 or self.y_offset != 0)
 
         # Detect delimiter if not provided
+        if self.delim in [' ', '\t', '']:
+            self.delim = None
+
         if self.delim is None:
             self.delim = self._guess_delim()
 
@@ -96,9 +104,16 @@ class XYZReader:
                     if line.strip().startswith("#"):
                         continue
 
-                    for d in self.KNOWN_DELIMS:
+                    for d in [",", ";", "|"]:
                         if len(line.split(d)) > 2:
                             return d
+
+                    if len(line.split()) > 2:
+                        return None
+
+                    # for d in self.KNOWN_DELIMS:
+                    #     if len(line.split(d)) > 2:
+                    #         return d
         except Exception:
             pass
         return None
@@ -149,7 +164,10 @@ class XYZReader:
                                 y = (y + self.y_offset) * self.y_scale
                                 z = z * self.z_scale
 
-                            w = np.ones_like(z)
+                            if self.rem:
+                                x = np.fmod(x + 180, 360) - 180
+
+                                w = np.ones_like(z)
                             u = np.zeros_like(z)
 
                             if self.wpos is not None:

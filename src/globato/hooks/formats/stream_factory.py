@@ -60,6 +60,12 @@ class StreamFactory:
             "layer": "SOUNDG",
             "z_scale": -1,
         },
+        "margrav_xyz": {
+            "reader": XYZReader,
+            "skiprows": 1,
+            "delimiter": " ",
+            "x_offset": "REM",
+        }
     }
 
     @staticmethod
@@ -127,12 +133,13 @@ class StreamFactory:
         if not os.path.exists(src_fn):
             return None
 
+        # logger.info(f"data_type: {data_type}")
         if data_type in cls.FORMAT_PROFILES:
             profile = cls.FORMAT_PROFILES[data_type].copy()
             TargetReader = profile.pop("reader")
 
             merged_kwargs = {**profile, **kwargs}
-            #logger.info(f"Applying '{data_type}' profile to {src_fn}")
+            # logger.info(f"Applying '{data_type}' profile to {src_fn}")
             return TargetReader(src_fn, **merged_kwargs)
 
         ext = os.path.splitext(src_fn)[1].lower()
