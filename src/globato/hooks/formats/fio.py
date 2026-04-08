@@ -108,7 +108,8 @@ class FionaReader:
                 count = 0
 
                 for feat in src:
-                    if not feat.geometry: continue
+                    if not feat.geometry:
+                        continue
                     geom = shape(feat.geometry)
                     props = feat.properties
 
@@ -117,8 +118,9 @@ class FionaReader:
                     z_attr = props.get(z_attr_name) if z_attr_name else self.elevation_value
 
                     for pt in self._extract_vertices(geom):
-                        z_val = pt[2] if len(pt) > 2 else z_attr
-                        if z_val is None: continue
+                        z_val = float_or(pt[2]) if len(pt) > 2 else float_or(z_attr)
+                        if z_val is None:
+                            continue
 
                         cx.append(pt[0])
                         cy.append(pt[1])

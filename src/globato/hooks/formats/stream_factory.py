@@ -55,17 +55,22 @@ class StreamFactory:
             "skiprows": 1,
             "usecols": [0, 1, 2],
         },
-        "charts_000": {
-            "reader": FionaReader,
-            "layer": "SOUNDG",
-            "z_scale": -1,
-        },
         "margrav_xyz": {
             "reader": XYZReader,
             "skiprows": 1,
             "delimiter": " ",
             "x_offset": "REM",
-        }
+        },
+        "charts_000": {
+            "reader": FionaReader,
+            "layer": "SOUNDG",
+            "z_scale": -1,
+        },
+        "dnc_geojson": {
+            "reader": FionaReader,
+            "z_field": "hdp",
+            "z_scale": -1,
+        },
     }
 
     @staticmethod
