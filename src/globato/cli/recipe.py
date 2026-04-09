@@ -18,7 +18,8 @@ import logging
 
 from fetchez.recipe import Recipe
 from fetchez.registry import RecipeRegistry
-from globato.utils import parse_source_string, parse_hook_string, yield_parsed_regions
+from fetchez.utils import parse_hook_string
+from globato.utils import parse_source_string, yield_parsed_regions
 
 logger = logging.getLogger(__name__)
 
@@ -464,29 +465,6 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
-def _parse_hook(hook_str, default_name=None):
-    """Parses 'name:key=val:key2=val2' into a dictionary for global_hooks."""
-
-    parts = hook_str.split(":")
-    name = parts[0] if len(parts) > 0 and "=" not in parts[0] else default_name
-
-    args = {}
-    for part in parts[1:] if name == parts[0] else parts:
-        if "=" in part:
-            k, v = part.split("=", 1)
-            try:
-                v = float(v) if "." in v else int(v)
-            except ValueError:
-                if v.lower() in ['true', 'yes']: v = True
-                elif v.lower() in ['false', 'no']: v = False
-            args[k] = v
-
-    hook = {"name": name}
-    if args:
-        hook["args"] = args
-    return hook
-
-
 @recipe_group.command("build")
 @click.option("--list-sources", is_flag=True, is_eager=True, expose_value=False, callback=_list_sources, help="List available data sources and exit.")
 @click.option("--info-source", metavar="NAME", is_eager=True, expose_value=False, callback=_info_source, help="Show details for a specific data source and exit.")
@@ -535,7 +513,7 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
             global_hooks.append({"name": "ms_blend", "args": {"weight_threshold": .5, "blend_dist": 20, "random_scale": .25}})
 
             # Add requested Interpolation Algorithm (-M)
-            algo_hook = _parse_hook(algo)
+            algo_hook = parse_hook_string(algo)
             if algo_hook["name"] == "ms_cudem":
                 algo_hook.setdefault("args", {})["resolutions"] = increment
 
@@ -544,7 +522,7 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
 
             # Add Clipping (-C)
             if clip:
-                clip_hook = _parse_hook(clip, default_name="raster_clip")
+                clip_hook = parse_hook_string(clip, default_name="raster_clip")
                 if clip_hook["name"] != "raster_clip":
                     clip_hook["args"]["barrier"] = clip_hook.pop("name")
                     clip_hook["name"] = "raster_clip"

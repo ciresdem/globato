@@ -73,15 +73,22 @@ class CRMSchema(BaseSchema):
                 insert_idx = i
                 break
 
+        proj_name = config.get("project", {}).get("name", "crm_dem")
+        base_proj_name = proj_name.split("_tile_")[0].split("_L_")[0] # Adjust splits based on your batch prefixes
+
+        # Format the final delivery name!
+        delivery_fn = f"{base_proj_name}_{dist_region.format('delivery')}.tif"
+
         # Insert Crop first (so it ends up after Cut)
         global_hooks.insert(insert_idx, {
-            "name": "raster_crop"
+            "name": "raster_crop",
+            "args": {"output": delivery_fn}
         })
 
         # Insert Cut
         global_hooks.insert(insert_idx, {
             "name": "raster_cut",
-            "args": {"region": dist_region.to_list()}
+            "args": {"region": dist_region.to_list(), }
         })
 
         config["global_hooks"] = global_hooks
