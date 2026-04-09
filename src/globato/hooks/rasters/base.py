@@ -19,13 +19,14 @@ import rasterio
 from rasterio.windows import Window
 import fiona
 from transformez.spatial import TransRegion
+from transformez.spatial import parse_region
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# 1. THE SHARED BASE (Utilities)
+# THE SHARED BASE (Utilities)
 # =============================================================================
 class RasterBaseHook(FetchHook):
     """Shared utilities for both Streaming and Global raster hooks."""
@@ -33,12 +34,13 @@ class RasterBaseHook(FetchHook):
     meta_stage = "collection"
     default_suffix = "_processed"
 
-    def __init__(self, output=None, suffix=None, barrier=None, **kwargs):
+    def __init__(self, output=None, suffix=None, barrier=None, region=None, **kwargs):
         super().__init__(**kwargs)
         self.output = output
         self.suffix = suffix or self.default_suffix
         self.barrier = barrier
         self.barrier_geoms = None
+        self.region = parse_region(region)
 
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
@@ -158,7 +160,7 @@ class RasterBaseHook(FetchHook):
 
 
 # =============================================================================
-# 2. THE STREAMING HOOK
+# THE STREAMING HOOK
 # =============================================================================
 class RasterStreamHook(RasterBaseHook):
     """For localized, chunk-by-chunk operations (Morphology, Slopes, Sieve)."""
@@ -245,7 +247,7 @@ class RasterStreamHook(RasterBaseHook):
     process_raster = _process_file_fallback
 
 # =============================================================================
-# 3. THE GLOBAL HOOK
+# THE GLOBAL HOOK
 # =============================================================================
 class RasterGlobalHook(RasterBaseHook):
     """For operations requiring full spatial context (Splines, FillNodata, Orchestrators)."""

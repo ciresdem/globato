@@ -12,7 +12,7 @@ Registers CRM DEM-specific schema into the Fetchez engine.
 """
 
 from fetchez.schemas import BaseSchema  # , SchemaRegistry
-
+from fetchez.spatial import parse_region
 
 class CRMSchema(BaseSchema):
     """The "CRM" schema.
@@ -30,26 +30,24 @@ class CRMSchema(BaseSchema):
 
     @classmethod
     def apply(cls, config):
-        domain = config.get("domain", {})
-        dist_region = domain.get("region")
+        recipe_region = config.get("region")
+        dist_region = (
+            parse_region(recipe_region) if recipe_region else [None]
+        )[0]
         if not dist_region:
             return config
 
         res_deg = 0.0002777777777777778 # 1 arc-second
-        buffer_deg = 20 * res_deg   # 20 cell buffer for fetching
+        buffer_deg = 100 * res_deg   # 100 cell buffer for fetching/gridding
 
-        proc_region = [
-            dist_region[0] - buffer_deg,
-            dist_region[1] + buffer_deg,
-            dist_region[2] - buffer_deg,
-            dist_region[3] + buffer_deg
-        ]
-
-        config["region"] = proc_region
+        proc_region = dist_region.copy()
+        proc_region.buffer(10) # Buffering slightly to ensure overlap coverage
+        config["region"] = proc_region.to_list()
 
         global_hooks = config.get("global_hooks", [])
         modules = config.get("modules", [])
 
+        # 1. Update Module reprojections
         for module in modules:
             for hook in module.get("hooks", []):
                 if hook.get("name") == "stream_reproject":
@@ -57,6 +55,7 @@ class CRMSchema(BaseSchema):
                         hook.setdefault("args", {})
                     hook["args"].update({"dst_srs": "EPSG:4326+3855"})
 
+        # 2. Update Stack parameters
         for hook in global_hooks:
             if hook.get("name") == "multi_stack":
                 hook.setdefault("args", {})
@@ -66,10 +65,76 @@ class CRMSchema(BaseSchema):
                     "srs": "EPSG:4326+3855"
                 })
 
-        global_hooks.append({
-            "name": "raster_crop",
-            "args": {"bounds": dist_region}
+        # 3. SMART INJECTION: Find where to insert the cut/crop hooks!
+        # We want to put it AFTER dem_uncertainty, but BEFORE viz_geoshade
+        insert_idx = len(global_hooks)
+        for i, hook in enumerate(global_hooks):
+            if hook.get("name") == "viz_geoshade":
+                insert_idx = i
+                break
+
+        # Insert Crop first (so it ends up after Cut)
+        global_hooks.insert(insert_idx, {
+            "name": "raster_crop"
+        })
+
+        # Insert Cut
+        global_hooks.insert(insert_idx, {
+            "name": "raster_cut",
+            "args": {"region": dist_region.to_list()}
         })
 
         config["global_hooks"] = global_hooks
         return config
+
+    # @classmethod
+    # def apply(cls, config):
+    #     # domain = config.get("domain", {})
+    #     # dist_region = domain.get("region")
+    #     recipe_region = config.get("region")
+    #     dist_region = (
+    #         parse_region(recipe_region) if recipe_region else [None]
+    #     )[0]
+    #     if not dist_region:
+    #         return config
+
+    #     res_deg = 0.0002777777777777778 # 1 arc-second
+    #     buffer_deg = 100 * res_deg   # 100 cell buffer for fetching/gridding
+    #     proc_region = dist_region.copy()
+    #     proc_region.buffer(10)
+    #     # proc_region = [
+    #     #     dist_region[0] - buffer_deg,
+    #     #     dist_region[1] + buffer_deg,
+    #     #     dist_region[2] - buffer_deg,
+    #     #     dist_region[3] + buffer_deg
+    #     # ]
+
+    #     config["region"] = proc_region.to_list()
+
+    #     global_hooks = config.get("global_hooks", [])
+    #     modules = config.get("modules", [])
+
+    #     for module in modules:
+    #         for hook in module.get("hooks", []):
+    #             if hook.get("name") == "stream_reproject":
+    #                 if not hook.get("args", None):
+    #                     hook.setdefault("args", {})
+    #                 hook["args"].update({"dst_srs": "EPSG:4326+3855"})
+
+    #     for hook in global_hooks:
+    #         if hook.get("name") == "multi_stack":
+    #             hook.setdefault("args", {})
+    #             hook["args"].update({
+    #                 "resolution": res_deg,
+    #                 "registration": "grid",
+    #                 "srs": "EPSG:4326+3855"
+    #             })
+
+    #     global_hooks.append({
+    #         "name": "raster_cut",
+    #         "args": {"region": dist_region.to_list()}
+    #     })
+
+    #     config["global_hooks"] = global_hooks
+    #     print(config)
+    #     return config
