@@ -39,7 +39,7 @@ maxdepth: 2
 caption: User Guide
 hidden: true
 ---
-user_guide
+user_guide/index
 ```
 
 Indices and tables
