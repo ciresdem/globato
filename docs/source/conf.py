@@ -34,7 +34,6 @@ extensions = [
     "sphinx.ext.githubpages",  # Auto-generate .nojekyll for GH Pages
     "sphinx_argparse_cli",  # argparse
     "myst_parser",  # Parse Markdown files
-    "module_table",  # Generate module catalog table
 ]
 
 napoleon_google_docstring = True
