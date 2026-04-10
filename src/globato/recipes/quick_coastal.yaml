@@ -25,22 +25,27 @@ modules:
       - name: range_z
         args: {min_z: 0.01} # Strict Topo
 
-  # - module: gebco_cog
-  #   args: {weight: 1.0}
-  #   hooks:
-  #     - name: stream_data
-  #     - name: stream_reproject
-  #       args:
-  #         src_srs: "EPSG:4326+9003"
-  #         dst_srs: "EPSG:4326+3855"
-  #     # - name: raster_clip
-  #     #   args:
-  #     #     barrier: "coastline"
-  #     - name: range_z
-  #       args: {max_z: -0.01} # Strict Bathy
+  - module: margrav
+    args:
+      weight: .01
+    hooks:
+      - name: stream_data
+      - name: stream_reproject
+        args: {src_srs: "EPSG:4326+9003", dst_srs: "EPSG:4269+3855"}
+      - name: range_z
+        args:
+          max_z: -0.1
+
+  - module: dnc
+    args:
+      weight: .1
+    hooks:
+      - name: stream_data
+      - name: stream_reproject
+        args: {src_srs: "EPSG:4326+5866", dst_srs: "EPSG:4269+3855"}
 
   - module: gmrt
-    args: {weight: .5}
+    args: {weight: .25}
     hooks:
       - name: stream_data
       - name: stream_reproject
@@ -49,32 +54,6 @@ modules:
           dst_srs: "EPSG:4326+3855"
       - name: range_z
         args: {max_z: -0.01} # Strict Bathy
-
-  # - module: mbdb
-  #   args: {weight: 0.75, want_inf: False}
-  #   hooks:
-  #     - name: stream_data
-  #     - name: stream_reproject
-  #       args: {src_srs: "EPSG:4326+9003", dst_srs: "EPSG:4326+3855"}
-  #     - name: spatial_crop
-  #     - name: rq
-  #       args:
-  #         reference: "gmrt"
-  #         threshold: 10
-  #         mode: "percent"
-  #         builder: "grid"
-  #         res: 0.008333
-
-  # - module: nos_hydro
-  #   args: {datatype: "bag", weight: 1.25}
-  #   hooks:
-  #     - name: filename_filter
-  #       args: {exclude: "_Ellipsoid_", stage: "pre"}
-  #     - name: stream_data
-  #      # args: {chunk_size: 100000}
-  #     - name: stream_reproject
-  #       args: {dst_srs: "EPSG:4326+3855"}
-  #     - name: spatial_crop
 
   - module: nos_hydro
     args: {datatype: "xyz", weight: 0.35}
@@ -139,11 +118,19 @@ global_hooks:
     args:
       target: "blended_checkpoint"
 
-  # Fast interpolation using `raster_fill`
-  - name: raster_fill
+  - name: ms_cudem
     args:
-      # barrier: "temp_coastline.geojson"
+      steps: 2
+      resolutions: "1s/3s/9s"
+      weights: "1.0/0.5/0.1"
+      algo: "raster_fill"
       output: "quick_coastal_dem.tif"
+
+  # # Fast interpolation using `raster_fill`
+  # - name: raster_fill
+  #   args:
+  #     # barrier: "temp_coastline.geojson"
+  #     output: "quick_coastal_dem.tif"
 
   # Generate a hillshade.
   - name: viz_geoshade

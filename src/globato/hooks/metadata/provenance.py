@@ -318,7 +318,6 @@ class SourceMasks(FetchHook):
                 with rasterio.open(tif) as src:
                     tif_stats = src.stats()
 
-                print(tif_stats)
                 if tif_stats[0].max == 0.0:
                     os.remove(tif)
                     continue
