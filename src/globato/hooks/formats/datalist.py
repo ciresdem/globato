@@ -16,7 +16,6 @@ import logging
 import numpy as np
 
 from globato.utils import add_field_to_recarray
-from globato.hooks.formats.stream_factory import StreamFactory
 
 try:
     import h3
@@ -117,6 +116,7 @@ class DatalistReader:
         return None
 
     def yield_chunks(self):
+        from globato.hooks.formats.stream_factory import StreamFactory
 
         entries = self._get_entries()
         logger.info(
