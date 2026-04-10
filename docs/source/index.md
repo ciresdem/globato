@@ -1,10 +1,6 @@
-<p align="center">
-	<a href="https://github.com/continuous-dems">
-		<img src="_static/continuous_dems_logo_mini.svg" height="80" alt="Continuous DEMs Logo">
-	</a>
-</p>
-<h1 align="center">GloBaTo</h1>
-<p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
+# GloBaTo
+
+*Domo Arigato, Multi-Resolution Globato*
 
 **Globato** is the user-facing geospatial engine of the Continuous-DEMs ecosystem. It is designed for the rapid development, blending, and processing of high-accuracy Topo-Bathy Digital Elevation Models (DEMs).
 
