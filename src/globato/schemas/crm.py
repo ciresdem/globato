@@ -75,7 +75,7 @@ class CRMSchema(BaseSchema):
                 break
 
         proj_name = config.get("project", {}).get("name", "crm_dem")
-        base_proj_name = proj_name.split("_tile_")[0].split("_L_")[0]
+        base_proj_name = proj_name.split("_")[0]
         delivery_fn = f"{base_proj_name}_{dist_region.format('delivery')}.tif"
 
         global_hooks.insert(
