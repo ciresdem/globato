@@ -1,0 +1,79 @@
+# Quickstart: From Zero to DEM in 1 arc-second
+
+Welcome to **Globato**, the continuous DEM generation framework. In this guide, we will go from installing the software to generating a production-ready, beautiful Coastal Digital Elevation Model (DEM) of Miami, Florida, in just a few terminal commands.
+
+## Prerequisites
+Globato requires Python 3.10+. We highly recommend doing this inside a clean virtual environment (like conda or venv).
+
+```bash
+pip install globato
+```
+
+## Step 1: Discovering Recipes
+Globato uses **Recipes** (YAML configuration files) to define how data is downloaded, filtered, stacked, and interpolated. You don't have to write these from scratch! Globato ships with curated recipes out of the box.
+
+Let's see what is available:
+
+```bash
+globato recipe list
+```
+
+You should see quick_coastal and crm_standard in the list.
+
+If you want to know exactly what a recipe does before you run it, you can inspect it:
+
+```bash
+globato recipe info quick_coastal
+```
+
+**Note**: quick_coastal is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.k
+
+## Step 2: Running a Curated Recipe
+Let's run the quick_coastal recipe. Globato's geographic engine is smart enough to understand place names, so we don't even need to look up bounding box coordinates. We just use the -R (Region) flag and prefix our search with loc:.
+
+```bash
+globato recipe run quick_coastal -R loc:Miami
+```
+
+**What just happened?**
+
+* Globato queried the loc:Miami geocoder and grabbed the bounding box.
+
+* It dispatched the fetchez engine to download elvation and bathymetry data for exactly that area.
+
+* It downloaded OpenStreetMap coastline vectors to act as a barrier.
+
+* It dynamically stacked, interpolated, and cropped the data into a seamless grid.
+
+* It generated a colorized hillshade (_hillshade.tif) for immediate viewing.
+
+Check your current directory; you should see your brand new quick_coastal_Miami.tif ready to load into QGIS or ArcGIS!
+
+## Step 3: Building a Custom Recipe On-the-Fly
+What if you want to build a DEM using completely different data, but don't want to hand-write a YAML file? You can use the build command to string sources together instantly.
+
+Let's build a DEM using USGS 3DEP topography and NOAA MBDB (Multibeam) bathymetry.
+
+```bash
+globato recipe build -R loc:"San Diego" tnm:datasets=3/4 mbdb:want_inf=false
+```
+
+Globato will output a custom San_Diego_recipe.yaml file into your directory and immediately execute it.
+
+## Step 4: Adding Data Filters (Hooks)
+Raw data is rarely perfect. Globato allows you to attach processing "hooks" directly to your data sources using a plus (`+`) sign.
+
+Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded:
+
+```bash
+globato recipe build -R loc:"San Diego" tnm mbdb+rq:threshold=10,mode=percent
+```
+
+## Next Steps
+Congratulations! You have successfully executed a curated recipe, generated a custom YAML on the fly, and applied an inline data filter.
+
+Check out the `CLI Syntax Guide` to master how to chain hooks together.
+
+Read the `Hooks Directory` to see all the filters and algorithms available to you.
+
+Learn how to process local data in the `Local Files Tutorial`.

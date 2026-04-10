@@ -9,7 +9,7 @@ project:
 execution:
   threads: 4
 
-# schema: crm
+schema: crm
 
 modules:
   # --- HIGH RES TOPOGRAPHY ---
