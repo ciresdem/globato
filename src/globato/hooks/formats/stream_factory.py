@@ -13,8 +13,6 @@ This turns files into point streams.
 
 import os
 import logging
-import numpy as np
-import numpy.lib.recfunctions as rfn
 
 from .rio import RasterioReader
 from .fio import FionaReader
@@ -28,13 +26,13 @@ from .schema import ensure_schema
 from transformez.spatial import TransRegion
 
 # gdal is required to use these
-from .gdal_proc import GDALReader
-from .ogr_proc import OGRReader
+# from .gdal_proc import GDALReader
+# from .ogr_proc import OGRReader
 
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
-logging.getLogger('rasterio').setLevel(logging.ERROR)
+logging.getLogger("rasterio").setLevel(logging.ERROR)
 
 
 class StreamFactory:
@@ -77,21 +75,22 @@ class StreamFactory:
     def get_stream(src_fn, **kwargs):
         """Returns a generator (yield_chunks) for the given file."""
 
-        #logger.info(src_fn)
+        # logger.info(src_fn)
         if not os.path.exists(src_fn):
             return None
 
         ext = os.path.splitext(src_fn)[1].lower()
 
         # LiDAR (LAS/LAZ)
-        if ext in ['.las', '.laz']:
+        if ext in [".las", ".laz"]:
             return LASReader(src_fn, **kwargs).yield_chunks()
 
         # Vector Data (OGR)
         # .shp, .000 (S-57), .gdb, .geojson
         # TODO: update this to fiona
-        if ext in [".shp", ".000", ".json", ".geojson", ".kml"] or \
-           (ext == ".gdb" and os.path.isdir(src_fn)):
+        if ext in [".shp", ".000", ".json", ".geojson", ".kml"] or (
+            ext == ".gdb" and os.path.isdir(src_fn)
+        ):
             return FionaReader(src_fn, **kwargs).yield_chunks()
 
         # ASCII / XYZ
@@ -119,17 +118,17 @@ class StreamFactory:
         # If unknown extension, try to open with GDAL.
         try:
             from osgeo import gdal
+
             ds = gdal.Open(src_fn)
             if ds:
                 # return GDALReader(src_fn, **kwargs).yield_chunks()
                 # return RasterioReader(src_fn, **kwargs).yield_chunks()
                 ds = None
-        except:
+        except Exception:
             pass
 
         logger.warning(f"Could not detect stream type for {src_fn}")
         return None
-
 
     @classmethod
     def get_reader(cls, src_fn, data_type=None, **kwargs):
@@ -156,9 +155,10 @@ class StreamFactory:
         # Vector Data (OGR)
         # .shp, .000 (S-57), .gdb, .geojson
         # TODO: update this to fiona
-        if ext in [".shp", ".000", ".json", ".geojson", ".kml"] or \
-           (ext == ".gdb" and os.path.isdir(src_fn)):
-            #return OGRReader(src_fn, **kwargs)
+        if ext in [".shp", ".000", ".json", ".geojson", ".kml"] or (
+            ext == ".gdb" and os.path.isdir(src_fn)
+        ):
+            # return OGRReader(src_fn, **kwargs)
             return FionaReader(src_fn, **kwargs)
 
         # ASCII / XYZ
@@ -186,11 +186,12 @@ class StreamFactory:
         # If unknown extension, try to open with GDAL.
         try:
             from osgeo import gdal
+
             ds = gdal.Open(src_fn)
             if ds:
-                #return GDALReader(src_fn, **kwargs)
+                # return GDALReader(src_fn, **kwargs)
                 ds = None
-        except:
+        except Exception:
             pass
 
         logger.warning(f"Could not detect stream type for {src_fn}")
@@ -229,11 +230,15 @@ class DataStream(FetchHook):
             # try and sanitize raster chunk_sizes so we don't crash
             kwargs_copy = self.reader_kwargs.copy()
             kwargs_copy["region"] = getattr(mod, "region", None)
-            if dtype in ["raster", "bag"] or src.lower().endswith(('.tif', '.tiff', '.nc', '.vrt', '.bag')):
+            if dtype in ["raster", "bag"] or src.lower().endswith(
+                (".tif", ".tiff", ".nc", ".vrt", ".bag")
+            ):
                 c_size = kwargs_copy.get("chunk_size")
                 # If they ask for a chunk > 8192 on a raster, it was meant for points. Fallback to default.
                 if c_size and str(c_size).isdigit() and int(c_size) > 8192:
-                    logger.debug(f"Ignoring massive chunk_size ({c_size}) for raster. Using native blocks.")
+                    logger.debug(
+                        f"Ignoring massive chunk_size ({c_size}) for raster. Using native blocks."
+                    )
                     kwargs_copy.pop("chunk_size")
 
             reader = StreamFactory.get_reader(src, data_type=dtype, **kwargs_copy)
@@ -249,11 +254,14 @@ class DataStream(FetchHook):
                 if hasattr(reader, "get_srs"):
                     entry["src_srs"] = reader.get_srs() or "EPSG:4326"
 
-                entry["stream"] = ensure_schema(raw_stream, module_weight=w, module_unc=u)
+                entry["stream"] = ensure_schema(
+                    raw_stream, module_weight=w, module_unc=u
+                )
                 entry["stream_type"] = "xyz_recarray"
 
                 if self.stream_type == "raster":
                     from globato.hooks.transforms.point_pixels import Point2PixelStream
+
                     pp_hook = Point2PixelStream(**kwargs_copy)
                     pp_hook.run([(mod, entry)])
 

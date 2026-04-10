@@ -36,16 +36,16 @@ class FredGenerator(FetchHook):
 
     def __init__(self, name="output", output_dir=None, scan=True, **kwargs):
         """Args:
-            name (str): Filename for the index (e.g. 'fred' -> 'fred.geojson')
-            output_dir (str): Where to save it. Defaults to current dir.
-            scan (bool): If True, attempts to open files to get precise bounds.
-                         If False, uses the Module's requested region (faster).
+        name (str): Filename for the index (e.g. 'fred' -> 'fred.geojson')
+        output_dir (str): Where to save it. Defaults to current dir.
+        scan (bool): If True, attempts to open files to get precise bounds.
+                     If False, uses the Module's requested region (faster).
         """
 
         super().__init__(**kwargs)
         self.index_name = name
         self.output_dir = output_dir or os.getcwd()
-        self.scan_files = str(scan).lower() == 'true'
+        self.scan_files = str(scan).lower() == "true"
 
     def run(self, entries):
         full_path = os.path.join(self.output_dir, self.index_name)
@@ -71,11 +71,7 @@ class FredGenerator(FetchHook):
                         w, e, s, n = bbox
                         geom = {
                             "type": "Polygon",
-                            "coordinates": [
-                                [
-                                    [w, s], [e, s], [e, n], [w, n], [w, s]
-                                ]
-                            ]
+                            "coordinates": [[[w, s], [e, s], [e, n], [w, n], [w, s]]],
                         }
                         meta.update(f_meta)
                 except Exception:
@@ -85,27 +81,25 @@ class FredGenerator(FetchHook):
                 w, e, s, n = mod.region
                 geom = {
                     "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [w, s], [e, s], [e, n], [w, n], [w, s]
-                        ]
-                    ]
+                    "coordinates": [[[w, s], [e, s], [e, n], [w, n], [w, s]]],
                 }
 
             if not geom:
-                logger.warning(f"Skipping FRED entry for {dst_fn}: No spatial bounds found.")
+                logger.warning(
+                    f"Skipping FRED entry for {dst_fn}: No spatial bounds found."
+                )
                 continue
 
             props = {
                 "Name": os.path.basename(dst_fn),
                 "DataLink": f"file://{os.path.abspath(dst_fn)}",
-                "DataType": entry.get('data_type', 'unknown'),
+                "DataType": entry.get("data_type", "unknown"),
                 "DataSource": mod.name,
                 "Agency": getattr(mod, "agency", "Fetchez"),
                 "Date": meta.get("date", this_date()),
                 "Resolution": meta.get("resolution"),
                 "HorizontalDatum": meta.get("h_datum"),
-                "VerticalDatum": meta.get("v_datum")
+                "VerticalDatum": meta.get("v_datum"),
             }
 
             fred.add_survey(geom, **props)
@@ -113,6 +107,8 @@ class FredGenerator(FetchHook):
 
         if count > 0:
             fred.save()
-            logger.info(f"Generated FRED index '{self.index_name}.geojson' with {count} items.")
+            logger.info(
+                f"Generated FRED index '{self.index_name}.geojson' with {count} items."
+            )
 
         return entries

@@ -19,14 +19,12 @@ Useful for:
 
 import os
 import logging
-import numpy as np
 
-from fetchez import core, cli, utils, spatial
+from fetchez import core, cli, utils
 from fetchez.registry import ModuleRegistry
 from fetchez.modules import FetchModule
 
 from globato.hooks.formats.stream_factory import DataStream
-from globato.hooks.filters.dropclass import DropClass
 from globato.hooks.sinks.simple_stack import SimpleStack
 
 # try:
@@ -44,7 +42,7 @@ logger = logging.getLogger(__name__)
     sources="Comma-separated list of modules to use (default: fabdem,gebco_cog)",
     crs="Target CRS (default: EPSG:4326)",
     blend="Blending mode for overlaps (mean, first, last, min, max)",
-    fill="Fill gaps/NaNs (bool, default: True)"
+    fill="Fill gaps/NaNs (bool, default: True)",
 )
 class GlobDEM(FetchModule):
     """Fetches, crops, and merges data from multiple sources into a single DEM."""
@@ -57,8 +55,9 @@ class GlobDEM(FetchModule):
     meta_resolution = "Varies"
     meta_license = "N/A"
 
-    def __init__(self, res="3s", sources=None, crs="EPSG:4326",
-                 blend="mean", fill=True, **kwargs):
+    def __init__(
+        self, res="3s", sources=None, crs="EPSG:4326", blend="mean", fill=True, **kwargs
+    ):
         super().__init__(name="glob_dem", **kwargs)
         self.res_str = res
         self.target_res = utils.str2inc(res)
@@ -67,15 +66,15 @@ class GlobDEM(FetchModule):
         self.fill_gaps = utils.str2bool(fill)
 
         if sources:
-            self.source_list = sources.split(',')
+            self.source_list = sources.split(",")
         else:
-            self.source_list = ['copernicus_glob', 'etopo']
+            self.source_list = ["copernicus_glob", "etopo"]
 
         w, e, s, n = self.region
         self.out_fn = os.path.join(self._outdir, f"glob_dem_{w}_{s}_{self.res_str}.tif")
 
         self.add_hook(DataStream())
-        #self.add_hook(DropClass(classes="7"))
+        # self.add_hook(DropClass(classes="7"))
         self.add_hook(
             SimpleStack(
                 output=self.out_fn,
@@ -118,7 +117,7 @@ class GlobDEM(FetchModule):
                 outdir=sub_outdir,
             )
 
-            #try:
+            # try:
             mod_instance.run()
             initialized_mods.append(mod_instance)
 
@@ -128,9 +127,9 @@ class GlobDEM(FetchModule):
             for entry in mod.results:
                 self.add_entry_to_results(
                     url=f"file://{entry['dst_fn']}",
-                    dst_fn=entry['dst_fn'],
-                    data_type="raster"
+                    dst_fn=entry["dst_fn"],
+                    data_type="raster",
                 )
 
-                #except Exception as e:
+                # except Exception as e:
                 #    logger.error(f"Gridding failed: {e}", exc_info=True)

@@ -33,15 +33,15 @@ class BlockThin(GlobatoFilter):
     name = "block_thin"
     meta_desc = "Thin the data"
 
-    def __init__(self, res=10, mode='min', soft=True, **kwargs):
+    def __init__(self, res=10, mode="min", soft=True, **kwargs):
         super().__init__(**kwargs)
         self.res = utils.float_or(res, 10)
         self.mode = mode
         self.soft = utils.str2bool(soft)
 
     def filter_chunk(self, chunk):
-        x_idx = np.floor((chunk['x'] - np.min(chunk['x'])) / self.res).astype(np.int64)
-        y_idx = np.floor((chunk['y'] - np.min(chunk['y'])) / self.res).astype(np.int64)
+        x_idx = np.floor((chunk["x"] - np.min(chunk["x"])) / self.res).astype(np.int64)
+        y_idx = np.floor((chunk["y"] - np.min(chunk["y"])) / self.res).astype(np.int64)
 
         width = (np.max(x_idx) - np.min(x_idx)) + 1
         grid_ids = y_idx * width + x_idx
@@ -54,13 +54,15 @@ class BlockThin(GlobatoFilter):
         keep_indices = []
         for i in range(len(start_indices)):
             start = start_indices[i]
-            end = start_indices[i+1] if i+1 < len(start_indices) else len(sorted_ids)
+            end = (
+                start_indices[i + 1] if i + 1 < len(start_indices) else len(sorted_ids)
+            )
             block_indices = sort_idx[start:end]
 
-            if self.mode == 'min':
-                keep_indices.append(block_indices[np.argmin(chunk['z'][block_indices])])
-            elif self.mode == 'max':
-                keep_indices.append(block_indices[np.argmax(chunk['z'][block_indices])])
+            if self.mode == "min":
+                keep_indices.append(block_indices[np.argmin(chunk["z"][block_indices])])
+            elif self.mode == "max":
+                keep_indices.append(block_indices[np.argmax(chunk["z"][block_indices])])
             else:
                 keep_indices.append(block_indices[0])
 

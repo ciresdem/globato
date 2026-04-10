@@ -26,7 +26,6 @@ from fetchez.registry import ModuleRegistry
 from fetchez.modules import FetchModule
 
 from globato.hooks.tools.osm_landmask import OSMLandmask
-from globato.hooks.rasters.sieve import RasterSieveHook
 from globato.hooks.rasters.polygonize import RasterPolygonizeHook
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ logger = logging.getLogger(__name__)
 @cli.cli_opts(
     help_text="Generate a High-Resolution Coastline Mask raster.",
     res="Target resolution (e.g. '1s', '30m')",
-    sources="Comma-separated sources (default: copernicus,nhd,osm_landmask,hydrolakes)"
+    sources="Comma-separated sources (default: copernicus,nhd,osm_landmask,hydrolakes)",
 )
 class GlobCoast(FetchModule):
     """Synthesizes a coastline raster from multiple sources.
@@ -51,7 +50,9 @@ class GlobCoast(FetchModule):
     meta_resolution = "Varies"
     meta_license = "N/A"
 
-    def __init__(self, res="1s", sources=None, weights=None, fill_inland_holes=False, **kwargs):
+    def __init__(
+        self, res="1s", sources=None, weights=None, fill_inland_holes=False, **kwargs
+    ):
         super().__init__(name="glob_coast", **kwargs)
 
         # Default Hierarchy:
@@ -60,25 +61,25 @@ class GlobCoast(FetchModule):
         # Vector Coastline (OSM)
         # Background (GMRT)
         if not sources:
-            self.source_list = ['nhd', 'osm_landmask', 'copernicus', 'gmrt']
+            self.source_list = ["nhd", "osm_landmask", "copernicus", "gmrt"]
         else:
-            self.source_list = sources.split(',')
+            self.source_list = sources.split(",")
 
         self.res_val = utils.str2inc(res)
 
-        w, e, s, n = self.region if self.region else (0,0,0,0)
+        w, e, s, n = self.region if self.region else (0, 0, 0, 0)
         self.out_fn = os.path.join(self._outdir, f"coastline_{w}_{s}_{res}.tif")
 
         # Voting Weights
         self.weights = {
-            'nhd': -10.0,
-            'hydrolakes': -10.0,
-            'copernicus': 5.0,
-            'nasadem': 5.0,
-            'wsf': 5.0,
-            'osm_landmask': 5.0,
-            'gmrt': 0.1,
-            'gebco': 0.1
+            "nhd": -10.0,
+            "hydrolakes": -10.0,
+            "copernicus": 5.0,
+            "nasadem": 5.0,
+            "wsf": 5.0,
+            "osm_landmask": 5.0,
+            "gmrt": 0.1,
+            "gebco": 0.1,
         }
         if weights:
             self.weights.update(weights)
@@ -97,9 +98,12 @@ class GlobCoast(FetchModule):
         if fill_inland_holes:
             try:
                 from globato.hooks.vectors.fill_holes import VectorFillHoles
+
                 self.add_hook(VectorFillHoles(min_area=10.0))
             except ImportError:
-                logger.warning("VectorFillHoles hook not found. Ponds will not be filled.")
+                logger.warning(
+                    "VectorFillHoles hook not found. Ponds will not be filled."
+                )
 
     def _init_grid(self):
         """Initialize the empty voting grid based on the region and resolution."""
@@ -126,7 +130,7 @@ class GlobCoast(FetchModule):
                     dst_crs=rasterio.crs.CRS.from_epsg(4326),
                     src_nodata=src.nodata,
                     dst_nodata=np.nan,
-                    resampling=Resampling.nearest
+                    resampling=Resampling.nearest,
                 )
 
                 valid_mask = ~np.isnan(buffer)
@@ -144,14 +148,14 @@ class GlobCoast(FetchModule):
                 vote_grid[water_mask] = -1.0
 
                 if weight > 0:
-                    self.grid[valid_mask] += (vote_grid[valid_mask] * weight)
+                    self.grid[valid_mask] += vote_grid[valid_mask] * weight
                 else:
                     # Binary mask vs Elevation
                     if np.nanmin(buffer) >= 0:
                         feature_mask = valid_mask & (buffer > 0)
                         self.grid[feature_mask] -= abs(weight)
                     else:
-                        self.grid[valid_mask] += (vote_grid[valid_mask] * weight)
+                        self.grid[valid_mask] += vote_grid[valid_mask] * weight
         except Exception as e:
             logger.warning(f"Raster processing failed for {src_path}: {e}")
 
@@ -160,9 +164,10 @@ class GlobCoast(FetchModule):
 
         try:
             with fiona.open(src_path) as src:
-                geoms = [f['geometry'] for f in src]
+                geoms = [f["geometry"] for f in src]
 
-            if not geoms: return
+            if not geoms:
+                return
 
             # 1 where polygon exists, 0 otherwise
             mask = rasterize(
@@ -170,7 +175,7 @@ class GlobCoast(FetchModule):
                 out_shape=(self.height, self.width),
                 transform=self.transform,
                 default_value=1,
-                dtype=np.uint8
+                dtype=np.uint8,
             )
 
             if weight > 0:
@@ -188,18 +193,18 @@ class GlobCoast(FetchModule):
         final_mask = (self.grid > 0).astype(np.uint8)
 
         profile = {
-            'driver': 'GTiff',
-            'height': self.height,
-            'width': self.width,
-            'count': 1,
-            'dtype': 'uint8',
-            'crs': 'EPSG:4326',
-            'transform': self.transform,
-            'compress': 'lzw',
-            'nodata': None
+            "driver": "GTiff",
+            "height": self.height,
+            "width": self.width,
+            "count": 1,
+            "dtype": "uint8",
+            "crs": "EPSG:4326",
+            "transform": self.transform,
+            "compress": "lzw",
+            "nodata": None,
         }
 
-        with rasterio.open(self.out_fn, 'w', **profile) as dst:
+        with rasterio.open(self.out_fn, "w", **profile) as dst:
             dst.write(final_mask, 1)
 
     def run(self):
@@ -219,34 +224,38 @@ class GlobCoast(FetchModule):
             fetched_files = []
             weight = self.weights.get(mod_name, 0.1)
 
-            if mod_name == 'osm_landmask':
-                landmask_fn = os.path.join(self._outdir, f"temp_landmask_{w}_{s}.geojson")
+            if mod_name == "osm_landmask":
+                landmask_fn = os.path.join(
+                    self._outdir, f"temp_landmask_{w}_{s}.geojson"
+                )
                 osm_hook = OSMLandmask(filename=landmask_fn)
 
-                mock_entries = [(self, {'dst_fn': 'dummy'})]
+                mock_entries = [(self, {"dst_fn": "dummy"})]
                 osm_hook.run(mock_entries)
 
                 if os.path.exists(landmask_fn):
                     fetched_files.append(landmask_fn)
 
-            elif mod_name == 'nhd':
-                mod_cls = ModuleRegistry.get_class('tnm')
+            elif mod_name == "nhd":
+                mod_cls = ModuleRegistry.get_class("tnm")
                 mod_instance = mod_cls(
                     src_region=fetch_region,
                     datasets="14",
                     extents="'HU-8 Subbasin,HU-4 Subregion'",
                     outdir=os.path.join(self._outdir, "sources", mod_name),
                 )
-                mod_instance.add_hook(FilenameFilter(match='GDB', stage='pre'))
+                mod_instance.add_hook(FilenameFilter(match="GDB", stage="pre"))
                 mod_instance.add_hook(Unzip())
 
                 try:
                     mod_instance.run()
                     core.run_fetchez([mod_instance])
-                    fetched_files.extend([
-                        entry.get('dst_fn') if isinstance(entry, dict) else entry[1]
-                        for entry in mod_instance.results
-                    ])
+                    fetched_files.extend(
+                        [
+                            entry.get("dst_fn") if isinstance(entry, dict) else entry[1]
+                            for entry in mod_instance.results
+                        ]
+                    )
                 except Exception as e:
                     logger.error(f"Failed to fetch {mod_name}: {e}")
 
@@ -258,28 +267,33 @@ class GlobCoast(FetchModule):
 
                 mod_instance = mod_cls(
                     src_region=fetch_region,
-                    outdir=os.path.join(self._outdir, "sources", mod_name)
+                    outdir=os.path.join(self._outdir, "sources", mod_name),
                 )
 
                 try:
                     mod_instance.run()
                     core.run_fetchez([mod_instance])
-                    fetched_files.extend([
-                        entry.get('dst_fn') if isinstance(entry, dict) else entry[1]
-                        for entry in mod_instance.results
-                    ])
+                    fetched_files.extend(
+                        [
+                            entry.get("dst_fn") if isinstance(entry, dict) else entry[1]
+                            for entry in mod_instance.results
+                        ]
+                    )
                 except Exception as e:
                     logger.error(f"Failed to fetch {mod_name}: {e}")
 
             for f_path in fetched_files:
-                if not f_path or not os.path.exists(f_path): continue
+                if not f_path or not os.path.exists(f_path):
+                    continue
 
-                logger.info(f"Voting: {os.path.basename(f_path)} as '{mod_name}' (Weight: {weight})")
+                logger.info(
+                    f"Voting: {os.path.basename(f_path)} as '{mod_name}' (Weight: {weight})"
+                )
                 ext = os.path.splitext(f_path)[1].lower()
 
-                if ext in ['.tif', '.nc', '.vrt']:
+                if ext in [".tif", ".nc", ".vrt"]:
                     self._process_raster(f_path, weight)
-                elif ext in ['.shp', '.gpkg', '.geojson', '.json', '.gdb']:
+                elif ext in [".shp", ".gpkg", ".geojson", ".json", ".gdb"]:
                     self._process_vector(f_path, weight)
 
         self._finalize()
@@ -289,7 +303,7 @@ class GlobCoast(FetchModule):
             self.add_entry_to_results(
                 url=f"file://{self.out_fn}",
                 dst_fn=self.out_fn,
-                data_type='coastline_mask'
+                data_type="coastline_mask",
             )
 
         return self

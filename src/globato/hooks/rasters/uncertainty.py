@@ -7,11 +7,12 @@ from fetchez.registry import HookRegistry
 
 from .base import RasterGlobalHook
 
-try:
-    from sklearn.ensemble import RandomForestRegressor
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
+# try:
+#     from sklearn.ensemble import RandomForestRegressor
+
+#     HAS_SKLEARN = True
+# except ImportError:
+#     HAS_SKLEARN = False
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,25 @@ class UncertaintySurface(RasterGlobalHook):
     name = "dem_uncertainty"
     default_suffix = "_unc"
 
-    def __init__(self, mode="split_sample", algo="interp_gmt", append_band=False,
-                 drop_frac=0.1, fit_method="curve", base_error=0.5, dist_coeff=0.01, **kwargs):
+    def __init__(
+        self,
+        mode="split_sample",
+        algo="interp_gmt",
+        append_band=False,
+        drop_frac=0.1,
+        fit_method="curve",
+        base_error=0.5,
+        dist_coeff=0.01,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.mode = mode.lower()
         self.algo = algo
-        self.append_band = str(append_band).lower() in ['true', '1', 'yes']
+        self.append_band = str(append_band).lower() in ["true", "1", "yes"]
 
         # Split-Sample Params
         self.drop_frac = float(drop_frac)
-        self.fit_method = fit_method.lower() # 'curve' or 'rmse'
+        self.fit_method = fit_method.lower()  # 'curve' or 'rmse'
 
         # Distance Params
         self.base_error = float(base_error)
@@ -49,7 +59,10 @@ class UncertaintySurface(RasterGlobalHook):
         if not os.path.exists(stack_path):
             stack_path = src_path
 
-        with rasterio.open(src_path) as src_interp, rasterio.open(stack_path) as src_stack:
+        with (
+            rasterio.open(src_path) as src_interp,
+            rasterio.open(stack_path) as src_stack,
+        ):
             interp_data = src_interp.read(1)
             stack_data = src_stack.read(1)
             nodata = src_interp.nodata if src_interp.nodata is not None else -9999.0
@@ -62,10 +75,14 @@ class UncertaintySurface(RasterGlobalHook):
                 unc_data = self._run_distance(valid_mask, src_interp.res[0])
 
             elif self.mode == "split_sample":
-                unc_data = self._run_split_sample(stack_data, valid_mask, nodata, src_interp.profile)
+                unc_data = self._run_split_sample(
+                    stack_data, valid_mask, nodata, src_interp.profile
+                )
 
             elif self.mode == "ml":
-                unc_data = self._run_ml(stack_data, interp_data, valid_mask, nodata, src_interp.res[0])
+                unc_data = self._run_ml(
+                    stack_data, interp_data, valid_mask, nodata, src_interp.res[0]
+                )
 
             else:
                 logger.error(f"Unknown uncertainty mode: {self.mode}")
@@ -92,13 +109,15 @@ class UncertaintySurface(RasterGlobalHook):
         interp_cls = HookRegistry.get_class(self.algo)
         if not interp_cls:
             logger.error(f"Cannot run split-sample: Algorithm '{self.algo}' not found.")
-            return self._run_distance(valid_mask, profile['transform'][0])
+            return self._run_distance(valid_mask, profile["transform"][0])
 
         rows, cols = np.where(valid_mask)
         num_points = len(rows)
         drop_count = int(num_points * self.drop_frac)
 
-        logger.info(f"Split-Sample: Dropping {drop_count} points to test '{self.algo}'...")
+        logger.info(
+            f"Split-Sample: Dropping {drop_count} points to test '{self.algo}'..."
+        )
 
         drop_idx = np.random.choice(num_points, drop_count, replace=False)
         test_rows, test_cols = rows[drop_idx], cols[drop_idx]
@@ -109,7 +128,7 @@ class UncertaintySurface(RasterGlobalHook):
         temp_sparse = "temp_sparse_stack.tif"
         temp_interp = "temp_sparse_interp.tif"
 
-        with rasterio.open(temp_sparse, 'w', **profile) as tmp:
+        with rasterio.open(temp_sparse, "w", **profile) as tmp:
             tmp.write(sparse_stack, 1)
 
         interp_hook = interp_cls(**self.kwargs)
@@ -125,21 +144,25 @@ class UncertaintySurface(RasterGlobalHook):
 
         # Calculate Distance to nearest *remaining* points for the test points
         sparse_mask = (sparse_stack != nodata) & (~np.isnan(sparse_stack))
-        distances_to_sparse, _ = distance_transform_edt(~sparse_mask, return_indices=True)
-        distances_to_sparse_m = distances_to_sparse * profile['transform'][0]
+        distances_to_sparse, _ = distance_transform_edt(
+            ~sparse_mask, return_indices=True
+        )
+        distances_to_sparse_m = distances_to_sparse * profile["transform"][0]
 
         test_distances = distances_to_sparse_m[test_rows, test_cols]
 
         # Apply the chosen fitting method
         if self.fit_method == "curve":
-            logger.info("Fitting empirical error curve (scipy.optimize) to Delta Z vs Distance...")
+            logger.info(
+                "Fitting empirical error curve (scipy.optimize) to Delta Z vs Distance..."
+            )
             try:
                 from scipy.optimize import curve_fit
 
                 # Replicates cudem.utils._err2coeff (Quadratic/Linear Growth)
                 # E(d) = a + b*d + c*d^2
                 def error_curve(d, a, b, c):
-                    return a + b * d + c * (d ** 2)
+                    return a + b * d + c * (d**2)
 
                 # Filter extreme distance outliers (95th percentile)
                 max_dist = np.nanpercentile(test_distances, 95)
@@ -152,13 +175,17 @@ class UncertaintySurface(RasterGlobalHook):
                 popt, _ = curve_fit(error_curve, x_data, y_data, bounds=(0, np.inf))
                 a, b, c = popt
 
-                logger.info(f"Curve Fit Parameters -> Base: {a:.3f}, Linear: {b:.5f}, Quad: {c:.7f}")
+                logger.info(
+                    f"Curve Fit Parameters -> Base: {a:.3f}, Linear: {b:.5f}, Quad: {c:.7f}"
+                )
 
                 # Apply the mathematical curve to the entire distance raster
                 unc_data = error_curve(distances_to_sparse_m, a, b, c)
 
             except Exception as e:
-                logger.error(f"Curve fitting failed: {e}. Falling back to RMSE scaling.")
+                logger.error(
+                    f"Curve fitting failed: {e}. Falling back to RMSE scaling."
+                )
                 self.fit_method = "rmse"
 
         if self.fit_method == "rmse":
@@ -166,25 +193,28 @@ class UncertaintySurface(RasterGlobalHook):
             logger.info(f"Split-Sample RMSE for {self.algo}: {rmse:.3f}")
             unc_data = rmse + (distances_to_sparse_m * (rmse * 0.05))
 
-        if os.path.exists(temp_sparse): os.remove(temp_sparse)
-        if os.path.exists(temp_interp): os.remove(temp_interp)
+        if os.path.exists(temp_sparse):
+            os.remove(temp_sparse)
+        if os.path.exists(temp_interp):
+            os.remove(temp_interp)
 
         return unc_data
 
     def _run_ml(self, stack_data, interp_data, valid_mask, nodata, resolution):
         """Machine Learning error prediction using spatial features."""
 
-        if not HAS_SKLEARN:
-            logger.warning("scikit-learn missing. Falling back to distance mode.")
-            return self._run_distance(valid_mask, resolution)
+        # if not HAS_SKLEARN:
+        #     logger.warning("scikit-learn missing. Falling back to distance mode.")
+        #     return self._run_distance(valid_mask, resolution)
 
         logger.info("Training ML Uncertainty Predictor...")
 
-        # Feature 1: Distance to nearest point
+        # Distance to nearest point
         distances, _ = distance_transform_edt(~valid_mask, return_indices=True)
 
-        # Feature 2: Local Variance (Roughness)
+        # Local Variance (Roughness)
         from scipy.ndimage import generic_filter
+
         variance = generic_filter(interp_data, np.var, size=3)
 
         # todo: train this RF on a split-sample dataset,
@@ -195,16 +225,16 @@ class UncertaintySurface(RasterGlobalHook):
 
     def _write_output(self, profile, dst_path, interp_data, unc_data):
         if self.append_band:
-            logger.info(f"Appending Uncertainty as Band 2 to final DEM")
+            logger.info("Appending Uncertainty as Band 2 to final DEM")
             profile.update(count=2)
-            with rasterio.open(dst_path, 'w', **profile) as dst:
+            with rasterio.open(dst_path, "w", **profile) as dst:
                 dst.write(interp_data, 1)
-                dst.write(unc_data.astype(profile['dtype']), 2)
-                dst.set_band_description(1, 'Elevation')
-                dst.set_band_description(2, 'Uncertainty (m)')
+                dst.write(unc_data.astype(profile["dtype"]), 2)
+                dst.set_band_description(1, "Elevation")
+                dst.set_band_description(2, "Uncertainty (m)")
         else:
             logger.info(f"Writing standalone Uncertainty raster: {dst_path}")
             profile.update(count=1)
-            with rasterio.open(dst_path, 'w', **profile) as dst:
-                dst.write(unc_data.astype(profile['dtype']), 1)
-                dst.set_band_description(1, 'Uncertainty (m)')
+            with rasterio.open(dst_path, "w", **profile) as dst:
+                dst.write(unc_data.astype(profile["dtype"]), 1)
+                dst.set_band_description(1, "Uncertainty (m)")

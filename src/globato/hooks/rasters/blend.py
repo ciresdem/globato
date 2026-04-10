@@ -13,17 +13,17 @@ Based on cudem.grits.blend
 :license: MIT, see LICENSE for more details.
 """
 
+import os
 import logging
 import numpy as np
 import scipy.ndimage
 import scipy.interpolate
 import rasterio
-from rasterio.features import rasterize
-from rasterio.windows import Window
 
 from .base import RasterStreamHook, RasterGlobalHook
 
 logger = logging.getLogger(__name__)
+
 
 class MultiStackBlend(RasterStreamHook):
     """Blends multi-stack raster data based on weight thresholds.
@@ -42,8 +42,15 @@ class MultiStackBlend(RasterStreamHook):
     default_suffix = "_blended"
     meta_category = "multi-stack"
 
-    def __init__(self, weight_threshold=1.0, blend_dist=5, slope_scale=0.5,
-                 random_scale=0.025, algo='linear', **kwargs):
+    def __init__(
+        self,
+        weight_threshold=1.0,
+        blend_dist=5,
+        slope_scale=0.5,
+        random_scale=0.025,
+        algo="linear",
+        **kwargs,
+    ):
 
         # Ensure we have enough buffer to cover the blend distance + interpolation context
         buffer_req = int(blend_dist) * 2
@@ -58,20 +65,23 @@ class MultiStackBlend(RasterStreamHook):
     def _get_slope_norm(self, z_arr, scale_arr):
         """Compute normalized slope (0-1) for gating."""
 
-        if np.all(np.isnan(z_arr)): return None
+        if np.all(np.isnan(z_arr)):
+            return None
 
         # Calculate gradients
         gy, gx = np.gradient(z_arr)
         slope = np.sqrt(gx**2 + gy**2)
 
         # Normalize relative to the blend area
-        vals = slope[scale_arr] # Only look at slope in the blend zone
+        vals = slope[scale_arr]  # Only look at slope in the blend zone
         vals = vals[np.isfinite(vals)]
 
-        if vals.size == 0: return None
+        if vals.size == 0:
+            return None
 
         m = np.nanmax(np.abs(vals))
-        if m == 0: return None
+        if m == 0:
+            return None
 
         slope_norm = np.abs(slope) / m
         slope_norm[np.isnan(slope_norm)] = 0.0
@@ -83,8 +93,7 @@ class MultiStackBlend(RasterStreamHook):
         y_off = window.row_off - buff_win.row_off
         x_off = window.col_off - buff_win.col_off
 
-        final_chunk = chunk[y_off : y_off + window.height,
-                            x_off : x_off + window.width]
+        final_chunk = chunk[y_off : y_off + window.height, x_off : x_off + window.width]
 
         dst.write(final_chunk, 1, window=window)
 
@@ -115,9 +124,12 @@ class MultiStackBlend(RasterStreamHook):
             return data
 
         import scipy.ndimage
+
         struct = scipy.ndimage.generate_binary_structure(2, 2)
         fg_closed = scipy.ndimage.binary_closing(fg_mask, structure=struct)
-        blend_mask = scipy.ndimage.binary_dilation(fg_closed, iterations=self.blend_dist)
+        blend_mask = scipy.ndimage.binary_dilation(
+            fg_closed, iterations=self.blend_dist
+        )
         transition_zone = blend_mask & (~fg_closed) & valid_mask
 
         if not np.any(transition_zone):
@@ -150,7 +162,7 @@ class MultiStackBlend(RasterStreamHook):
             interp_vals = scipy.interpolate.griddata(
                 anchor_pts, anchor_vals, target_pts, method=self.algo
             )
-            dist = scipy.ndimage.distance_transform_cdt(~fg_mask, metric='taxicab')
+            dist = scipy.ndimage.distance_transform_cdt(~fg_mask, metric="taxicab")
             d_vals = dist[transition_zone]
             if d_vals.size > 0:
                 d_min, d_max = d_vals.min(), d_vals.max()
@@ -162,7 +174,9 @@ class MultiStackBlend(RasterStreamHook):
                 weights = np.zeros(len(interp_vals))
 
             original_vals = z[transition_zone]
-            original_vals[np.isnan(original_vals)] = interp_vals[np.isnan(original_vals)]
+            original_vals[np.isnan(original_vals)] = interp_vals[
+                np.isnan(original_vals)
+            ]
             blended_vals = (1 - weights) * interp_vals + (weights) * original_vals
 
             # Apply the blended Z values back into the stack array!
@@ -193,14 +207,14 @@ class RasterBlend(RasterGlobalHook):
     default_suffix = "_blended"
 
     def __init__(
-            self,
-            aux_path=None,
-            blend_dist=5,
-            core_dist=1,
-            slope_scale=0.5,
-            random_scale=0.025,
-            algo="linear",
-            **kwargs
+        self,
+        aux_path=None,
+        blend_dist=5,
+        core_dist=1,
+        slope_scale=0.5,
+        random_scale=0.025,
+        algo="linear",
+        **kwargs,
     ):
 
         buffer_req = int(blend_dist) * 2
@@ -213,24 +227,26 @@ class RasterBlend(RasterGlobalHook):
         self.random_scale = float(random_scale)
         self.algo = algo
 
-
     def _get_slope_norm(self, z_arr, scale_arr):
         """Compute normalized slope (0-1) for gating."""
 
-        if np.all(np.isnan(z_arr)): return None
+        if np.all(np.isnan(z_arr)):
+            return None
 
         # Calculate gradients
         gy, gx = np.gradient(z_arr)
         slope = np.sqrt(gx**2 + gy**2)
 
         # Normalize relative to the blend area
-        vals = slope[scale_arr] # Only look at slope in the blend zone
+        vals = slope[scale_arr]  # Only look at slope in the blend zone
         vals = vals[np.isfinite(vals)]
 
-        if vals.size == 0: return None
+        if vals.size == 0:
+            return None
 
         m = np.nanmax(np.abs(vals))
-        if m == 0: return None
+        if m == 0:
+            return None
 
         slope_norm = np.abs(slope) / m
         slope_norm[np.isnan(slope_norm)] = 0.0
@@ -261,10 +277,13 @@ class RasterBlend(RasterGlobalHook):
         reversion_arr = scipy.ndimage.binary_dilation(
             reversion_arr, iterations=closing_iterations, structure=struct_
         )
-        erosion_iterations = max(closing_iterations-iterations, 0)
+        erosion_iterations = max(closing_iterations - iterations, 0)
         if erosion_iterations > 0:
             reversion_arr = scipy.ndimage.binary_erosion(
-                reversion_arr, iterations=erosion_iterations, border_value=1, structure=struct_
+                reversion_arr,
+                iterations=erosion_iterations,
+                border_value=1,
+                structure=struct_,
             )
 
         return reversion_arr
@@ -277,8 +296,10 @@ class RasterBlend(RasterGlobalHook):
         with rasterio.open(src_path) as src:
             profile = src.profile.copy()
             with rasterio.open(self.aux_path) as aux:
-                with rasterio.open(dst_path, 'w', **profile) as dst:
-                    for window, buff_win in self.yield_buffered_windows(src, buffer_size=self.blend_dist):
+                with rasterio.open(dst_path, "w", **profile) as dst:
+                    for window, buff_win in self.yield_buffered_windows(
+                        src, buffer_size=self.blend_dist
+                    ):
                         # we probably don't want windowed for this...maybe buffer is sufficient?
                         src_data = src.read(1, window=window)
                         src_ndv = src.nodata
@@ -295,7 +316,7 @@ class RasterBlend(RasterGlobalHook):
                         if aux_ndv is not None:
                             aux_arr[aux_data == aux_ndv] = np.nan
 
-                        aux_mask = ~np.isnan(a_arr)
+                        aux_mask = ~np.isnan(aux_arr)
 
                         if self.core_dist is not None:
                             aux_core_mask = self.binary_closed_dilation(
@@ -310,7 +331,9 @@ class RasterBlend(RasterGlobalHook):
                             )
 
                         buffer_mask = aux_mask & src_mask
-                        aux_core_mask = aux_core_mask & src_mask   # core seam: no randomization
+                        aux_core_mask = (
+                            aux_core_mask & src_mask
+                        )  # core seam: no randomization
                         slope_norm = None
 
                         # combined_arr now has a nan buffer between aux and src data
@@ -318,11 +341,13 @@ class RasterBlend(RasterGlobalHook):
 
                         # initial distance transform
                         dt = scipy.ndimage.distance_transform_cdt(
-                            a_mask, metric="taxicab"
+                            aux_mask, metric="taxicab"
                         )
 
                         random_arr = np.random.rand(*aux_arr.shape)
-                        random_mask = random_arr < self.random_scale  # base density of random picks
+                        random_mask = (
+                            random_arr < self.random_scale
+                        )  # base density of random picks
 
                         # Never randomize in core seam
                         random_mask[aux_core_mask] = False
@@ -362,19 +387,19 @@ class RasterBlend(RasterGlobalHook):
                         else:
                             dt_norm = np.zeros(0, dtype=np.float32)
 
-
                         interp_arr = np.full(aux_arr.shape, np.nan)
                         point_indices = np.nonzero(~np.isnan(aux_arr))
-                        grid_y, grid_x = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+                        grid_y, grid_x = np.mgrid[
+                            0 : interp_arr.shape[0], 0 : interp_arr.shape[1]
+                        ]
 
                         # Interpolate
                         interp_arr = scipy.interpolate.griddata(
                             np.transpose(point_indices),
-                            point_values,
+                            aux_arr,
                             (grid_y, grid_x),
-                            method=self.algo
+                            method=self.algo,
                         )
-
 
                         interp_data_in_buffer = interp_arr[buffer_mask]
                         src_data_in_buffer = src_arr[buffer_mask]
@@ -384,9 +409,11 @@ class RasterBlend(RasterGlobalHook):
                         buffer_diffs[np.isnan(buffer_diffs)] = 0
 
                         # Apply the normalized results to the differences and set and write out the results
-                        aux_arr[buffer_mask] = src_arr[buffer_mask] + (buffer_diffs * dt_norm)
+                        aux_arr[buffer_mask] = src_arr[buffer_mask] + (
+                            buffer_diffs * dt_norm
+                        )
                         aux_arr[~src_mask] = np.nan
-                        aux_arr[np.isnan(aux_arr)] = ndv
+                        aux_arr[np.isnan(aux_arr)] = aux_ndv
 
                         dst.write(aux_arr, 1, window=window)
         return True

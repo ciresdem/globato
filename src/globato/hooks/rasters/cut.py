@@ -30,17 +30,16 @@ class RasterCut(RasterStreamHook):
 
         target_region = self.region[0] or getattr(self.current_mod, "region", None)
         if not target_region:
-            logger.error("RasterCut requires a region (passed via args or attached to the module).")
+            logger.error(
+                "RasterCut requires a region (passed via args or attached to the module)."
+            )
             return data
 
         if transform is None:
             logger.error("RasterCut requires a valid chunk transform.")
             return data
 
-        local_cut_window = from_bounds(
-            *target_region.to_bbox(),
-            transform=transform
-        )
+        local_cut_window = from_bounds(*target_region.to_bbox(), transform=transform)
 
         chunk_h, chunk_w = data.shape[-2:]
         local_chunk_window = Window(0, 0, chunk_w, chunk_h)
@@ -55,9 +54,9 @@ class RasterCut(RasterStreamHook):
             return data
 
         row_start = int(round(overlap.row_off))
-        row_stop  = int(round(overlap.row_off + overlap.height))
+        row_stop = int(round(overlap.row_off + overlap.height))
         col_start = int(round(overlap.col_off))
-        col_stop  = int(round(overlap.col_off + overlap.width))
+        col_stop = int(round(overlap.col_off + overlap.width))
 
         # row_start = int(max(0, overlap.row_off - window.row_off))
         # row_stop  = int(min(window.height, (overlap.row_off - window.row_off) + overlap.height))

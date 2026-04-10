@@ -16,13 +16,14 @@ import logging
 import numpy as np
 
 try:
-    from osgeo import ogr, osr
+    from osgeo import ogr
+
     HAS_OGR = True
 except ImportError:
     HAS_OGR = False
 
 from fetchez.hooks import FetchHook
-from fetchez.utils import int_or, float_or
+from fetchez.utils import float_or
 
 logger = logging.getLogger(__name__)
 
@@ -33,20 +34,37 @@ class OGRReader:
     Useful for data such as S-57, ENC, E-Hydro, Shapefiles, etc.
     """
 
-    _known_layer_names = ["SOUNDG", "SurveyPoint_HD", "SurveyPoint", "Mass_Point", "Spot_Elevation"]
-    _known_elev_fields = ["Elevation", "elev", "z", "height", "depth", "val", "value",
-                          "topography", "surveyPointElev", "Z_depth", "Z_height"]
+    _known_layer_names = [
+        "SOUNDG",
+        "SurveyPoint_HD",
+        "SurveyPoint",
+        "Mass_Point",
+        "Spot_Elevation",
+    ]
+    _known_elev_fields = [
+        "Elevation",
+        "elev",
+        "z",
+        "height",
+        "depth",
+        "val",
+        "value",
+        "topography",
+        "surveyPointElev",
+        "Z_depth",
+        "Z_height",
+    ]
 
     def __init__(
-            self,
-            src_fn: str,
-            ogr_layer=None,
-            elev_field=None,
-            weight_field=None,
-            uncertainty_field=None,
-            z_scale=None,
-            elevation_value=None,
-            **kwargs,
+        self,
+        src_fn: str,
+        ogr_layer=None,
+        elev_field=None,
+        weight_field=None,
+        uncertainty_field=None,
+        z_scale=None,
+        elevation_value=None,
+        **kwargs,
     ):
 
         self.src_fn = src_fn
@@ -163,11 +181,11 @@ class OGRReader:
                     return None
 
                 dataset = np.column_stack((chunk_x, chunk_y, chunk_z, chunk_w, chunk_u))
-                rec_arr = np.rec.fromrecords(dataset, names='x, y, z, w, u')
+                rec_arr = np.rec.fromrecords(dataset, names="x, y, z, w, u")
 
                 ## Apply Z Scale
                 if self.z_scale is not None:
-                    rec_arr['z'] *= self.z_scale
+                    rec_arr["z"] *= self.z_scale
 
                 return rec_arr
 
@@ -251,9 +269,16 @@ class OGRStream(FetchHook):
     meta_stage = "file"
     meta_category = "format-stream"
 
-    def __init__(self, layer=None, z_field=None,
-                 weight_field=None, unc_field=None,
-                 z_scale=1, keep_raw=True, **kwargs):
+    def __init__(
+        self,
+        layer=None,
+        z_field=None,
+        weight_field=None,
+        unc_field=None,
+        z_scale=1,
+        keep_raw=True,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.keep_raw = str(keep_raw).lower() == "true"
         self.params = {
@@ -261,7 +286,7 @@ class OGRStream(FetchHook):
             "z_field": z_field,
             "weight_field": weight_field,
             "unc_field": unc_field,
-            "z_scale": z_scale
+            "z_scale": z_scale,
         }
 
     def run(self, entries):
@@ -278,7 +303,7 @@ class OGRStream(FetchHook):
             try:
                 reader = OGRReader(src, **self.params)
                 entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = 'xyz_recarray'
+                entry["stream_type"] = "xyz_recarray"
             except Exception as e:
                 logger.warning(f"OGRStream failed for {src}: {e}")
 

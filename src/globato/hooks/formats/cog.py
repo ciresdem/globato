@@ -16,7 +16,6 @@ import os
 import logging
 import rasterio
 from rasterio.windows import from_bounds
-from rasterio.enums import ColorInterp
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ class COGSubset(FetchHook):
                 src_url = entry["url"]
                 dst_fn = entry["dst_fn"]
 
-                #full_dst_path = os.path.join(mod._outdir, entry["dst_fn"])
+                # full_dst_path = os.path.join(mod._outdir, entry["dst_fn"])
                 if not os.path.exists(dst_fn):
                     out_dir = os.path.dirname(dst_fn)
                     if out_dir and not os.path.exists(out_dir):
@@ -75,14 +74,16 @@ class COGSubset(FetchHook):
             new_transform = src.window_transform(window)
 
             profile = src.profile.copy()
-            profile.update({
-                "driver": 'GTiff',
-                "height": window.height,
-                "width": window.width,
-                "transform": new_transform,
-                "compress": "deflate",
-                "tiled": True
-            })
+            profile.update(
+                {
+                    "driver": "GTiff",
+                    "height": window.height,
+                    "width": window.width,
+                    "transform": new_transform,
+                    "compress": "deflate",
+                    "tiled": True,
+                }
+            )
 
             with rasterio.open(dst_fn, "w", **profile) as dst:
                 dst.write(data)

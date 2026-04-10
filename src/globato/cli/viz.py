@@ -21,26 +21,70 @@ from globato.utils import add_field_to_recarray
 
 logger = logging.getLogger(__name__)
 
+
 @click.group(name="viz")
 def viz_group():
     """Visualize DEMs and Point Clouds."""
 
     pass
 
+
 @viz_group.command("hillshade")
 @click.argument("src")
 @click.argument("dst")
-@click.option("--azimuth", type=float, default=315.0, help="Sun azimuth angle in degrees (default: 315).")
-@click.option("--altitude", type=float, default=45.0, help="Sun altitude angle in degrees (default: 45).")
-@click.option("--exag", type=float, default=1.0, help="Vertical exaggeration factor (default: 1.0).")
-@click.option("--cmap", default="etopo", help="Matplotlib colormap or CPT file/name (default: 'etopo').")
-@click.option("--blend", type=click.Choice(["multiply", "screen", "overlay", "hard_light", "soft_light"]), default="soft_light", help="Blending mode (default: soft_light).")
+@click.option(
+    "--azimuth",
+    type=float,
+    default=315.0,
+    help="Sun azimuth angle in degrees (default: 315).",
+)
+@click.option(
+    "--altitude",
+    type=float,
+    default=45.0,
+    help="Sun altitude angle in degrees (default: 45).",
+)
+@click.option(
+    "--exag",
+    type=float,
+    default=1.0,
+    help="Vertical exaggeration factor (default: 1.0).",
+)
+@click.option(
+    "--cmap",
+    default="etopo",
+    help="Matplotlib colormap or CPT file/name (default: 'etopo').",
+)
+@click.option(
+    "--blend",
+    type=click.Choice(["multiply", "screen", "overlay", "hard_light", "soft_light"]),
+    default="soft_light",
+    help="Blending mode (default: soft_light).",
+)
 @click.option("--alpha", is_flag=True, help="Add an alpha channel to mask NoData.")
 @click.option("--gamma", type=float, help="Gamma correction factor.")
 @click.option("--z-min", type=float, help="Force minimum Z value for the colormap.")
 @click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
-@click.option("--split-cpt", type=float, default=0.0, help="Hinge point for divergent colormaps (default: 0.0).")
-def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, z_min, z_max, split_cpt):
+@click.option(
+    "--split-cpt",
+    type=float,
+    default=0.0,
+    help="Hinge point for divergent colormaps (default: 0.0).",
+)
+def viz_hillshade(
+    src,
+    dst,
+    azimuth,
+    altitude,
+    exag,
+    cmap,
+    blend,
+    alpha,
+    gamma,
+    z_min,
+    z_max,
+    split_cpt,
+):
     """Generate a georeferenced colored hillshade.
 
     SRC: Input DEM (GeoTIFF or NetCDF)
@@ -69,15 +113,19 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
         gamma=gamma,
         z_min=z_min,
         z_max=z_max,
-        split_cpt=split_cpt
+        split_cpt=split_cpt,
     )
 
-    click.secho(f"\nGenerating Colored Hillshade: {os.path.basename(src)}...", fg="cyan", bold=True)
+    click.secho(
+        f"\nGenerating Colored Hillshade: {os.path.basename(src)}...",
+        fg="cyan",
+        bold=True,
+    )
     click.echo(f"   Colormap: {cmap} | Exag: {exag}x | Blend: {blend}")
 
     start_time = time.time()
 
-    entry = {'src_fn': src, 'dst_fn': dst}
+    entry = {"src_fn": src, "dst_fn": dst}
     success = hook.process_raster(src, dst, entry)
 
     elapsed = time.time() - start_time
@@ -93,17 +141,32 @@ def viz_hillshade(src, dst, azimuth, altitude, exag, cmap, blend, alpha, gamma, 
 def _prepare_stream(gen):
     """Safely injects required schema fields (w, u) into raw point streams."""
     for chunk in gen:
-        chunk = add_field_to_recarray(chunk, 'w', float, 1.0)
-        chunk = add_field_to_recarray(chunk, 'u', float, 0.0)
+        chunk = add_field_to_recarray(chunk, "w", float, 1.0)
+        chunk = add_field_to_recarray(chunk, "u", float, 0.0)
         yield chunk
 
 
 @viz_group.command("points")
 @click.argument("src")
-@click.option("-F", "--filter", "filters", multiple=True, help="Apply filters on-the-fly to classify outliers.")
-@click.option("-R", "--region", help="Spatial crop (required if using spatial filters like rq).")
-@click.option("--3d", "is_3d", is_flag=True, help="Render an interactive 3D plot (auto-decimates large data).")
-@click.option("--outliers", is_flag=True, help="Highlight rejected points (Class 7) in red.")
+@click.option(
+    "-F",
+    "--filter",
+    "filters",
+    multiple=True,
+    help="Apply filters on-the-fly to classify outliers.",
+)
+@click.option(
+    "-R", "--region", help="Spatial crop (required if using spatial filters like rq)."
+)
+@click.option(
+    "--3d",
+    "is_3d",
+    is_flag=True,
+    help="Render an interactive 3D plot (auto-decimates large data).",
+)
+@click.option(
+    "--outliers", is_flag=True, help="Highlight rejected points (Class 7) in red."
+)
 @click.option("--out", default="{base}_viz.png", help="Output image filename.")
 def viz_points(src, filters, region, is_3d, outliers, out):
     """Visualize a point cloud for quick sanity checks and filter tuning.
@@ -140,8 +203,11 @@ def viz_points(src, filters, region, is_3d, outliers, out):
             sys.exit(1)
 
         f = mod_cls(**f_kwargs)
-        if hasattr(f, 'setup') and f.setup(dummy_mod, {}) is False:
-            click.secho(f"Error: Filter '{f.name}' failed to initialize. Did you forget a --region (-R)?", fg="red")
+        if hasattr(f, "setup") and f.setup(dummy_mod, {}) is False:
+            click.secho(
+                f"Error: Filter '{f.name}' failed to initialize. Did you forget a --region (-R)?",
+                fg="red",
+            )
             sys.exit(1)
         active_filters.append(f)
 
@@ -152,11 +218,13 @@ def viz_points(src, filters, region, is_3d, outliers, out):
         reader = StreamFactory.get_reader(src)
         # Apply _prepare_stream to guarantee schema!
         stream = _prepare_stream(reader.yield_chunks()) if reader else []
-        entries.append((dummy_mod, {'dst_fn': src, 'stream': stream}))
+        entries.append((dummy_mod, {"dst_fn": src, "stream": stream}))
     else:
         mod_cls = HookRegistry.get_class(src)
         if not mod_cls or not parsed_region:
-            click.secho("Error: Invalid file, or missing -R for module streaming.", fg="red")
+            click.secho(
+                "Error: Invalid file, or missing -R for module streaming.", fg="red"
+            )
             sys.exit(1)
         fetcher = mod_cls(src_region=parsed_region)
         fetcher.run()
@@ -165,7 +233,15 @@ def viz_points(src, filters, region, is_3d, outliers, out):
             if entry.get("dst_fn"):
                 r = StreamFactory.get_reader(entry["dst_fn"])
                 if r:
-                    entries.append((dummy_mod, {'dst_fn': entry["dst_fn"], 'stream': _prepare_stream(r.yield_chunks())}))
+                    entries.append(
+                        (
+                            dummy_mod,
+                            {
+                                "dst_fn": entry["dst_fn"],
+                                "stream": _prepare_stream(r.yield_chunks()),
+                            },
+                        )
+                    )
 
     if not entries:
         click.secho("Error: No valid data streams found.", fg="red")
@@ -182,7 +258,7 @@ def viz_points(src, filters, region, is_3d, outliers, out):
 
     total_pts = 0
     for mod, entry in entries:
-        stream = entry.get('stream')
+        stream = entry.get("stream")
         if stream:
             for chunk in stream:
                 total_pts += len(chunk)
@@ -191,4 +267,5 @@ def viz_points(src, filters, region, is_3d, outliers, out):
         click.secho("Error: No points survived the filter pipeline.", fg="red")
 
     for f in active_filters:
-        if hasattr(f, 'teardown'): f.teardown()
+        if hasattr(f, "teardown"):
+            f.teardown()

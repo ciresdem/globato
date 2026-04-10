@@ -32,14 +32,22 @@ def pointz_group():
 
     pass
 
+
 def _yield_stdin_chunks(chunk_size=100000):
     """A lightweight generator to stream XYZ data from standard input."""
 
     import pandas as pd
+
     try:
-        for chunk in pd.read_csv(sys.stdin, delim_whitespace=True, header=None,
-                                 names=['x', 'y', 'z', 'w', 'u'], usecols=[0, 1, 2],
-                                 chunksize=chunk_size, engine='c'):
+        for chunk in pd.read_csv(
+            sys.stdin,
+            delim_whitespace=True,
+            header=None,
+            names=["x", "y", "z", "w", "u"],
+            usecols=[0, 1, 2],
+            chunksize=chunk_size,
+            engine="c",
+        ):
             yield chunk.to_records(index=False)
     except Exception as e:
         logger.error(f"Error reading from stdin: {e}")
@@ -63,11 +71,19 @@ def pointz_list_filters():
 
 @pointz_group.command("run")
 @click.argument("sources", nargs=-1)
-@click.option("-F", "--filter", "global_filters", multiple=True, help="Apply a global filter (e.g., rq:threshold=10) to all sources.")
+@click.option(
+    "-F",
+    "--filter",
+    "global_filters",
+    multiple=True,
+    help="Apply a global filter (e.g., rq:threshold=10) to all sources.",
+)
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option("-T", "--t-srs", help="Target SRS for on-the-fly reprojection.")
 @click.option("-O", "--out", help="Output file (default: stdout).")
-@click.option("--chunk-size", type=int, default=500000, help="Number of points per memory chunk.")
+@click.option(
+    "--chunk-size", type=int, default=500000, help="Number of points per memory chunk."
+)
 def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
     """Stream, filter, and format point cloud data.
 
@@ -92,7 +108,11 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
         hook_dict = parse_hook_string(f_str)
         mod_cls = HookRegistry.get_class(hook_dict["name"])
         if not mod_cls:
-            click.secho(f"Error: Unknown global filter '{hook_dict['name']}'", fg="red", err=True)
+            click.secho(
+                f"Error: Unknown global filter '{hook_dict['name']}'",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
         active_global_filters.append(mod_cls(**hook_dict.get("args", {})))
 
@@ -101,19 +121,25 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
     dummy_mod = type("Dummy", (), {"region": parsed_region})()
 
     for f in active_global_filters:
-        if hasattr(f, 'setup') and f.setup(dummy_mod, {}) is False:
-            click.secho(f"Error: Global filter '{f.name}' failed to initialize. It likely requires a --region (-R).", fg="red", err=True)
+        if hasattr(f, "setup") and f.setup(dummy_mod, {}) is False:
+            click.secho(
+                f"Error: Global filter '{f.name}' failed to initialize. It likely requires a --region (-R).",
+                fg="red",
+                err=True,
+            )
             sys.exit(1)
 
     streams = []
 
     for src_str in sources:
         if src_str == "-":
-            streams.append({
-                "generator": _yield_stdin_chunks(chunk_size),
-                "src_srs": "EPSG:4326",
-                "filters": []
-            })
+            streams.append(
+                {
+                    "generator": _yield_stdin_chunks(chunk_size),
+                    "src_srs": "EPSG:4326",
+                    "filters": [],
+                }
+            )
             click.secho("Reading from standard input...", fg="cyan", err=True)
             continue
 
@@ -128,29 +154,46 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             mod_cls = HookRegistry.get_class(hook_dict["name"])
             if mod_cls:
                 f_instance = mod_cls(**hook_dict.get("args", {}))
-                if hasattr(f_instance, 'setup'): f_instance.setup(dummy_mod, {})
+                if hasattr(f_instance, "setup"):
+                    f_instance.setup(dummy_mod, {})
                 source_filters.append(f_instance)
             else:
-                click.secho(f"Warning: Unknown hook '{hook_dict['name']}' attached to {mod_name}", fg="yellow", err=True)
+                click.secho(
+                    f"Warning: Unknown hook '{hook_dict['name']}' attached to {mod_name}",
+                    fg="yellow",
+                    err=True,
+                )
 
         if mod_name in ["file", "local_fs"]:
             target_path = mod_args.get("paths", mod_args.get("path"))
             reader = StreamFactory.get_reader(target_path, chunk_size=chunk_size)
             if reader:
-                streams.append({
-                    "generator": reader.yield_chunks(),
-                    "src_srs": reader.get_srs() if hasattr(reader, "get_srs") and reader.get_srs() else "EPSG:4326",
-                    "filters": source_filters
-                })
+                streams.append(
+                    {
+                        "generator": reader.yield_chunks(),
+                        "src_srs": reader.get_srs()
+                        if hasattr(reader, "get_srs") and reader.get_srs()
+                        else "EPSG:4326",
+                        "filters": source_filters,
+                    }
+                )
             click.secho(f"Reading local source: {target_path}", fg="cyan", err=True)
         else:
             mod_cls = ModuleRegistry.get_class(mod_name)
             if not mod_cls:
-                click.secho(f"Error: '{mod_name}' is not a file or known module.", fg="red", err=True)
+                click.secho(
+                    f"Error: '{mod_name}' is not a file or known module.",
+                    fg="red",
+                    err=True,
+                )
                 sys.exit(1)
 
             if not parsed_region:
-                click.secho(f"Error: You must provide a --region (-R) when streaming the '{mod_name}' module.", fg="red", err=True)
+                click.secho(
+                    f"Error: You must provide a --region (-R) when streaming the '{mod_name}' module.",
+                    fg="red",
+                    err=True,
+                )
                 sys.exit(1)
 
             click.secho(f"Fetching live data from '{mod_name}'...", fg="cyan", err=True)
@@ -161,23 +204,31 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             for entry in fetcher.results:
                 dst_fn = entry.get("dst_fn")
                 if dst_fn and os.path.exists(dst_fn):
-                    reader = StreamFactory.get_reader(dst_fn, data_type=entry.get("data_type", None), chunk_size=chunk_size)
+                    reader = StreamFactory.get_reader(
+                        dst_fn,
+                        data_type=entry.get("data_type", None),
+                        chunk_size=chunk_size,
+                    )
                     if reader:
                         detected_srs = entry.get("src_srs")
                         if not detected_srs and hasattr(reader, "get_srs"):
                             detected_srs = reader.get_srs()
 
-                        streams.append({
-                            "generator": reader.yield_chunks(),
-                            "src_srs": detected_srs or "EPSG:4326",
-                            "filters": source_filters
-                        })
+                        streams.append(
+                            {
+                                "generator": reader.yield_chunks(),
+                                "src_srs": detected_srs or "EPSG:4326",
+                                "filters": source_filters,
+                            }
+                        )
 
     if not streams:
-        click.secho("Error: No valid data streams could be established.", fg="red", err=True)
+        click.secho(
+            "Error: No valid data streams could be established.", fg="red", err=True
+        )
         sys.exit(1)
 
-    out_port = open(out, 'w') if out else sys.stdout
+    out_port = open(out, "w") if out else sys.stdout
     total_in = 0
     total_out = 0
 
@@ -189,48 +240,71 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
 
             if t_srs and current_srs and current_srs.lower() != t_srs.lower():
                 reproject_hook = StreamReproject(dst_srs=t_srs, src_srs=current_srs)
-                pipeline = reproject_hook._get_pipeline(current_srs, region=parsed_region)
+                pipeline = reproject_hook._get_pipeline(
+                    current_srs, region=parsed_region
+                )
                 if pipeline:
                     stream_gen = reproject_hook._apply_transform(stream_gen, pipeline)
                 else:
-                    click.secho("Warning: Could not establish reprojection pipeline.", fg="yellow", err=True)
+                    click.secho(
+                        "Warning: Could not establish reprojection pipeline.",
+                        fg="yellow",
+                        err=True,
+                    )
 
             for chunk in stream_gen:
                 total_in += len(chunk)
 
                 if parsed_region:
                     mask = (
-                        (chunk['x'] >= parsed_region.xmin) & (chunk['x'] <= parsed_region.xmax) &
-                        (chunk['y'] >= parsed_region.ymin) & (chunk['y'] <= parsed_region.ymax)
+                        (chunk["x"] >= parsed_region.xmin)
+                        & (chunk["x"] <= parsed_region.xmax)
+                        & (chunk["y"] >= parsed_region.ymin)
+                        & (chunk["y"] <= parsed_region.ymax)
                     )
                     chunk = chunk[mask]
 
                 for f in local_filters:
-                    if len(chunk) == 0: break
+                    if len(chunk) == 0:
+                        break
                     outliers = f.filter_chunk(chunk)
                     chunk = chunk[~outliers]
 
                 for f in active_global_filters:
-                    if len(chunk) == 0: break
+                    if len(chunk) == 0:
+                        break
                     outliers = f.filter_chunk(chunk)
                     chunk = chunk[~outliers]
 
                 if len(chunk) > 0:
                     total_out += len(chunk)
-                    np.savetxt(out_port, chunk[['x', 'y', 'z', 'w', 'u']], fmt='%.6f', delimiter=' ')
+                    np.savetxt(
+                        out_port,
+                        chunk[["x", "y", "z", "w", "u"]],
+                        fmt="%.6f",
+                        delimiter=" ",
+                    )
 
     except BrokenPipeError:
         sys.stderr.close()
     finally:
         for f in active_global_filters:
-            if hasattr(f, 'teardown'): f.teardown()
+            if hasattr(f, "teardown"):
+                f.teardown()
 
         for s_dict in streams:
             for f in s_dict["filters"]:
-                if hasattr(f, 'teardown'): f.teardown()
+                if hasattr(f, "teardown"):
+                    f.teardown()
 
-        if out: out_port.close()
-        click.secho(f"\nPointZ Complete: Processed {total_in:,} | Output {total_out:,} points.", fg="green", bold=True, err=True)
+        if out:
+            out_port.close()
+        click.secho(
+            f"\nPointZ Complete: Processed {total_in:,} | Output {total_out:,} points.",
+            fg="green",
+            bold=True,
+            err=True,
+        )
 
 
 @pointz_group.command("info")
@@ -239,10 +313,11 @@ def pointz_info(source):
     """Scan a point cloud and return its spatial statistics."""
 
     from globato.hooks.metadata.globato_inf import generate_stream_inf
-    # parsed_src = parse_source_string(source)
-    reader = StreamFactory.get_reader(source)#, chunk_size=chunk_size)
 
-    inf = generate_stream_inf(reader.yield_chunks())#, "test.inf")
+    # parsed_src = parse_source_string(source)
+    reader = StreamFactory.get_reader(source)  # , chunk_size=chunk_size)
+
+    inf = generate_stream_inf(reader.yield_chunks())  # , "test.inf")
     while True:
         try:
             next(inf)

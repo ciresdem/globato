@@ -13,8 +13,6 @@ Drops the classification from the point stream
 
 import logging
 import numpy as np
-from fetchez.hooks import FetchHook
-from fetchez import utils
 from .base import GlobatoFilter
 
 logger = logging.getLogger(__name__)
@@ -31,7 +29,7 @@ class DropClass(GlobatoFilter):
 
     def __init__(self, classes="7/12", **kwargs):
         super().__init__(**kwargs)
-        self.target_classes = [int(x) for x in str(classes).split('/')]
+        self.target_classes = [int(x) for x in str(classes).split("/")]
 
     def filter_chunk(self, chunk):
         mask = np.isin(chunk["classification"], self.target_classes)

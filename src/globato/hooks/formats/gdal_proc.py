@@ -17,12 +17,13 @@ import numpy as np
 
 try:
     from osgeo import gdal
+
     HAS_GDAL = True
 except ImportError:
     HAS_GDAL = False
 
 from fetchez.hooks import FetchHook
-from fetchez.utils import int_or, float_or
+from fetchez.utils import int_or
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,17 @@ class GDALReader:
     Reads a raster in chunks and yields structured numpy arrays.
     """
 
-    def __init__(self, src_fn, region=None, band_no=1,
-                 mask_band=None, weight_band=None, unc_band=None,
-                 chunk_size=4096, node='pixel'):
+    def __init__(
+        self,
+        src_fn,
+        region=None,
+        band_no=1,
+        mask_band=None,
+        weight_band=None,
+        unc_band=None,
+        chunk_size=4096,
+        node="pixel",
+    ):
 
         if not HAS_GDAL:
             raise ImportError("GDAL is required for this processor.")
@@ -49,7 +58,6 @@ class GDALReader:
         self.chunk_size = int_or(chunk_size, 4096)
         self.node = node.lower()
 
-
     def get_read_window(self, ds):
         """Calculate the source window to read."""
 
@@ -60,14 +68,13 @@ class GDALReader:
         if not file_srs:
             return 0, 0, ds.RasterXSize, ds.RasterYSize
 
-
         from ..spatial import Region
+
         roi = Region(*self.req_region_bounds, epsg=4326)
-        roi.warp(file_epsg)
+        roi.warp(file_srs)
 
         gt = ds.GetGeoTransform()
         return roi.srcwin(gt, ds.RasterXSize, ds.RasterYSize)
-
 
     def get_gt(self):
         try:
@@ -78,9 +85,8 @@ class GDALReader:
             gt = ds.GetGeoTransform()
             ds = None
             return gt
-        except:
+        except Exception:
             return None
-
 
     def get_srs(self):
         try:
@@ -91,9 +97,8 @@ class GDALReader:
             src_srs = ds.GetProjection()
             ds = None
             return src_srs
-        except:
+        except Exception:
             return "EPSG:4326"
-
 
     def yield_chunks(self):
         """Yield numpy recarrays (x,y,z,w,u) from raster chunks."""
@@ -123,7 +128,9 @@ class GDALReader:
                         z_data[z_data == ndv] = np.nan
 
                     if self.mask_band:
-                        m_data = ds.GetRasterBand(self.mask_band).ReadAsArray(x, y, cols, rows)
+                        m_data = ds.GetRasterBand(self.mask_band).ReadAsArray(
+                            x, y, cols, rows
+                        )
                         z_data[m_data == 0] = np.nan
 
                     if np.all(np.isnan(z_data)):
@@ -148,7 +155,8 @@ class GDALReader:
                     y_flat = Y.flatten()
 
                     valid = ~np.isnan(z_flat)
-                    if not np.any(valid): continue
+                    if not np.any(valid):
+                        continue
 
                     x_flat = x_flat[valid]
                     y_flat = y_flat[valid]
@@ -156,13 +164,21 @@ class GDALReader:
 
                     # 3. Weights & Uncertainty
                     if self.weight_band:
-                        w_data = ds.GetRasterBand(self.weight_band).ReadAsArray(x, y, cols, rows).astype(np.float32)
+                        w_data = (
+                            ds.GetRasterBand(self.weight_band)
+                            .ReadAsArray(x, y, cols, rows)
+                            .astype(np.float32)
+                        )
                         w_flat = w_data.flatten()[valid]
                     else:
                         w_flat = np.ones_like(z_flat, dtype=np.float32)
 
                     if self.unc_band:
-                        u_data = ds.GetRasterBand(self.unc_band).ReadAsArray(x, y, cols, rows).astype(np.float32)
+                        u_data = (
+                            ds.GetRasterBand(self.unc_band)
+                            .ReadAsArray(x, y, cols, rows)
+                            .astype(np.float32)
+                        )
                         u_flat = u_data.flatten()[valid]
                     else:
                         u_flat = np.zeros_like(z_flat, dtype=np.float32)
@@ -171,11 +187,11 @@ class GDALReader:
                     # This is the "Standard Chunk" for the pipeline
                     chunk = np.rec.fromarrays(
                         [x_flat, y_flat, z_flat, w_flat, u_flat],
-                        names=["x", "y", "z", "w", "u"]
+                        names=["x", "y", "z", "w", "u"],
                     )
                     yield chunk
 
-        except:
+        except Exception:
             logger.error(f"could not chunk gdal file {self.src_fn}.")
         finally:
             ds = None
@@ -192,7 +208,6 @@ class GDALStream(FetchHook):
         super().__init__(**kwargs)
         self.reader_kwargs = kwargs
 
-
     def run(self, entries):
         for mod, entry in entries:
             src = entry.get("dst_fn")
@@ -201,9 +216,9 @@ class GDALStream(FetchHook):
 
             try:
                 reader = GDALReader(src, **self.reader_kwargs)
-                #print(reader.get_srs())
+                # print(reader.get_srs())
                 # Attach the generator
-                #entry['src_srs'] = reader.get_srs()
+                # entry['src_srs'] = reader.get_srs()
                 entry["stream"] = reader.yield_chunks()
                 entry["stream_type"] = "xyz_recarray"
             except Exception as e:

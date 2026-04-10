@@ -21,6 +21,7 @@ from .base import RasterGlobalHook
 
 logger = logging.getLogger(__name__)
 
+
 class RasterFill(RasterGlobalHook):
     """Fill NoData voids using a discrete Poisson solver.
 
@@ -41,33 +42,40 @@ class RasterFill(RasterGlobalHook):
         with rasterio.open(src_path) as src:
             data = src.read(1)
             nodata = src.nodata
-            if nodata is None: nodata = -9999
+            if nodata is None:
+                nodata = -9999
 
             # 1 = Valid, 0 = Nodata
-            is_float = data.dtype.kind == 'f'
+            is_float = data.dtype.kind == "f"
             if is_float:
                 valid_mask = (data != nodata) & (~np.isnan(data))
             else:
-                valid_mask = (data != nodata)
+                valid_mask = data != nodata
 
             if not np.any(valid_mask):
                 logger.warning(f"[RasterFill] No valid data in {src_path}. Skipping.")
                 return False
 
-            logger.info(f"[RasterFill] Interpolating/extrapolating voids using Poisson solver (Max Dist: {self.max_dist})...")
+            logger.info(
+                f"[RasterFill] Interpolating/extrapolating voids using Poisson solver (Max Dist: {self.max_dist})..."
+            )
 
             try:
                 filled_arr = fillnodata(
                     image=data,
                     mask=valid_mask,
                     max_search_distance=self.max_dist,
-                    smoothing_iterations=self.smoothing
+                    smoothing_iterations=self.smoothing,
                 )
 
                 if barrier_geoms:
                     barrier_mask = rasterize(
-                        barrier_geoms, out_shape=data.shape,
-                        transform=src.transform, fill=0, default_value=1, dtype='uint8'
+                        barrier_geoms,
+                        out_shape=data.shape,
+                        transform=src.transform,
+                        fill=0,
+                        default_value=1,
+                        dtype="uint8",
                     ).astype(bool)
                     filled_arr = np.where(~barrier_mask, filled_arr, nodata)
 

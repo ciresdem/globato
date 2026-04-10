@@ -41,8 +41,7 @@ class VectorFillHoles(FetchHook):
 
     def _remove_holes(self, geom):
         """Recursively removes small interior rings from Polygons/MultiPolygons."""
-        if geom.geom_type == 'Polygon':
-
+        if geom.geom_type == "Polygon":
             if self.min_area <= 0.0:
                 return Polygon(geom.exterior)
 
@@ -54,7 +53,7 @@ class VectorFillHoles(FetchHook):
 
             return Polygon(geom.exterior, new_interiors)
 
-        elif geom.geom_type == 'MultiPolygon':
+        elif geom.geom_type == "MultiPolygon":
             new_parts = []
             for part in geom.geoms:
                 new_parts.append(self._remove_holes(part))
@@ -75,7 +74,9 @@ class VectorFillHoles(FetchHook):
             base, ext = os.path.splitext(src_fn)
             dst_fn = f"{base}{self.suffix}{ext}"
 
-            logger.info(f"[{self.name}] Filling inland holes in {os.path.basename(src_fn)}...")
+            logger.info(
+                f"[{self.name}] Filling inland holes in {os.path.basename(src_fn)}..."
+            )
 
             try:
                 with fiona.open(src_fn, "r") as src:
@@ -94,7 +95,7 @@ class VectorFillHoles(FetchHook):
                             new_feature = {
                                 "type": "Feature",
                                 "properties": dict(feature["properties"]),
-                                "geometry": mapping(filled_geom)
+                                "geometry": mapping(filled_geom),
                             }
 
                             dst.write(new_feature)

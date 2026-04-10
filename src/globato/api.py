@@ -12,7 +12,7 @@ import os
 import logging
 import numpy as np
 import pandas as pd
-from typing import Union, List, Iterator, Optional
+from typing import Union, List, Iterator
 
 from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.formats.schema import ensure_schema
@@ -115,7 +115,7 @@ class GlobatoStream:
 
         chunks = list(self._iterator)
         if not chunks:
-            return np.array([], dtype=[('x', 'f8'), ('y', 'f8'), ('z', 'f4')])
+            return np.array([], dtype=[("x", "f8"), ("y", "f8"), ("z", "f4")])
         return np.concatenate(chunks)
 
 
@@ -145,20 +145,23 @@ def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
         w = kwargs.get("weight", 1.0)
         u = kwargs.get("uncertainty", 0.0)
 
-        schema_gen = ensure_schema(raw_stream_wrapper(raw_gen), module_weight=w, module_unc=u)
+        schema_gen = ensure_schema(
+            raw_stream_wrapper(raw_gen), module_weight=w, module_unc=u
+        )
 
         return GlobatoStream(schema_gen, src_srs=src_srs)
 
     elif isinstance(source, FetchModule):
+
         def _module_chain_gen():
             for entry in source.results:
-                fn = entry.get('dst_fn')
+                fn = entry.get("dst_fn")
                 if fn and os.path.exists(fn):
-                     try:
-                         sub_stream = read(fn, **kwargs)
-                         yield from sub_stream
-                     except Exception as e:
-                         logger.warning(f"Failed to stream {fn}: {e}")
+                    try:
+                        sub_stream = read(fn, **kwargs)
+                        yield from sub_stream
+                    except Exception as e:
+                        logger.warning(f"Failed to stream {fn}: {e}")
 
         return GlobatoStream(_module_chain_gen(), src_srs="EPSG:4326")
 

@@ -12,6 +12,7 @@ import inspect
 import sys
 from fetchez.registry import HookRegistry
 
+
 @click.group(name="hook")
 def hook_group():
     """Discover and inspect data processing hooks.
@@ -36,6 +37,7 @@ def hook_group():
 
     pass
 
+
 @hook_group.command("list")
 @click.option("--search", "-s", help="Filter hooks by name or keyword.")
 def hook_list(search):
@@ -49,7 +51,11 @@ def hook_list(search):
         if name in meta.get("aliases", []):
             continue
 
-        if search and search.lower() not in name.lower() and search.lower() not in meta.get("desc", "").lower():
+        if (
+            search
+            and search.lower() not in name.lower()
+            and search.lower() not in meta.get("desc", "").lower()
+        ):
             continue
 
         cat = meta.get("category", "uncategorized").title()
@@ -67,7 +73,9 @@ def hook_list(search):
             name_padded = f"{name:<20}"
             stage_padded = f"[{stage:<12}]"
 
-            click.echo(f"  {click.style(name_padded, bold=True, fg='green')} {click.style(stage_padded, fg='blue')} : {desc}")
+            click.echo(
+                f"  {click.style(name_padded, bold=True, fg='green')} {click.style(stage_padded, fg='blue')} : {desc}"
+            )
 
     click.echo("\nRun 'globato hook info <name>' for arguments and recipe examples.\n")
 
@@ -103,10 +111,18 @@ def hook_info(name):
             continue
 
         has_args = True
-        default = param.default if param.default is not inspect.Parameter.empty else "REQUIRED"
+        default = (
+            param.default
+            if param.default is not inspect.Parameter.empty
+            else "REQUIRED"
+        )
         args_dict[param_name] = default
 
-        req_str = click.style("(Required)", fg="red") if default == "REQUIRED" else f"(Default: {default})"
+        req_str = (
+            click.style("(Required)", fg="red")
+            if default == "REQUIRED"
+            else f"(Default: {default})"
+        )
         click.echo(f"    - {click.style(param_name, bold=True)} {req_str}")
 
     if not has_args:

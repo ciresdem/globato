@@ -66,20 +66,15 @@ class RasterioReader:
                             if ndv is not None:
                                 z_data[z_data == ndv] = np.nan
 
-                            if np.all(np.isnan(z_data)): continue
+                            if np.all(np.isnan(z_data)):
+                                continue
 
                             win_transform = src.window_transform(window)
                             xs, _ = rasterio.transform.xy(
-                                win_transform,
-                                [0] * cols,
-                                range(cols),
-                                offset="center"
+                                win_transform, [0] * cols, range(cols), offset="center"
                             )
                             _, ys = rasterio.transform.xy(
-                                win_transform,
-                                range(rows),
-                                [0] * rows,
-                                offset="center"
+                                win_transform, range(rows), [0] * rows, offset="center"
                             )
                             X, Y = np.meshgrid(xs, ys)
                             # xs, ys = rasterio.transform.xy(
@@ -96,14 +91,21 @@ class RasterioReader:
                             flat_y = Y.flatten()
 
                             valid = ~np.isnan(flat_z)
-                            if not np.any(valid): continue
+                            if not np.any(valid):
+                                continue
 
                             flat_w = np.ones_like(flat_z, dtype=np.float32)
                             flat_u = np.zeros_like(flat_z, dtype=np.float32)
 
                             out_chunk = np.rec.fromarrays(
-                                [flat_x[valid], flat_y[valid], flat_z[valid], flat_w[valid], flat_u[valid]],
-                                names=["x", "y", "z", "w", "u"]
+                                [
+                                    flat_x[valid],
+                                    flat_y[valid],
+                                    flat_z[valid],
+                                    flat_w[valid],
+                                    flat_u[valid],
+                                ],
+                                names=["x", "y", "z", "w", "u"],
                             )
 
                             yield out_chunk
@@ -124,11 +126,12 @@ class RasterioStream(FetchHook):
     def run(self, entries):
         for mod, entry in entries:
             src = entry.get("dst_fn")
-            if not src or not os.path.exists(src): continue
+            if not src or not os.path.exists(src):
+                continue
             try:
                 reader = RasterioReader(src, **self.params)
                 entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = 'xyz_recarray'
+                entry["stream_type"] = "xyz_recarray"
             except Exception as e:
                 logger.warning(f"RasterioStream failed for {src}: {e}")
         return entries

@@ -9,6 +9,7 @@ globato.hooks.filters.coplanarz
 :license: MIT, see LICENSE for more details.
 """
 
+from tqdm import tqdm
 import logging
 import numpy as np
 from fetchez.utils import float_or, int_or
@@ -39,7 +40,7 @@ class CoplanarZ(GlobatoFilter):
             return None
 
         # Build KDTree for efficient neighbor search
-        coords = np.column_stack((chunk['x'], chunk['y']))
+        coords = np.column_stack((chunk["x"], chunk["y"]))
         tree = cKDTree(coords)
 
         # Query neighbors within radius
@@ -47,9 +48,9 @@ class CoplanarZ(GlobatoFilter):
         indices_list = tree.query_ball_point(coords, self.radius)
 
         outliers = np.zeros(len(chunk), dtype=bool)
-        z_vals = chunk['z']
+        z_vals = chunk["z"]
 
-        with tqdm(total=len(chunk), desc='Plane Fitting', leave=False) as pbar:
+        with tqdm(total=len(chunk), desc="Plane Fitting", leave=False) as pbar:
             for i, neighbors in enumerate(indices_list):
                 pbar.update()
 
@@ -67,11 +68,13 @@ class CoplanarZ(GlobatoFilter):
 
                 # Setup Least Squares: Z = a*X + b*Y + c
                 # A matrix columns: [x_rel, y_rel, 1]
-                A = np.column_stack((
-                    nb_coords[:, 0] - center_x,
-                    nb_coords[:, 1] - center_y,
-                    np.ones(len(neighbors))
-                ))
+                A = np.column_stack(
+                    (
+                        nb_coords[:, 0] - center_x,
+                        nb_coords[:, 1] - center_y,
+                        np.ones(len(neighbors)),
+                    )
+                )
 
                 try:
                     # Fit plane

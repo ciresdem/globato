@@ -14,7 +14,6 @@ Maintains a '.sums.tif' for continuous updates and provenance tracking.
 """
 
 import os
-import sys
 import json
 import logging
 import threading
@@ -22,14 +21,12 @@ import numpy as np
 
 import rasterio
 from rasterio.windows import Window
-from rasterio.transform import from_origin
 from rasterio.crs import CRS
 from rasterio.enums import ColorInterp
 
 from transformez.spatial import TransRegion as Region
 from fetchez.hooks import FetchHook
-from fetchez.utils import float_or, parse_fmod
-from fetchez import utils
+from fetchez.utils import colorize, BLUE, BOLD, str_truncate_middle
 
 from ..transforms.point_pixels import PointPixels
 
@@ -41,26 +38,31 @@ class MultiStackAccumulator:
     """Multi-band statistical grid accumulator"""
 
     BAND_MAP = {
-        "z": 1, "count": 2, "weights": 3, "uncertainty": 4,
-        "src_uncertainty": 5, "x": 6, "y": 7
+        "z": 1,
+        "count": 2,
+        "weights": 3,
+        "uncertainty": 4,
+        "src_uncertainty": 5,
+        "x": 6,
+        "y": 7,
     }
 
     def __init__(
-            self,
-            region,
-            x_inc,
-            y_inc,
-            output_fn,
-            mode="mean",
-            weight_threshold="1",
-            crs="EPSG:4326",
-            verbose=False,
+        self,
+        region,
+        x_inc,
+        y_inc,
+        output_fn,
+        mode="mean",
+        weight_threshold="1",
+        crs="EPSG:4326",
+        verbose=False,
     ):
         self.region = Region.from_list(region)
         self.x_inc = abs(float(x_inc))
         self.y_inc = abs(float(y_inc))
-        #self.x_inc = float(x_inc)
-        #self.y_inc = float(y_inc) * -1
+        # self.x_inc = float(x_inc)
+        # self.y_inc = float(y_inc) * -1
         self.output_fn = output_fn
         self.mode = mode.lower()
         self.crs = crs
@@ -70,7 +72,7 @@ class MultiStackAccumulator:
         base, ext = os.path.splitext(self.output_fn)
         self.sums_fn = f"{base}.sums{ext}"
 
-        self.wts = np.sort([float(x) for x in str(weight_threshold).split('/')])
+        self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
         self.xcount, self.ycount, self.dst_gt = self.region.geo_transform(
             x_inc=self.x_inc, y_inc=self.y_inc, node="grid"
@@ -84,9 +86,7 @@ class MultiStackAccumulator:
 
         self.dataset = rasterio.open(self.sums_fn, "r+")
         self.pixel_binner = PointPixels(
-            src_region=self.region,
-            x_size=self.xcount,
-            y_size=self.ycount
+            src_region=self.region, x_size=self.xcount, y_size=self.ycount
         )
 
         logger.info(
@@ -129,7 +129,7 @@ class MultiStackAccumulator:
     def is_registered(self, dataset_id):
         """Check the GeoTIFF header to see if dataset is already stacked."""
 
-        if not hasattr(self, 'dataset') or self.dataset.closed:
+        if not hasattr(self, "dataset") or self.dataset.closed:
             return False
 
         with self.lock:
@@ -154,7 +154,7 @@ class MultiStackAccumulator:
             return
 
         arrays, sub_win, _ = self.pixel_binner(points, mode="sums")
-        if arrays['z'] is None:
+        if arrays["z"] is None:
             return
 
         col_off, row_off, width, height = sub_win
@@ -165,7 +165,7 @@ class MultiStackAccumulator:
             current_data = self.dataset.read(window=window)
 
             def get_band(name):
-                return current_data[self.BAND_MAP[name]-1]
+                return current_data[self.BAND_MAP[name] - 1]
 
             valid_new = arrays["count"] > 0
 
@@ -186,20 +186,29 @@ class MultiStackAccumulator:
                 get_band("weights")[valid_new] += wt_arr[valid_new]
 
                 get_band("count")[valid_new] += arrays["count"][valid_new]
-                get_band("uncertainty")[valid_new] += np.square(arrays["uncertainty"][valid_new])
+                get_band("uncertainty")[valid_new] += np.square(
+                    arrays["uncertainty"][valid_new]
+                )
 
-                if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
-                     get_band("src_uncertainty")[valid_new] += arrays["src_uncertainty"][valid_new]
+                if (
+                    "src_uncertainty" in arrays
+                    and arrays["src_uncertainty"] is not None
+                ):
+                    get_band("src_uncertainty")[valid_new] += arrays["src_uncertainty"][
+                        valid_new
+                    ]
 
-                get_band('x')[valid_new] += arrays["x"][valid_new]
-                get_band('y')[valid_new] += arrays["y"][valid_new]
+                get_band("x")[valid_new] += arrays["x"][valid_new]
+                get_band("y")[valid_new] += arrays["y"][valid_new]
 
             elif self.mode in ["supercede", "mixed"]:
                 cur_cnt = get_band("count")
                 cur_wt = get_band("weights")
 
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    arr_w_avg = np.where(valid_new, arrays["weight"] / arrays["count"], 0)
+                    arr_w_avg = np.where(
+                        valid_new, arrays["weight"] / arrays["count"], 0
+                    )
                     cur_w_avg = np.where(cur_cnt > 0, cur_wt / cur_cnt, 0)
 
                 if self.mode == "supercede":
@@ -217,10 +226,17 @@ class MultiStackAccumulator:
                     get_band("z")[sup_mask] = arrays["z"][sup_mask]
                     get_band("weights")[sup_mask] = arrays["weight"][sup_mask]
                     get_band("count")[sup_mask] = arrays["count"][sup_mask]
-                    get_band("uncertainty")[sup_mask] = np.square(arrays["uncertainty"][sup_mask])
+                    get_band("uncertainty")[sup_mask] = np.square(
+                        arrays["uncertainty"][sup_mask]
+                    )
 
-                    if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
-                        get_band("src_uncertainty")[sup_mask] = arrays["src_uncertainty"][sup_mask]
+                    if (
+                        "src_uncertainty" in arrays
+                        and arrays["src_uncertainty"] is not None
+                    ):
+                        get_band("src_uncertainty")[sup_mask] = arrays[
+                            "src_uncertainty"
+                        ][sup_mask]
 
                     get_band("x")[sup_mask] = arrays["x"][sup_mask]
                     get_band("y")[sup_mask] = arrays["y"][sup_mask]
@@ -229,10 +245,17 @@ class MultiStackAccumulator:
                     get_band("z")[avg_mask] += arrays["z"][avg_mask]
                     get_band("weights")[avg_mask] += arrays["weight"][avg_mask]
                     get_band("count")[avg_mask] += arrays["count"][avg_mask]
-                    get_band("uncertainty")[avg_mask] += np.square(arrays["uncertainty"][avg_mask])
+                    get_band("uncertainty")[avg_mask] += np.square(
+                        arrays["uncertainty"][avg_mask]
+                    )
 
-                    if "src_uncertainty" in arrays and arrays["src_uncertainty"] is not None:
-                        get_band("src_uncertainty")[avg_mask] += arrays["src_uncertainty"][avg_mask]
+                    if (
+                        "src_uncertainty" in arrays
+                        and arrays["src_uncertainty"] is not None
+                    ):
+                        get_band("src_uncertainty")[avg_mask] += arrays[
+                            "src_uncertainty"
+                        ][avg_mask]
 
                     get_band("x")[avg_mask] += arrays["x"][avg_mask]
                     get_band("y")[avg_mask] += arrays["y"][avg_mask]
@@ -274,13 +297,13 @@ class MultiStackAccumulator:
                 for _, window in src.block_windows(1):
                     data = src.read(window=window)
 
-                    z = data[self.BAND_MAP["z"]-1]
-                    cnt = data[self.BAND_MAP["count"]-1]
-                    w = data[self.BAND_MAP["weights"]-1]
-                    unc = data[self.BAND_MAP["uncertainty"]-1]
-                    src_u = data[self.BAND_MAP["src_uncertainty"]-1]
-                    x = data[self.BAND_MAP["x"]-1]
-                    y = data[self.BAND_MAP["y"]-1]
+                    z = data[self.BAND_MAP["z"] - 1]
+                    cnt = data[self.BAND_MAP["count"] - 1]
+                    w = data[self.BAND_MAP["weights"] - 1]
+                    unc = data[self.BAND_MAP["uncertainty"] - 1]
+                    src_u = data[self.BAND_MAP["src_uncertainty"] - 1]
+                    x = data[self.BAND_MAP["x"] - 1]
+                    y = data[self.BAND_MAP["y"] - 1]
 
                     valid = cnt > 0
                     data[:, ~valid] = ndv
@@ -299,18 +322,19 @@ class MultiStackAccumulator:
                 dst.update_tags(**src.tags())
 
         # Generate Statistics on the Finalized TIF
-        with rasterio.open(self.output_fn, 'r+') as dst:
+        with rasterio.open(self.output_fn, "r+") as dst:
             all_stats = dst.stats(approx=False)
             for i, stats in enumerate(all_stats):
-                idx = i + 1 # Bands are 1-indexed
+                idx = i + 1  # Bands are 1-indexed
 
                 desc = [k for k, v in self.BAND_MAP.items() if v == idx][0]
-                dst.update_tags(bidx=idx,
+                dst.update_tags(
+                    bidx=idx,
                     STATISTICS_MINIMUM=str(stats.min),
                     STATISTICS_MAXIMUM=str(stats.max),
                     STATISTICS_MEAN=str(stats.mean),
                     STATISTICS_STDDEV=str(stats.std),
-                    DESCRIPTION=desc
+                    DESCRIPTION=desc,
                 )
 
         return self.output_fn
@@ -329,13 +353,13 @@ class MultiStackHook(FetchHook):
     meta_category = "stream-sink"
 
     def __init__(
-            self,
-            res="1s",
-            output="multi_stack_output.tif",
-            mode="mean",
-            weight_threshold="1",
-            crs=None,
-            **kwargs,
+        self,
+        res="1s",
+        output="multi_stack_output.tif",
+        mode="mean",
+        weight_threshold="1",
+        crs=None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.res = res
@@ -352,7 +376,7 @@ class MultiStackHook(FetchHook):
         if isinstance(self.res, str) and self.res.endswith("s"):
             inc = float(self.res[:-1]) / 3600.0
             x_inc, y_inc = inc, inc
-        elif '/' in str(self.res):
+        elif "/" in str(self.res):
             x_inc, y_inc = map(float, self.res.split("/"))
         else:
             inc = float(self.res)
@@ -369,12 +393,14 @@ class MultiStackHook(FetchHook):
             mode=self.mode,
             weight_threshold=self.weight_threshold,
             crs=self.crs,
-            verbose=True
+            verbose=True,
         )
 
     def run(self, entries):
         if not self._accumulator:
-            region = next((mod.region for mod, _ in entries if getattr(mod, "region", None)), None)
+            region = next(
+                (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
+            )
             if region:
                 self._init_accumulator(region)
             else:
@@ -419,9 +445,8 @@ class MultiStackHook(FetchHook):
             if self._accumulator:
                 self._accumulator.update(chunk)
             yield chunk
-        logger_str = (
-            f"Passed {utils.colorize(count, utils.BOLD)} data points from {utils.colorize(utils.str_truncate_middle(dataset_id), utils.BLUE)}"
-        )
+
+        logger_str = f"Passed {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)}"
         # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
         logger.info(logger_str)
 

@@ -44,7 +44,11 @@ class RasterPolygonizeHook(FetchHook):
         for mod, entry in entries:
             src_fn = entry.get("dst_fn")
 
-            if not src_fn or not os.path.exists(src_fn) or not src_fn.lower().endswith(".tif"):
+            if (
+                not src_fn
+                or not os.path.exists(src_fn)
+                or not src_fn.lower().endswith(".tif")
+            ):
                 new_entries.append((mod, entry))
                 continue
 
@@ -55,7 +59,9 @@ class RasterPolygonizeHook(FetchHook):
                 ext = ".gpkg" if self.format == "GPKG" else ".shp"
                 dst_fn = f"{base}_poly{ext}"
 
-            logger.info(f"Polygonizing {os.path.basename(src_fn)} -> {os.path.basename(dst_fn)}")
+            logger.info(
+                f"Polygonizing {os.path.basename(src_fn)} -> {os.path.basename(dst_fn)}"
+            )
 
             try:
                 success = self._polygonize(src_fn, dst_fn)
@@ -80,10 +86,10 @@ class RasterPolygonizeHook(FetchHook):
             crs = src.crs
 
             if self.target_value is not None:
-                mask = (image == self.target_value)
+                mask = image == self.target_value
             else:
                 if src.nodata is not None:
-                    mask = (image != src.nodata)
+                    mask = image != src.nodata
                 else:
                     mask = ~np.isnan(image)
 
@@ -92,19 +98,19 @@ class RasterPolygonizeHook(FetchHook):
                 return False
 
             results = (
-                {'properties': {'val': v}, 'geometry': s}
-                for i, (s, v)
-                in enumerate(shapes(image, mask=mask, transform=transform))
+                {"properties": {"val": v}, "geometry": s}
+                for i, (s, v) in enumerate(
+                    shapes(image, mask=mask, transform=transform)
+                )
             )
 
-            schema = {
-                'geometry': 'Polygon',
-                'properties': {'val': 'float'}
-            }
+            schema = {"geometry": "Polygon", "properties": {"val": "float"}}
 
-            driver = 'ESRI Shapefile' if self.format == 'SHP' else 'GPKG'
+            driver = "ESRI Shapefile" if self.format == "SHP" else "GPKG"
 
-            with fiona.open(dst_path, 'w', driver=driver, crs=crs, schema=schema) as dst:
+            with fiona.open(
+                dst_path, "w", driver=driver, crs=crs, schema=schema
+            ) as dst:
                 for feature in results:
                     dst.write(feature)
 

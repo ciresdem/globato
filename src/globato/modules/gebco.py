@@ -11,18 +11,23 @@ Get gebco as a cog
 :license: MIT, see LICENSE for more details.
 """
 
+import logging
+
 from fetchez.modules.gebco import GEBCO as CoreGEBCO
 from ..hooks.formats.cog import COGSubset
+
+logger = logging.getLogger(__name__)
 
 
 # Source Cooperative (Alex Leith) - Cloud Optimized GeoTIFFs
 GEBCO_COG_URLS = {
-    'grid': 'https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024.tif',
-    'tid': 'https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024_TID.tif',
-    'sub_ice': 'https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024_sub_ice_topo.tif'
+    "grid": "https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024.tif",
+    "tid": "https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024_TID.tif",
+    "sub_ice": "https://data.source.coop/alexgleith/gebco-2024/GEBCO_2024_sub_ice_topo.tif",
 }
-class GEBCO_COG(CoreGEBCO):
 
+
+class GEBCO_COG(CoreGEBCO):
     name = "gebco_cog"
     meta_desc = "Fetch GEBCO as a COG subset"
     meta_tags = ["gebco", "bathymetry", "global", "tid", "cog", "globato"]
@@ -49,9 +54,4 @@ class GEBCO_COG(CoreGEBCO):
         else:
             dst_fn = f"gebco_2024_{self.layer}_subset.tif"
 
-        self.add_entry_to_results(
-            url=url,
-            dst_fn=dst_fn,
-            data_type="raster",
-            cog=True
-        )
+        self.add_entry_to_results(url=url, dst_fn=dst_fn, data_type="raster", cog=True)

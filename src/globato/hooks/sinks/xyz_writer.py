@@ -40,22 +40,26 @@ class WriteXYZ(FetchHook):
         for mod, entry in entries:
             if entry.get("stream_type") == "raster":
                 from globato.hooks.transforms.point_pixels import PixelsToPoints
+
                 p2p = PixelsToPoints()
                 p2p.run([(mod, entry)])
 
-            stream = entry.get('stream')
-            if not stream: continue
+            stream = entry.get("stream")
+            if not stream:
+                continue
 
             src_fn = entry.get("dst_fn", "unknown")
             base = os.path.splitext(os.path.basename(src_fn))[0]
             out_fn = self.output.format(base=base, name=mod.name)
 
             if not os.path.isabs(out_fn):
-                out_dir = os.path.dirname(src_fn) if src_fn != "unknown" else os.getcwd()
+                out_dir = (
+                    os.path.dirname(src_fn) if src_fn != "unknown" else os.getcwd()
+                )
                 out_fn = os.path.join(out_dir, out_fn)
 
-            entry['stream'] = self._write_stream(stream, out_fn)
-            #entry.setdefault('artifacts', {})[self.name] = out_fn
+            entry["stream"] = self._write_stream(stream, out_fn)
+            # entry.setdefault('artifacts', {})[self.name] = out_fn
             entry.setdefault("artifacts", {})[self.artifact_id] = out_fn
 
         return entries

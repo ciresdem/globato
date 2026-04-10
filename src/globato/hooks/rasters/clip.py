@@ -10,9 +10,7 @@ Clip a raster to a vector
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
-import fiona
 import numpy as np
 from rasterio.features import rasterize
 
@@ -32,7 +30,7 @@ class RasterClipHook(RasterStreamHook):
         super().__init__(**kwargs)
 
         self.invert = str(invert).lower() == "true"
-        #self.clip_geoms = None
+        # self.clip_geoms = None
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         """Process individual windows/chunks passed by RasterHook."""
@@ -44,12 +42,12 @@ class RasterClipHook(RasterStreamHook):
 
         geom_mask = rasterize(
             self.barrier_geoms,
-            #out_shape=data.shape,
+            # out_shape=data.shape,
             out_shape=out_shape,
             transform=transform,
             fill=0,
             default_value=1,
-            dtype='uint8'
+            dtype="uint8",
         ).astype(bool)
 
         if data.ndim == 3:

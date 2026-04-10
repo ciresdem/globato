@@ -23,6 +23,7 @@ from ..rasters.base import RasterGlobalHook
 # Lazy import verde so it remains an optional dependency
 try:
     import verde as vd
+
     HAS_VERDE = True
 except ImportError:
     HAS_VERDE = False
@@ -52,7 +53,9 @@ class VerdeSurface(RasterGlobalHook):
 
     def process_raster(self, src_path, dst_path, entry):
         if not HAS_VERDE:
-            logger.error("[VerdeSurface] 'verde' package not installed. Cannot interpolate.")
+            logger.error(
+                "[VerdeSurface] 'verde' package not installed. Cannot interpolate."
+            )
             return False
 
         barrier_geoms = self._get_barrier_geometries()
@@ -60,7 +63,8 @@ class VerdeSurface(RasterGlobalHook):
         with rasterio.open(src_path) as src:
             data = src.read(1)
             nodata = src.nodata
-            if nodata is None: nodata = -9999
+            if nodata is None:
+                nodata = -9999
 
             valid_mask = (data != nodata) & (~np.isnan(data))
 
@@ -79,27 +83,37 @@ class VerdeSurface(RasterGlobalHook):
             x_inc = src.res[0]
             y_inc = src.res[1]
 
-            logger.info(f"[VerdeSurface] Loaded {len(z_vals)} points. Conditioning data...")
+            logger.info(
+                f"[VerdeSurface] Loaded {len(z_vals)} points. Conditioning data..."
+            )
 
             reducer = vd.BlockReduce(reduction=np.median, spacing=(y_inc, x_inc))
             coords, reduced_z = reducer.filter((x_vals, y_vals), z_vals)
 
-            logger.info(f"[VerdeSurface] Fitting Biharmonic Spline to {len(reduced_z)} decimated points...")
+            logger.info(
+                f"[VerdeSurface] Fitting Biharmonic Spline to {len(reduced_z)} decimated points..."
+            )
 
             try:
                 spline = vd.Spline(damping=self.damping, mindist=self.mindist)
                 spline.fit(coords, reduced_z)
 
-                grid = spline.grid(region=(w, e, s, n), spacing=(y_inc, x_inc), pixel_register=True)
+                grid = spline.grid(
+                    region=(w, e, s, n), spacing=(y_inc, x_inc), pixel_register=True
+                )
 
-                result_arr = grid.scalars.values[:src.height, :src.width]
+                result_arr = grid.scalars.values[: src.height, : src.width]
 
                 result_arr = np.flipud(result_arr)
 
                 if barrier_geoms:
                     barrier_mask = rasterize(
-                        barrier_geoms, out_shape=data.shape,
-                        transform=src.transform, fill=0, default_value=1, dtype='uint8'
+                        barrier_geoms,
+                        out_shape=data.shape,
+                        transform=src.transform,
+                        fill=0,
+                        default_value=1,
+                        dtype="uint8",
                     ).astype(bool)
                     result_arr = np.where(~barrier_mask, result_arr, nodata)
 

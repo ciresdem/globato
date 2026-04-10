@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 class StatisticalInvdisttree:
     """Inverse-distance-weighted interpolation using KDTree, augmented with statistical metadata."""
 
-    def __init__(self, coords, z_vals, w_vals=None, u_vals=None, c_vals=None, leafsize=10):
+    def __init__(
+        self, coords, z_vals, w_vals=None, u_vals=None, c_vals=None, leafsize=10
+    ):
         assert len(coords) == len(z_vals)
         self.tree = spatial.cKDTree(coords, leafsize=leafsize)
         self.z = z_vals
@@ -59,7 +61,7 @@ class StatisticalInvdisttree:
                 continue
 
             # Standard Geometric Weight (Inverse Distance)
-            geo_weights = 1.0 / (dist_array ** power)
+            geo_weights = 1.0 / (dist_array**power)
 
             # Apply Statistical Modifiers
             stats_w = self.w[idx_array]
@@ -70,7 +72,7 @@ class StatisticalInvdisttree:
             combined_weights = geo_weights * stats_w * stats_c
 
             # Higher uncertainty decreases pull (add epsilon to prevent div by zero)
-            combined_weights *= (1.0 / (stats_u + 1e-6))
+            combined_weights *= 1.0 / (stats_u + 1e-6)
 
             # Normalize and solve
             combined_weights /= np.sum(combined_weights)
@@ -101,7 +103,7 @@ class IDWSurface(RasterGlobalHook):
         barrier_geoms = self._get_barrier_geometries()
 
         with rasterio.open(src_path) as src:
-            is_stack = (src.count >= 4)
+            is_stack = src.count >= 4
             if not is_stack:
                 logger.warning(
                     f"[{self.name}] Input {src_path} is not a valid MultiStack. IDW requires Z, Count, Weight, and Uncertainty bands."
@@ -132,7 +134,9 @@ class IDWSurface(RasterGlobalHook):
             x_vals, y_vals = xy(src.transform, rows, cols)
             coords = np.vstack((x_vals, y_vals)).T
 
-            logger.info(f"[{self.name}] Building IDW KDTree with {len(z_vals)} points (Power: {self.power})...")
+            logger.info(
+                f"[{self.name}] Building IDW KDTree with {len(z_vals)} points (Power: {self.power})..."
+            )
 
             # Build the Tree
             idw_tree = StatisticalInvdisttree(
@@ -145,21 +149,25 @@ class IDWSurface(RasterGlobalHook):
             result_arr = np.full(out_shape, nodata, dtype=np.float32)
 
             # Get real-world coords for every pixel in the target grid
-            grid_cols, grid_rows = np.meshgrid(np.arange(out_shape[1]), np.arange(out_shape[0]))
+            grid_cols, grid_rows = np.meshgrid(
+                np.arange(out_shape[1]), np.arange(out_shape[0])
+            )
             grid_x, grid_y = xy(src.transform, grid_rows.flatten(), grid_cols.flatten())
             grid_coords = np.vstack((grid_x, grid_y)).T
 
             logger.info(f"[{self.name}] Interpolating...")
             try:
                 # Calculate max distance in real-world units based on pixel radius
-                max_dist_units = self.radius * src.res[0] if self.radius != np.inf else np.inf
+                max_dist_units = (
+                    self.radius * src.res[0] if self.radius != np.inf else np.inf
+                )
 
                 # Execute the IDW!
                 predictions = idw_tree(
                     grid_coords,
                     nnear=self.min_points,
                     power=self.power,
-                    max_dist=max_dist_units
+                    max_dist=max_dist_units,
                 )
 
                 # Reshape back to the 2D grid
@@ -171,8 +179,12 @@ class IDWSurface(RasterGlobalHook):
                 # Handle Barriers (e.g., Coastlines)
                 if barrier_geoms:
                     barrier_mask = rasterize(
-                        barrier_geoms, out_shape=data_z.shape,
-                        transform=src.transform, fill=0, default_value=1, dtype='uint8'
+                        barrier_geoms,
+                        out_shape=data_z.shape,
+                        transform=src.transform,
+                        fill=0,
+                        default_value=1,
+                        dtype="uint8",
                     ).astype(bool)
                     result_arr = np.where(~barrier_mask, result_arr, nodata)
 

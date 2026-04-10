@@ -7,6 +7,7 @@ Tests the source/hook parsing
 
 from globato.utils import parse_source_string as globato_parse_source
 
+
 def test_globato_source_parser_injects_stream_data():
     """Ensures that Globato's wrapper around fetchez.utils.parse_source_string
     successfully injects the mandatory 'stream_data' hook.

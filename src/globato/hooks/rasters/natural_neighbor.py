@@ -21,6 +21,7 @@ from .base import RasterGlobalHook
 
 try:
     import naturalneighbor
+
     HAS_NATURALNEIGHBOR = True
 except ImportError:
     HAS_NATURALNEIGHBOR = False
@@ -66,26 +67,27 @@ class NaturalNeighborSurface(RasterGlobalHook):
             input_points = np.column_stack((x_vals, y_vals, z_vals))
             w, s, e, n = src.bounds
 
-            grid_ranges = [
-                [w, e, src.res[0]],
-                [s, n, src.res[1]]
-            ]
+            grid_ranges = [[w, e, src.res[0]], [s, n, src.res[1]]]
 
             try:
-                logger.info(f"Executing Natural Neighbor interpolation...")
+                logger.info("Executing Natural Neighbor interpolation...")
                 z_chunk = naturalneighbor.griddata(input_points, grid_ranges)
-                z_chunk = np.flipud(z_chunk) # Correct Y orientation
+                z_chunk = np.flipud(z_chunk)  # Correct Y orientation
 
                 # Ensure dimensions match exactly
                 if z_chunk.shape[0] != src.height or z_chunk.shape[1] != src.width:
-                    z_chunk = z_chunk[:src.height, :src.width]
+                    z_chunk = z_chunk[: src.height, : src.width]
 
                 z_chunk = np.nan_to_num(z_chunk, nan=nodata)
 
                 if barrier_geoms:
                     barrier_mask = rasterize(
-                        barrier_geoms, out_shape=data.shape,
-                        transform=src.transform, fill=0, default_value=1, dtype='uint8'
+                        barrier_geoms,
+                        out_shape=data.shape,
+                        transform=src.transform,
+                        fill=0,
+                        default_value=1,
+                        dtype="uint8",
                     ).astype(bool)
                     z_chunk = np.where(~barrier_mask, z_chunk, nodata)
 

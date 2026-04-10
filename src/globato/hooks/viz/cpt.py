@@ -9,13 +9,10 @@ globato.hooks.viz.cpt
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
-import numpy as np
 
 try:
     from matplotlib.colors import LinearSegmentedColormap
-    import matplotlib.pyplot as plt
 
     HAS_MATPLOTLIB = True
 except ImportError:
@@ -28,20 +25,20 @@ logger = logging.getLogger(__name__)
 
 ## CPT Colors dictionary
 CPT_COLORS = {
-    'black': [0, 0, 0],
-    'white': [255, 255, 255],
-    'red': [255, 0, 0],
-    'green': [0, 255, 0],
-    'blue': [0, 0, 255],
-    'yellow': [255, 255, 0],
-    'cyan': [0, 255, 255],
-    'magenta': [255, 0, 255],
-    'gray': [128, 128, 128],
-    'lightgray': [211, 211, 211],
-    'darkgray': [169, 169, 169],
-    'orange': [255, 165, 0],
-    'purple': [128, 0, 128],
-    'brown': [165, 42, 42],
+    "black": [0, 0, 0],
+    "white": [255, 255, 255],
+    "red": [255, 0, 0],
+    "green": [0, 255, 0],
+    "blue": [0, 0, 255],
+    "yellow": [255, 255, 0],
+    "cyan": [0, 255, 255],
+    "magenta": [255, 0, 255],
+    "gray": [128, 128, 128],
+    "lightgray": [211, 211, 211],
+    "darkgray": [169, 169, 169],
+    "orange": [255, 165, 0],
+    "purple": [128, 0, 128],
+    "brown": [165, 42, 42],
 }
 
 
@@ -103,21 +100,98 @@ def scale_el_linear(value, gmin, gmax, tr, trs):
     return v
 
 
-def generate_etopo_cpt(gmin, gmax, output_file='tmp.cpt'):
+def generate_etopo_cpt(gmin, gmax, output_file="tmp.cpt"):
     """Generates a CPT based on ETOPO1 color steps scaled to gmin/gmax."""
 
     trs = [
-        -11000, -10500, -10000, -9500, -9000, -8500, -8000, -7500, -7000, -6500, -6000, -5500,
-        -5000, -4500, -4000, -3500, -3000, -2500, -2000, -1500, -1000, -500, -0.001, 0,
-        100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500,
-        6000, 6500, 7000, 7500, 8000
+        -11000,
+        -10500,
+        -10000,
+        -9500,
+        -9000,
+        -8500,
+        -8000,
+        -7500,
+        -7000,
+        -6500,
+        -6000,
+        -5500,
+        -5000,
+        -4500,
+        -4000,
+        -3500,
+        -3000,
+        -2500,
+        -2000,
+        -1500,
+        -1000,
+        -500,
+        -0.001,
+        0,
+        100,
+        200,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000,
+        6500,
+        7000,
+        7500,
+        8000,
     ]
     colors = (
-        [10,0,121], [26,0,137], [38,0,152], [27,3,166], [16,6,180], [5,9,193], [0,14,203], [0,22,210], [0,30,216], [0,39,223],
-        [12,68,231], [26,102,240], [19,117,244], [14,133,249], [21,158,252], [30,178,255], [43,186,255], [55,193,255], [65,200,255], [79,210,255],
-        [94,223,255], [138,227,255], [138,227,255], [51,102,0], [51,204,102], [187,228,146], [255,220,185], [243,202,137], [230,184,88], [217,166,39],
-        [168,154,31], [164,144,25], [162,134,19], [159,123,13], [156,113,7], [153,102,0], [162,89,89], [178,118,118], [183,147,147], [194,176,176],
-        [204,204,204], [229,229,229], [138,227,255], [51,102,0]
+        [10, 0, 121],
+        [26, 0, 137],
+        [38, 0, 152],
+        [27, 3, 166],
+        [16, 6, 180],
+        [5, 9, 193],
+        [0, 14, 203],
+        [0, 22, 210],
+        [0, 30, 216],
+        [0, 39, 223],
+        [12, 68, 231],
+        [26, 102, 240],
+        [19, 117, 244],
+        [14, 133, 249],
+        [21, 158, 252],
+        [30, 178, 255],
+        [43, 186, 255],
+        [55, 193, 255],
+        [65, 200, 255],
+        [79, 210, 255],
+        [94, 223, 255],
+        [138, 227, 255],
+        [138, 227, 255],
+        [51, 102, 0],
+        [51, 204, 102],
+        [187, 228, 146],
+        [255, 220, 185],
+        [243, 202, 137],
+        [230, 184, 88],
+        [217, 166, 39],
+        [168, 154, 31],
+        [164, 144, 25],
+        [162, 134, 19],
+        [159, 123, 13],
+        [156, 113, 7],
+        [153, 102, 0],
+        [162, 89, 89],
+        [178, 118, 118],
+        [183, 147, 147],
+        [194, 176, 176],
+        [204, 204, 204],
+        [229, 229, 229],
+        [138, 227, 255],
+        [51, 102, 0],
     )
     new_elevs = []
     split_val = 0
@@ -125,21 +199,27 @@ def generate_etopo_cpt(gmin, gmax, output_file='tmp.cpt'):
 
     for t in trs:
         if t <= split_val:
-            if t_min == split_val: pct = 0
-            else: pct = (t - t_min) / (split_val - t_min)
+            if t_min == split_val:
+                pct = 0
+            else:
+                pct = (t - t_min) / (split_val - t_min)
             val = gmin + pct * (0 - gmin)
         else:
-            if t_max == split_val: pct = 0
-            else: pct = (t - split_val) / (t_max - split_val)
+            if t_max == split_val:
+                pct = 0
+            else:
+                pct = (t - split_val) / (t_max - split_val)
             val = 0 + pct * (gmax - 0)
         new_elevs.append(val)
 
-    with open(output_file, 'w') as cpt:
+    with open(output_file, "w") as cpt:
         for i in range(len(new_elevs) - 1):
             elev_curr = new_elevs[i]
-            elev_next = new_elevs[i+1]
+            elev_next = new_elevs[i + 1]
             c1 = colors[i]
-            cpt.write(f'{elev_curr} {c1[0]} {c1[1]} {c1[2]} {elev_next} {c1[0]} {c1[1]} {c1[2]}\n')
+            cpt.write(
+                f"{elev_curr} {c1[0]} {c1[1]} {c1[2]} {elev_next} {c1[0]} {c1[1]} {c1[2]}\n"
+            )
     return output_file
 
 
@@ -150,7 +230,7 @@ def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
         return None
 
     trs, colors = [], []
-    with open(cpt_file, 'r') as f:
+    with open(cpt_file, "r") as f:
         for line in f:
             parts = line.split()
             if not parts:
@@ -159,11 +239,17 @@ def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
             if float_or(parts[0]) is not None:
                 trs.append(float(parts[0]))
                 if int_or(parts[1]) is not None:
-                    colors.append([int(float(parts[1])), int(float(parts[2])), int(float(parts[3]))])
+                    colors.append(
+                        [
+                            int(float(parts[1])),
+                            int(float(parts[2])),
+                            int(float(parts[3])),
+                        ]
+                    )
                 elif parts[1] in CPT_COLORS:
                     colors.append(CPT_COLORS[parts[1]])
-                elif '/' in parts[1]:
-                    colors.append([int(float(x)) for x in parts[1].split('/')])
+                elif "/" in parts[1]:
+                    colors.append([int(float(x)) for x in parts[1].split("/")])
 
     if not trs:
         return None
@@ -189,40 +275,47 @@ def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
             new_elevs.append(val)
     else:
         for t in trs:
-            if t_max == t_min: val = gmin
+            if t_max == t_min:
+                val = gmin
             else:
                 pct = (t - t_min) / (t_max - t_min)
                 val = gmin + pct * (gmax - gmin)
             new_elevs.append(val)
 
-    output_fn = f'tmp_stretched.cpt'
-    with open(output_fn, 'w') as f_out:
+    output_fn = "tmp_stretched.cpt"
+    with open(output_fn, "w") as f_out:
         for i in range(len(new_elevs) - 1):
             elev_curr = new_elevs[i]
-            elev_next = new_elevs[i+1]
+            elev_next = new_elevs[i + 1]
             c = colors[i]
             if not gdal:
-                f_out.write(f'{elev_curr} {c[0]} {c[1]} {c[2]} {elev_next} {c[0]} {c[1]} {c[2]}\n')
+                f_out.write(
+                    f"{elev_curr} {c[0]} {c[1]} {c[2]} {elev_next} {c[0]} {c[1]} {c[2]}\n"
+                )
             else:
-                f_out.write(f'{elev_curr} {c[0]} {c[1]} {c[2]} 255\n')
+                f_out.write(f"{elev_curr} {c[0]} {c[1]} {c[2]} 255\n")
 
         if gdal and len(new_elevs) > 0:
             last_c = colors[-1]
-            f_out.write(f'{new_elevs[-1]} {last_c[0]} {last_c[1]} {last_c[2]} 255\nnv 0 0 0 0\n')
+            f_out.write(
+                f"{new_elevs[-1]} {last_c[0]} {last_c[1]} {last_c[2]} 255\nnv 0 0 0 0\n"
+            )
 
     return output_fn
 
 
-def fetch_cpt_city(query='grass/haxby', out_dir=None):
+def fetch_cpt_city(query="grass/haxby", out_dir=None):
     """Wraps fetchez to get the data."""
 
     registry.ModuleRegistry.load_builtins()
     CPTCityModule = registry.ModuleRegistry.get_class("cpt_city")
-    if not CPTCityModule: return None
+    if not CPTCityModule:
+        return None
 
     fetcher = CPTCityModule(query=query, outdir=out_dir)
     fetcher.run()
-    if not fetcher.results: return None
+    if not fetcher.results:
+        return None
 
     core.run_fetchez([fetcher], threads=1)
     return fetcher.results[0]["dst_fn"]
@@ -232,7 +325,7 @@ def load_cmap(cpt_file, name="globato_cpt"):
     """Reads a CPT file and converts it to a Matplotlib Colormap respecting irregular Z spacing!"""
 
     try:
-        with open(cpt_file, 'r') as f:
+        with open(cpt_file, "r") as f:
             lines = f.readlines()
 
         z_vals, colors = [], []
@@ -241,9 +334,17 @@ def load_cmap(cpt_file, name="globato_cpt"):
             if len(parts) >= 8:
                 try:
                     z0 = float(parts[0])
-                    r0, g0, b0 = float(parts[1])/255., float(parts[2])/255., float(parts[3])/255.
+                    r0, g0, b0 = (
+                        float(parts[1]) / 255.0,
+                        float(parts[2]) / 255.0,
+                        float(parts[3]) / 255.0,
+                    )
                     z1 = float(parts[4])
-                    r1, g1, b1 = float(parts[5])/255., float(parts[6])/255., float(parts[7])/255.
+                    r1, g1, b1 = (
+                        float(parts[5]) / 255.0,
+                        float(parts[6]) / 255.0,
+                        float(parts[7]) / 255.0,
+                    )
 
                     if not z_vals:
                         z_vals.append(z0)
@@ -258,12 +359,13 @@ def load_cmap(cpt_file, name="globato_cpt"):
                 except ValueError:
                     continue
 
-        if not colors: return None
+        if not colors:
+            return None
 
         z_min, z_max = min(z_vals), max(z_vals)
         z_range = z_max - z_min
 
-        cdict = {'red': [], 'green': [], 'blue': []}
+        cdict = {"red": [], "green": [], "blue": []}
         if z_range == 0:
             return LinearSegmentedColormap.from_list(name, colors, N=256)
 
@@ -291,9 +393,9 @@ def load_cmap(cpt_file, name="globato_cpt"):
         unique_x[-1] = 1.0
 
         for x, cl, cr in zip(unique_x, c_left, c_right):
-            cdict['red'].append((x, cl[0], cr[0]))
-            cdict['green'].append((x, cl[1], cr[1]))
-            cdict['blue'].append((x, cl[2], cr[2]))
+            cdict["red"].append((x, cl[0], cr[0]))
+            cdict["green"].append((x, cl[1], cr[1]))
+            cdict["blue"].append((x, cl[2], cr[2]))
 
         return LinearSegmentedColormap(name, cdict)
 

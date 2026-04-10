@@ -42,7 +42,8 @@ class SpatialCrop(FetchHook):
     def run(self, entries):
         for mod, entry in entries:
             stream = entry.get("stream")
-            if not stream: continue
+            if not stream:
+                continue
 
             region = getattr(mod, "region", None)
             if not region:
@@ -62,8 +63,12 @@ class SpatialCrop(FetchHook):
             if chunk is None or len(chunk) == 0:
                 continue
 
-            mask = (chunk["x"] >= w) & (chunk["x"] <= e) & \
-                   (chunk["y"] >= s) & (chunk["y"] <= n)
+            mask = (
+                (chunk["x"] >= w)
+                & (chunk["x"] <= e)
+                & (chunk["y"] >= s)
+                & (chunk["y"] <= n)
+            )
 
             inside_count = np.count_nonzero(mask)
             outside_count = len(chunk) - inside_count
@@ -75,7 +80,9 @@ class SpatialCrop(FetchHook):
                 # Classify outside points as noise
                 if outside_count > 0:
                     if "classification" not in chunk.dtype.names:
-                        chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
+                        chunk = add_field_to_recarray(
+                            chunk, "classification", np.uint8, 0
+                        )
 
                     chunk["classification"][~mask] = self.set_class
                 yield chunk
@@ -87,4 +94,6 @@ class SpatialCrop(FetchHook):
 
         if dropped_total > 0:
             action = "Classified" if self.soft else "Dropped"
-            logger.info(f"[SpatialCrop] {action} {dropped_total} points outside region (Kept {kept_total}).")
+            logger.info(
+                f"[SpatialCrop] {action} {dropped_total} points outside region (Kept {kept_total})."
+            )

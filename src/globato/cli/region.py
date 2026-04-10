@@ -23,8 +23,20 @@ def region_group():
 
 
 @region_group.command("echo")
-@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string, or geojson file.")
-@click.option("--format", "-F", type=click.Choice(['gmt', 'bbox', 'wkt', 'geojson', 'fn']), default="gmt", help="Output format.")
+@click.option(
+    "-R",
+    "--region",
+    "region_str",
+    required=True,
+    help="Bounding box (W/E/S/N) or location string, or geojson file.",
+)
+@click.option(
+    "--format",
+    "-F",
+    type=click.Choice(["gmt", "bbox", "wkt", "geojson", "fn"]),
+    default="gmt",
+    help="Output format.",
+)
 def region_echo(region_str, format):
     """Parse a region and echo it to stdout.
 
@@ -43,9 +55,25 @@ def region_echo(region_str, format):
 
 
 @region_group.command("buffer")
-@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
-@click.option("--pct", type=float, default=5.0, help="Percentage to buffer the region (default: 5.0).")
-@click.option("--format", "-F", type=click.Choice(['gmt', 'bbox', 'wkt', 'geojson', 'fn']), default="gmt")
+@click.option(
+    "-R",
+    "--region",
+    "region_str",
+    required=True,
+    help="Bounding box (W/E/S/N) or location string.",
+)
+@click.option(
+    "--pct",
+    type=float,
+    default=5.0,
+    help="Percentage to buffer the region (default: 5.0).",
+)
+@click.option(
+    "--format",
+    "-F",
+    type=click.Choice(["gmt", "bbox", "wkt", "geojson", "fn"]),
+    default="gmt",
+)
 def region_buffer(region_str, pct, format):
     """Expand a bounding box by a given percentage.
 
@@ -64,10 +92,27 @@ def region_buffer(region_str, pct, format):
 
 
 @region_group.command("split")
-@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
-@click.option("--size", type=float, required=True, help="Tile size in decimal degrees (e.g., 0.25 for 1/4 degree tiles).")
-@click.option("--out", "-O", required=True, help="Output GeoJSON file to save the tileset.")
-@click.option("--prefix", default="tile", help="Prefix for the generated tile names (default: 'tile').")
+@click.option(
+    "-R",
+    "--region",
+    "region_str",
+    required=True,
+    help="Bounding box (W/E/S/N) or location string.",
+)
+@click.option(
+    "--size",
+    type=float,
+    required=True,
+    help="Tile size in decimal degrees (e.g., 0.25 for 1/4 degree tiles).",
+)
+@click.option(
+    "--out", "-O", required=True, help="Output GeoJSON file to save the tileset."
+)
+@click.option(
+    "--prefix",
+    default="tile",
+    help="Prefix for the generated tile names (default: 'tile').",
+)
 def region_split(region_str, size, out, prefix):
     """Split a massive region into a GeoJSON tileset for batch processing.
 
@@ -96,31 +141,44 @@ def region_split(region_str, size, out, prefix):
 
                     geom = {
                         "type": "Polygon",
-                        "coordinates": [[[tile_w, tile_s], [tile_w, tile_n], [tile_e, tile_n], [tile_e, tile_s], [tile_w, tile_s]]]
+                        "coordinates": [
+                            [
+                                [tile_w, tile_s],
+                                [tile_w, tile_n],
+                                [tile_e, tile_n],
+                                [tile_e, tile_s],
+                                [tile_w, tile_s],
+                            ]
+                        ],
                     }
 
                     # Format a tile name: e.g., tile_001
                     tile_name = f"{prefix}_{count:03d}"
 
-                    features.append({
-                        "type": "Feature",
-                        "properties": {
-                            "NAME": tile_name,
-                            "w": tile_w, "e": tile_e, "s": tile_s, "n": tile_n
-                        },
-                        "geometry": geom
-                    })
+                    features.append(
+                        {
+                            "type": "Feature",
+                            "properties": {
+                                "NAME": tile_name,
+                                "w": tile_w,
+                                "e": tile_e,
+                                "s": tile_s,
+                                "n": tile_n,
+                            },
+                            "geometry": geom,
+                        }
+                    )
                     count += 1
 
-            feature_collection = {
-                "type": "FeatureCollection",
-                "features": features
-            }
+            feature_collection = {"type": "FeatureCollection", "features": features}
 
-            with open(out, 'w') as f:
+            with open(out, "w") as f:
                 json.dump(feature_collection, f, indent=2)
 
-            click.secho(f"Generated {len(features)} tiles ({cols}x{rows}) and saved to: {out}", fg="green")
+            click.secho(
+                f"Generated {len(features)} tiles ({cols}x{rows}) and saved to: {out}",
+                fg="green",
+            )
             click.echo(f"Run these using: globato recipe batch my_recipe.yaml {out}")
 
     except ValueError as e:
@@ -129,10 +187,28 @@ def region_split(region_str, size, out, prefix):
 
 
 @region_group.command("transform")
-@click.option("-R", "--region", "region_str", required=True, help="Bounding box (W/E/S/N) or location string.")
-@click.option("--t-srs", required=True, help="Target spatial reference system (e.g., EPSG:3857).")
-@click.option("--s-srs", default="EPSG:4326", help="Source spatial reference system (default: EPSG:4326).")
-@click.option("--format", "-F", type=click.Choice(['gmt', 'bbox', 'wkt', 'geojson', 'fn']), default="gmt", help="Output format.")
+@click.option(
+    "-R",
+    "--region",
+    "region_str",
+    required=True,
+    help="Bounding box (W/E/S/N) or location string.",
+)
+@click.option(
+    "--t-srs", required=True, help="Target spatial reference system (e.g., EPSG:3857)."
+)
+@click.option(
+    "--s-srs",
+    default="EPSG:4326",
+    help="Source spatial reference system (default: EPSG:4326).",
+)
+@click.option(
+    "--format",
+    "-F",
+    type=click.Choice(["gmt", "bbox", "wkt", "geojson", "fn"]),
+    default="gmt",
+    help="Output format.",
+)
 def region_transform(region_str, t_srs, s_srs, format):
     """Transform a region to a new coordinate reference system.
 

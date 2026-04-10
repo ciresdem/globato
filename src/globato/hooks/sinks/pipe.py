@@ -60,15 +60,16 @@ class XYZPrinter(FetchHook):
                             columns.append(chunk["u"])
 
                         data = np.column_stack(columns)
-                        np.savetxt(sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter)
-
+                        np.savetxt(
+                            sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter
+                        )
 
                 elif stream_type == "raster":
                     stream = entry.get("stream")
 
-                    # 1. Pop the profile off the top of the generator
-                    profile = next(stream)
-                    #print(profile)
+                    # Pop the profile off the top of the generator
+                    _profile = next(stream)
+                    # print(profile)
                     for window, buff_win, data, ndv, transform in stream:
                         # Grab the Z band (first band)
                         z_data = data[0] if data.ndim == 3 else data
@@ -84,6 +85,7 @@ class XYZPrinter(FetchHook):
 
                         # Convert to geographic coordinates using the chunk's transform
                         import rasterio
+
                         xs, ys = rasterio.transform.xy(transform, rows, cols)
 
                         z_vals = z_data[valid_mask]
@@ -93,7 +95,9 @@ class XYZPrinter(FetchHook):
 
                         # Print to stdout
                         self.fmt = ["%.6f", "%.6f", "%.6f"]
-                        np.savetxt(sys.stdout, data_out, fmt=self.fmt, delimiter=self.delimiter)
+                        np.savetxt(
+                            sys.stdout, data_out, fmt=self.fmt, delimiter=self.delimiter
+                        )
                 # elif stream_type == "point_pixels_arrays":
                 #     for arrs, srcwin, gt in stream:
 
@@ -110,16 +114,16 @@ class XYZPrinter(FetchHook):
             except IOError:
                 try:
                     sys.stdout.close()
-                except:
+                except Exception:
                     pass
-                #return entries
+                # return entries
             except BrokenPipeError:
                 try:
                     sys.stdout.close()
                 except Exception:
                     pass
                 # return entries
-            except Exception as e:
+            except Exception:
                 # logger.error(f"Error piping XYZ: {e}\n")
                 try:
                     sys.stdout.close()

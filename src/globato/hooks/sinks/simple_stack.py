@@ -31,13 +31,13 @@ class PointAccumulator:
     """
 
     def __init__(
-            self,
-            filename,
-            region,
-            x_inc,
-            y_inc,
-            crs="EPSG:4326",
-            verbose=False,
+        self,
+        filename,
+        region,
+        x_inc,
+        y_inc,
+        crs="EPSG:4326",
+        verbose=False,
     ):
         self.filename = filename
         self.region = region
@@ -57,19 +57,18 @@ class PointAccumulator:
         self.acc_fn = f"{os.path.splitext(filename)[0]}_acc.tif"
         self._init_accumulator()
 
-
     def _init_accumulator(self):
         """Create the temporary zero-filled accumulation raster."""
 
         if not os.path.exists(os.path.dirname(os.path.abspath(self.acc_fn))):
             try:
                 os.makedirs(os.path.dirname(os.path.abspath(self.acc_fn)))
-            except:
+            except Exception:
                 pass
 
         profile = {
             "driver": "GTiff",
-            "dtype": 'float32',
+            "dtype": "float32",
             "count": 2,
             "width": self.nx,
             "height": self.ny,
@@ -84,18 +83,19 @@ class PointAccumulator:
             dst.set_band_description(1, "Weighted_Sum_Z")
             dst.set_band_description(2, "Sum_Weights")
 
-
     def add_points(self, points):
         """Bin points and update the accumulator grid."""
 
-        if points is None or len(points) == 0: return
+        if points is None or len(points) == 0:
+            return
 
         # Vectorized Indexing
         cols = np.floor((points["x"] - self.region.xmin) / self.x_inc).astype(int)
         rows = np.floor((self.region.ymax - points["y"]) / self.y_inc).astype(int)
 
         mask = (cols >= 0) & (cols < self.nx) & (rows >= 0) & (rows < self.ny)
-        if not np.any(mask): return
+        if not np.any(mask):
+            return
 
         valid_cols = cols[mask]
         valid_rows = rows[mask]
@@ -139,7 +139,6 @@ class PointAccumulator:
                 dst.write(current_sum, 1, window=window)
                 dst.write(current_w, 2, window=window)
 
-
     def finalize(self, ndv=-9999):
         """Divide Sums by Weights to produce final Z grid."""
 
@@ -168,7 +167,7 @@ class PointAccumulator:
         if os.path.exists(self.acc_fn):
             try:
                 os.remove(self.acc_fn)
-            except:
+            except Exception:
                 pass
 
         return self.filename
@@ -190,12 +189,12 @@ class SimpleStack(FetchHook):
     meta_category = "stream-sink"
 
     def __init__(
-            self,
-            res="1s",
-            output="output.tif",
-            mode="mean",
-            plug=False,
-            **kwargs,
+        self,
+        res="1s",
+        output="output.tif",
+        mode="mean",
+        plug=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.res = res
@@ -203,7 +202,7 @@ class SimpleStack(FetchHook):
         self.plug = utils.str2bool(plug)
         self._accumulator = None
 
-        self._global_mode = '{' not in self.output and '}' not in self.output
+        self._global_mode = "{" not in self.output and "}" not in self.output
 
     def _create_accumulator(self, filename, region):
         """Factory method to create an accumulator."""
@@ -211,18 +210,14 @@ class SimpleStack(FetchHook):
         if isinstance(self.res, str) and self.res.endswith("s"):
             inc = float(self.res[:-1]) / 3600.0
             x_inc, y_inc = inc, inc
-        elif '/' in str(self.res):
+        elif "/" in str(self.res):
             x_inc, y_inc = map(float, self.res.split("/"))
         else:
             inc = float(self.res)
             x_inc, y_inc = inc, inc
 
         return PointAccumulator(
-            filename=filename,
-            region=region,
-            x_inc=x_inc,
-            y_inc=y_inc,
-            verbose=True
+            filename=filename, region=region, x_inc=x_inc, y_inc=y_inc, verbose=True
         )
 
     def _init_accumulator(self, region):
@@ -239,7 +234,9 @@ class SimpleStack(FetchHook):
         processed_count = 0
 
         if self._global_mode and not self._accumulator:
-            region = next((mod.region for mod, _ in entries if getattr(mod, "region", None)), None)
+            region = next(
+                (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
+            )
             if region:
                 self._init_accumulator(region)
             else:
@@ -257,7 +254,7 @@ class SimpleStack(FetchHook):
             if not self._global_mode:
                 # --- Per-File Mode ---
                 # Filename template
-                src_base = os.path.splitext(os.path.basename(entry['dst_fn']))[0]
+                src_base = os.path.splitext(os.path.basename(entry["dst_fn"]))[0]
                 out_fn = self.output.format(base=src_base, name=mod.name)
 
                 if not os.path.isabs(out_fn):
@@ -297,7 +294,6 @@ class SimpleStack(FetchHook):
         if self._global_mode and self.plug and processed_count > 0:
             if self._accumulator:
                 self._accumulator.finalize()
-
 
                 mod, _ = entries[0]
                 stack_entry = {
