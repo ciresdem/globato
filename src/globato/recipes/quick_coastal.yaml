@@ -118,11 +118,19 @@ global_hooks:
     args:
       target: "blended_checkpoint"
 
-  # Fast interpolation using `raster_fill`
-  - name: raster_fill
+  - name: ms_cudem
     args:
-      # barrier: "temp_coastline.geojson"
+      steps: 2
+      resolutions: "1s/3s/9s"
+      weights: "1.0/0.5/0.1"
+      algo: "raster_fill"
       output: "quick_coastal_dem.tif"
+
+  # # Fast interpolation using `raster_fill`
+  # - name: raster_fill
+  #   args:
+  #     # barrier: "temp_coastline.geojson"
+  #     output: "quick_coastal_dem.tif"
 
   # Generate a hillshade.
   - name: viz_geoshade
