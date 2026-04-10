@@ -12,7 +12,6 @@ Some utility functions for globato. Taken from cudem.utils
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import sys
 import shutil
 import subprocess
@@ -23,18 +22,14 @@ from tqdm import tqdm
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
-from fetchez.utils import parse_hook_string
 from fetchez.utils import parse_source_string as fetchez_parse_source
+
+from transformez.utils import cmd_exists
 
 logger = logging.getLogger(__name__)
 
 
-# System Command Functions
-cmd_exists = lambda x: any(os.access(os.path.join(path, x), os.X_OK)
-                           for path in os.environ['PATH'].split(os.pathsep))
-
-
-def run_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
+def run_cmd(cmd, data_fun=None, verbose=False, cwd="."):
     """Run a system command while optionally passing data.
 
     `data_fun` should be a function to write to a file-port:

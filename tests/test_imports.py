@@ -6,7 +6,6 @@ Enforces correct fetchez/transformez/globato imports
 """
 
 import ast
-import pytest
 from pathlib import Path
 
 # This file is in globato/tests/test_imports.py
