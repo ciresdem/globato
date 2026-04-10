@@ -59,4 +59,3 @@ Would you like to know more? Check out our [Official Documentation](https://glob
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/continuous-dems/fetchez/blob/main/LICENSE) file for details.
 
 Copyright (c) 2010-2026 Regents of the University of Colorado
-
