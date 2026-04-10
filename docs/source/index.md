@@ -22,8 +22,8 @@ Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and 
 If you are new to Globato, the best place to start is the Quickstart guide, which will take you from installation to generating your first DEM in under 5 minutes.
 
 * **[Quickstart: From Zero to DEM](user_guide/quickstart.md)**
-* **[Anatomy of a Recipe](user_guide/anatomy.md)**
-* **[CLI Syntax Cheatsheet](user_guide/cli_syntax.md)**
+* **[Anatomy of a Recipe](user_guide/)**
+* **[CLI Syntax Cheatsheet](user_guide/)**
 
 ---
 
