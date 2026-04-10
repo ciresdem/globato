@@ -36,16 +36,25 @@ BaseHydroNOS = ModuleRegistry.get_class("nos_hydro") or object
 class GlobFabDEM(BaseFabDEM):
     """Cleaned FABDEM Module.
 
-      - Fetch Zip
-      - Unzip
-      - Stream (Load Points)
-      - RQ Filter (Flag Coastal Creep)
-      - Drop Class (Remove Noise)
-      - Stack (Save Clean Raster)
+    - Fetch Zip
+    - Unzip
+    - Stream (Load Points)
+    - RQ Filter (Flag Coastal Creep)
+    - Drop Class (Remove Noise)
+    - Stack (Save Clean Raster)
     """
 
     name = "glob_fabdem"
-    meta_tags = ["fabdem", "dem", "dtm", "copernicus", "global", "30m", "clean", "globato"]
+    meta_tags = [
+        "fabdem",
+        "dem",
+        "dtm",
+        "copernicus",
+        "global",
+        "30m",
+        "clean",
+        "globato",
+    ]
     meta_category = "Globato"
 
     def __init__(self, **kwargs):
@@ -58,30 +67,21 @@ class GlobFabDEM(BaseFabDEM):
         self.add_hook(DataStream())
         self.add_hook(
             ReferenceQuality(
-                reference="gebco_cog",
-                threshold=50,
-                mode="diff",
-                set_class=7
+                reference="gebco_cog", threshold=50, mode="diff", set_class=7
             )
         )
         self.add_hook(DropClass(classes="7"))
-        #self.hooks.append(SimpleStack())
-        self.add_hook(
-            SimpleStack(
-                output="_clean.tif",
-                res="1s",
-                mode="mean"
-            )
-        )
+        # self.hooks.append(SimpleStack())
+        self.add_hook(SimpleStack(output="_clean.tif", res="1s", mode="mean"))
 
 
 class GlobCopernicus(BaseCopernicus):
     """Cleaned Copernicus DEM.
 
-      - Automatically Unzips.
-      - Filters out water (Copernicus is often valid over ocean as 0 or noisy).
-      - Drop Class (Remove Noise)
-      - Stack (Save Clean Raster)
+    - Automatically Unzips.
+    - Filters out water (Copernicus is often valid over ocean as 0 or noisy).
+    - Drop Class (Remove Noise)
+    - Stack (Save Clean Raster)
     """
 
     name = "glob_copernicus"
@@ -99,28 +99,22 @@ class GlobCopernicus(BaseCopernicus):
         self.add_hook(DataStream())
         self.add_hook(RangeZ(min_z=0.01))
         self.add_hook(DropClass(classes="7"))
-        self.add_hook(
-            SimpleStack(
-                output="{base}_clean.tif",
-                res="1s",
-                mode="mean"
-            )
-        )
+        self.add_hook(SimpleStack(output="{base}_clean.tif", res="1s", mode="mean"))
 
 
 class GlobMultibeam(BaseMultibeam):
     """Cleaned Multibeam
 
-      - Filename_filter
-      - Steam (Load Points)
-      - RQ Filter
-      - drop class
-      - Stack (Save Clean Raster)
+    - Filename_filter
+    - Steam (Load Points)
+    - RQ Filter
+    - drop class
+    - Stack (Save Clean Raster)
     """
 
     name = "glob_multibeam"
     meta_tags = ["bathymetry", "multibeam", "ocean", "sonar", "noaa", "ncei", "globato"]
-    meta_category = 'Globato'
+    meta_category = "Globato"
 
     def __init__(self, res="1s", **kwargs):
         super().__init__(**kwargs)
@@ -137,13 +131,7 @@ class GlobMultibeam(BaseMultibeam):
             )
         )
         self.add_hook(DropClass(classes="7"))
-        self.add_hook(
-            SimpleStack(
-                output="{base}_clean.tif",
-                res=res,
-                mode="mean"
-            )
-        )
+        self.add_hook(SimpleStack(output="{base}_clean.tif", res=res, mode="mean"))
 
 
 class ValidateBAG(FetchHook):
@@ -156,19 +144,19 @@ class ValidateBAG(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            fn = entry['dst_fn']
-            if not os.path.exists(fn) or not fn.endswith('.bag'):
+            fn = entry["dst_fn"]
+            if not os.path.exists(fn) or not fn.endswith(".bag"):
                 continue
 
             is_valid = False
             try:
-                with open(fn, 'rb') as f:
+                with open(fn, "rb") as f:
                     header = f.read(4)
-                    if header == b'\x89HDF':
+                    if header == b"\x89HDF":
                         is_valid = True
 
                 if is_valid:
-                    with rasterio.Env(CPL_LOG='/dev/null'):
+                    with rasterio.Env(CPL_LOG="/dev/null"):
                         with rasterio.open(fn) as src:
                             logger.info(src)
                             pass
@@ -178,19 +166,27 @@ class ValidateBAG(FetchHook):
             if not is_valid:
                 logger.warning(f"Corrupt file detected: {fn}. Deleting.")
                 os.remove(fn)
-                entry['status'] = -1
+                entry["status"] = -1
 
         return entries
 
 
 class GlobBAG(BaseHydroNOS):
     name = "glob_bag"
-    meta_tags = ["bathymetry", "hydrography", "nos", "noaa", "bag", "soundings", "globato"]
+    meta_tags = [
+        "bathymetry",
+        "hydrography",
+        "nos",
+        "noaa",
+        "bag",
+        "soundings",
+        "globato",
+    ]
     meta_category = "Globato"
 
     def __init__(self, **kwargs):
         super().__init__(name="glob_bag", **kwargs)
-        self.datatype = 'bag'
+        self.datatype = "bag"
 
         self.add_hook(ValidateBAG())
         self.add_hook(FilenameFilter(exclude="_Ellipsoid_", stage="pre"))

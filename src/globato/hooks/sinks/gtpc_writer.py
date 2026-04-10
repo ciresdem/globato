@@ -17,7 +17,6 @@ import logging
 import numpy as np
 import h5py
 from fetchez.hooks import FetchHook
-from fetchez import utils
 from ..transforms.point_pixels import PointPixels
 
 logger = logging.getLogger(__name__)
@@ -45,18 +44,21 @@ class WriteGTPC(FetchHook):
 
     def _parse_res(self, res_str):
         """Parse '1s' or '0.001' to float degrees."""
-        if not res_str: return None
-        if isinstance(res_str, (int, float)): return float(res_str)
-        if isinstance(res_str, str) and res_str.endswith('s'):
+        if not res_str:
+            return None
+        if isinstance(res_str, (int, float)):
+            return float(res_str)
+        if isinstance(res_str, str) and res_str.endswith("s"):
             return float(res_str[:-1]) / 3600.0
         return float(res_str)
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get('stream')
-            if not stream: continue
+            stream = entry.get("stream")
+            if not stream:
+                continue
 
-            src_fn = entry.get('dst_fn')
+            src_fn = entry.get("dst_fn")
             base, _ = os.path.splitext(src_fn)
             out_fn = f"{base}.gtpc"
 
@@ -70,17 +72,19 @@ class WriteGTPC(FetchHook):
                     height = int(np.ceil((n - s) / inc))
 
                     binner = PointPixels(
-                        src_region=mod.region, # PointPixels expects TransRegion or list
+                        src_region=mod.region,  # PointPixels expects TransRegion or list
                         x_size=width,
                         y_size=height,
-                        verbose=False
+                        verbose=False,
                     )
                 except Exception as e:
-                    logger.warning(f"Could not init binning for {out_fn}: {e}. Writing raw.")
+                    logger.warning(
+                        f"Could not init binning for {out_fn}: {e}. Writing raw."
+                    )
                     binner = None
 
-            entry['stream'] = self._write_stream(stream, out_fn, binner)
-            entry.setdefault('artifacts', {})[self.name] = out_fn
+            entry["stream"] = self._write_stream(stream, out_fn, binner)
+            entry.setdefault("artifacts", {})[self.name] = out_fn
         return entries
 
     def _write_stream(self, stream, out_fn, binner=None):
@@ -90,24 +94,34 @@ class WriteGTPC(FetchHook):
             total_pts = 0
 
             for chunk in stream:
-                if chunk is None or len(chunk) == 0: continue
+                if chunk is None or len(chunk) == 0:
+                    continue
 
                 if binner:
                     arrays, _, _ = binner(chunk, mode=self.mode)
-                    valid = arrays['count'] > 0
-                    if not np.any(valid): continue
+                    valid = arrays["count"] > 0
+                    if not np.any(valid):
+                        continue
 
                     data_to_write = {
-                        'x': arrays['x'][valid],
-                        'y': arrays['y'][valid],
-                        'z': arrays['z'][valid],
-                        'w': arrays['weight'][valid],
-                        'u': arrays['uncertainty'][valid]
+                        "x": arrays["x"][valid],
+                        "y": arrays["y"][valid],
+                        "z": arrays["z"][valid],
+                        "w": arrays["weight"][valid],
+                        "u": arrays["uncertainty"][valid],
                     }
 
-                    n_pts = np.count_nonzero(valid)
-                    dt = [('x', 'f8'), ('y', 'f8'), ('z', 'f4'), ('w', 'f4'), ('u', 'f4')]
-                    chunk_out = np.rec.fromarrays([data_to_write[k] for k, _ in dt], dtype=dt)
+                    _n_pts = np.count_nonzero(valid)
+                    dt = [
+                        ("x", "f8"),
+                        ("y", "f8"),
+                        ("z", "f4"),
+                        ("w", "f4"),
+                        ("u", "f4"),
+                    ]
+                    chunk_out = np.rec.fromarrays(
+                        [data_to_write[k] for k, _ in dt], dtype=dt
+                    )
 
                 else:
                     chunk_out = chunk
@@ -116,8 +130,11 @@ class WriteGTPC(FetchHook):
                 if not datasets:
                     for field in chunk_out.dtype.names:
                         datasets[field] = grp.create_dataset(
-                            field, shape=(0,), maxshape=(None,),
-                            dtype=chunk_out[field].dtype, compression=self.compression
+                            field,
+                            shape=(0,),
+                            maxshape=(None,),
+                            dtype=chunk_out[field].dtype,
+                            compression=self.compression,
                         )
 
                 for field in datasets:

@@ -12,7 +12,6 @@ via PyGMT to interpolate sparse grids. Essential for deep water/large gaps.
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 import rasterio
@@ -23,6 +22,7 @@ from ..rasters.base import RasterGlobalHook
 
 try:
     import pygmt
+
     HAS_PYGMT = True
 except (ImportError, OSError):
     HAS_PYGMT = False
@@ -46,7 +46,9 @@ class GmtSurface(RasterGlobalHook):
     name = "interp_gmt"
     default_suffix = "_gmt"
 
-    def __init__(self, tension=0.35, convergence=1e-4, radius=None, upper=None, **kwargs):
+    def __init__(
+        self, tension=0.35, convergence=1e-4, radius=None, upper=None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.tension = float(tension)
         self.convergence = float(convergence)
@@ -63,7 +65,8 @@ class GmtSurface(RasterGlobalHook):
         with rasterio.open(src_path) as src:
             data = src.read(1)
             nodata = src.nodata
-            if nodata is None: nodata = -9999
+            if nodata is None:
+                nodata = -9999
 
             valid_mask = (data != nodata) & (~np.isnan(data))
 
@@ -108,10 +111,14 @@ class GmtSurface(RasterGlobalHook):
 
                 if barrier_geoms:
                     barrier_mask = rasterize(
-                        barrier_geoms, out_shape=data.shape,
-                        transform=src.transform, fill=0, default_value=1, dtype='uint8'
+                        barrier_geoms,
+                        out_shape=data.shape,
+                        transform=src.transform,
+                        fill=0,
+                        default_value=1,
+                        dtype="uint8",
                     ).astype(bool)
-                    #data_b = np.where(~barrier_mask, data, ndv)
+                    # data_b = np.where(~barrier_mask, data, ndv)
                     result_arr = np.where(~barrier_mask, result_arr, nodata)
 
                 with rasterio.open(dst_path, "w", **profile) as dst:

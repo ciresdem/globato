@@ -32,18 +32,18 @@ class BlockMinMax(GlobatoFilter):
     name = "block_minmax"
     meta_desc = "Thin the data by min/max"
 
-    def __init__(self, res=10, mode='min', soft=True, **kwargs):
+    def __init__(self, res=10, mode="min", soft=True, **kwargs):
         super().__init__(**kwargs)
         self.res = utils.float_or(res, 10)
-        self.mode = mode.lower() if mode else 'min'
+        self.mode = mode.lower() if mode else "min"
         self.soft = utils.str2bool(soft)
 
     def filter_chunk(self, chunk):
-        x_idx = np.floor(chunk['x'] / self.res).astype(np.int64)
-        y_idx = np.floor(chunk['y'] / self.res).astype(np.int64)
-        z_vals = chunk['z']
+        x_idx = np.floor(chunk["x"] / self.res).astype(np.int64)
+        y_idx = np.floor(chunk["y"] / self.res).astype(np.int64)
+        z_vals = chunk["z"]
 
-        if self.mode == 'max':
+        if self.mode == "max":
             sort_order = np.lexsort((-z_vals, y_idx, x_idx))
         else:
             sort_order = np.lexsort((z_vals, y_idx, x_idx))

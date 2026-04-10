@@ -12,11 +12,9 @@ Process XYZ/ASCII files
 """
 
 import os
-import sys
 import logging
 import warnings
 import numpy as np
-from typing import Optional, List, Union
 
 from fetchez.hooks import FetchHook
 from fetchez.utils import int_or, float_or
@@ -33,22 +31,22 @@ class XYZReader:
     KNOWN_DELIMS = [",", " ", "\t", ";", "|"]
 
     def __init__(
-            self,
-            src_fn: str,
-            xpos=0,
-            ypos=1,
-            zpos=2,
-            wpos=None,
-            upos=None,
-            skiprows=0,
-            delimiter=None,
-            x_scale=1,
-            y_scale=1,
-            z_scale=1,
-            x_offset=0,
-            y_offset=0,
-            chunk_size=100_000,
-            **kwargs,
+        self,
+        src_fn: str,
+        xpos=0,
+        ypos=1,
+        zpos=2,
+        wpos=None,
+        upos=None,
+        skiprows=0,
+        delimiter=None,
+        x_scale=1,
+        y_scale=1,
+        z_scale=1,
+        x_offset=0,
+        y_offset=0,
+        chunk_size=100_000,
+        **kwargs,
     ):
         """Accepts generic args like `skiprows` and `delimiter` to match StreamFactory profiles,
         while maintaining legacy cudem compatability (`xpos`, `skip`, `delim`).
@@ -56,9 +54,21 @@ class XYZReader:
 
         self.src_fn = src_fn
 
-        self.xpos = int_or(kwargs.get("usecols", [xpos])[0] if "usecols" in kwargs else xpos, 0)
-        self.ypos = int_or(kwargs.get("usecols", [0, ypos])[1] if "usecols" in kwargs and len(kwargs["usecols"]) > 1 else ypos, 1)
-        self.zpos = int_or(kwargs.get("usecols", [0, 1, zpos])[2] if "usecols" in kwargs and len(kwargs["usecols"]) > 2 else zpos, 2)
+        self.xpos = int_or(
+            kwargs.get("usecols", [xpos])[0] if "usecols" in kwargs else xpos, 0
+        )
+        self.ypos = int_or(
+            kwargs.get("usecols", [0, ypos])[1]
+            if "usecols" in kwargs and len(kwargs["usecols"]) > 1
+            else ypos,
+            1,
+        )
+        self.zpos = int_or(
+            kwargs.get("usecols", [0, 1, zpos])[2]
+            if "usecols" in kwargs and len(kwargs["usecols"]) > 2
+            else zpos,
+            2,
+        )
 
         self.wpos = int_or(wpos)
         self.upos = int_or(upos)
@@ -71,18 +81,23 @@ class XYZReader:
         self.z_scale = float_or(z_scale, 1)
         self.x_offset = x_offset
         self.rem = False
-        if self.x_offset == 'REM':
+        if self.x_offset == "REM":
             self.x_offset = 0
             self.rem = True
         else:
             self.x_offset = float_or(x_offset, 0)
         self.y_offset = float_or(y_offset, 0)
         self.chunk_size = chunk_size
-        self.transform = (self.x_scale != 1 or self.y_scale != 1 or self.z_scale != 1 or
-                          self.x_offset != 0 or self.y_offset != 0)
+        self.transform = (
+            self.x_scale != 1
+            or self.y_scale != 1
+            or self.z_scale != 1
+            or self.x_offset != 0
+            or self.y_offset != 0
+        )
 
         # Detect delimiter if not provided
-        if self.delim in [' ', '\t', '']:
+        if self.delim in [" ", "\t", ""]:
             self.delim = None
 
         if self.delim is None:
@@ -130,10 +145,13 @@ class XYZReader:
 
         sorted_cols = sorted(list(set(cols_to_extract)))
 
-        col_map = {physical_idx: numpy_idx for numpy_idx, physical_idx in enumerate(sorted_cols)}
+        col_map = {
+            physical_idx: numpy_idx
+            for numpy_idx, physical_idx in enumerate(sorted_cols)
+        }
 
         try:
-            with open(self.src_fn, 'r') as f_in:
+            with open(self.src_fn, "r") as f_in:
                 # Apply skip only to the very first chunk
                 for _ in range(self.skip):
                     f_in.readline()
@@ -146,10 +164,10 @@ class XYZReader:
                             chunk_data = np.loadtxt(
                                 f_in,
                                 delimiter=self.delim,
-                                comments='#',
+                                comments="#",
                                 usecols=sorted_cols,
                                 ndmin=2,
-                                max_rows=self.chunk_size
+                                max_rows=self.chunk_size,
                             )
 
                             if chunk_data.size == 0:
@@ -177,15 +195,15 @@ class XYZReader:
                                 u = chunk_data[:, col_map[self.upos]]
 
                             out_chunk = np.core.records.fromarrays(
-                                [x, y, z, w, u],
-                                names=["x","y","z","w","u"]
+                                [x, y, z, w, u], names=["x", "y", "z", "w", "u"]
                             )
                             yield out_chunk
 
                     except StopIteration:
                         break
                     except ValueError as e:
-                        if "lines" in str(e): break
+                        if "lines" in str(e):
+                            break
                         raise e
 
         except Exception as e:

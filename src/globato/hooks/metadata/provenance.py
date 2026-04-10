@@ -47,13 +47,13 @@ class ProvenanceHook(FetchHook):
         self.module_bits = {}
         self.next_bit = 0
 
-
     def _init_raster(self, region):
         """Create the zero-filled UInt32 raster."""
 
-        if self._initialized: return
+        if self._initialized:
+            return
 
-        if isinstance(self.res, str) and self.res.endswith('s'):
+        if isinstance(self.res, str) and self.res.endswith("s"):
             inc = float(self.res[:-1]) / 3600.0
             x_inc, y_inc = inc, inc
         else:
@@ -71,23 +71,22 @@ class ProvenanceHook(FetchHook):
         )
 
         profile = {
-            'driver': 'GTiff',
-            'dtype': 'uint32', # Supports up to 32 modules
-            'count': 1,
-            'width': self.xcount,
-            'height': self.ycount,
-            'crs': 'EPSG:4326',
-            'transform': self.transform,
-            'compress': 'lzw',
-            'nodata': 0
+            "driver": "GTiff",
+            "dtype": "uint32",  # Supports up to 32 modules
+            "count": 1,
+            "width": self.xcount,
+            "height": self.ycount,
+            "crs": "EPSG:4326",
+            "transform": self.transform,
+            "compress": "lzw",
+            "nodata": 0,
         }
 
-        with rasterio.open(self.output, 'w', **profile) as dst:
+        with rasterio.open(self.output, "w", **profile) as dst:
             dst.set_band_description(1, "Module_Bitmask")
 
         self._initialized = True
         logger.info(f"Initialized Provenance Mask: {self.output}")
-
 
     def _get_module_bit(self, mod_name):
         """Assign a unique bit (power of 2) to this module."""
@@ -102,25 +101,27 @@ class ProvenanceHook(FetchHook):
                 self.module_bits[mod_name] = bit_val
                 self.next_bit += 1
 
-                logger.info(f"Provenance Map: {mod_name} -> Bit {self.next_bit} (Val {bit_val})")
+                logger.info(
+                    f"Provenance Map: {mod_name} -> Bit {self.next_bit} (Val {bit_val})"
+                )
 
             return self.module_bits[mod_name]
 
-
     def run(self, entries):
         if not self._initialized and entries:
-            region = next((mod.region for mod, _ in entries if getattr(mod, 'region', None)), None)
-            if region: self._init_raster(region)
-
+            region = next(
+                (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
+            )
+            if region:
+                self._init_raster(region)
 
         for mod, entry in entries:
-            stream = entry.get('stream')
+            stream = entry.get("stream")
             if stream:
                 bit_val = self._get_module_bit(mod.name)
-                entry['stream'] = self._intercept(stream, bit_val)
+                entry["stream"] = self._intercept(stream, bit_val)
 
         return entries
-
 
     def _intercept(self, stream, bit_val):
         """Pass-through stream to update mask."""
@@ -129,23 +130,24 @@ class ProvenanceHook(FetchHook):
             self._update_mask(chunk, bit_val)
             yield chunk
 
-
     def _update_mask(self, points, bit_val):
         """Bin points and OR the bitmask into the raster."""
 
-        if not self._initialized or len(points) == 0: return
+        if not self._initialized or len(points) == 0:
+            return
 
-        arrays, sub_win, _ = self.pixel_binner(points, mode='count')
+        arrays, sub_win, _ = self.pixel_binner(points, mode="count")
 
-        if arrays['count'] is None: return
+        if arrays["count"] is None:
+            return
 
-        has_data = arrays['count'] > 0
+        has_data = arrays["count"] > 0
 
         col_off, row_off, w, h = sub_win
         window = Window(col_off, row_off, w, h)
 
         with self.lock:
-            with rasterio.open(self.output, 'r+') as dst:
+            with rasterio.open(self.output, "r+") as dst:
                 mask_data = dst.read(1, window=window)
 
                 # Bitwise OR to add this module's presence
@@ -153,14 +155,16 @@ class ProvenanceHook(FetchHook):
 
                 dst.write(mask_data, 1, window=window)
 
-
     def teardown(self):
         """Write the legend to metadata on exit."""
 
         if self._initialized:
-            with rasterio.open(self.output, 'r+') as dst:
+            with rasterio.open(self.output, "r+") as dst:
                 for name, idx in self.module_bits.items():
-                    tags = {f"MOD_{name}": str(bit) for name, bit in self.module_bits.items()}
+                    tags = {
+                        f"MOD_{name}": str(bit)
+                        for name, bit in self.module_bits.items()
+                    }
                 dst.update_tags(bidx=1, **tags)
             logger.info("Finalized Provenance Mask.")
 
@@ -178,7 +182,9 @@ class SourceMasks(FetchHook):
     meta_stage = "file"
     meta_category = "metadata"
 
-    def __init__(self, res="1s", output_dir="source_masks", vrt_name="source_masks.vrt", **kwargs):
+    def __init__(
+        self, res="1s", output_dir="source_masks", vrt_name="source_masks.vrt", **kwargs
+    ):
         super().__init__(**kwargs)
         self.res = res
         self.output_dir = output_dir
@@ -188,9 +194,10 @@ class SourceMasks(FetchHook):
         self.lock = threading.Lock()
 
     def _init_grid(self, region):
-        if self._initialized: return
+        if self._initialized:
+            return
 
-        if isinstance(self.res, str) and self.res.endswith('s'):
+        if isinstance(self.res, str) and self.res.endswith("s"):
             inc = float(self.res[:-1]) / 3600.0
             x_inc, y_inc = inc, inc
         else:
@@ -207,15 +214,15 @@ class SourceMasks(FetchHook):
             os.makedirs(self.output_dir)
 
         self.profile = {
-            'driver': 'GTiff',
-            'dtype': 'uint8',
-            'count': 1,
-            'width': self.xcount,
-            'height': self.ycount,
-            'crs': 'EPSG:4326',
-            'transform': self.transform,
-            'compress': 'lzw',
-            'nodata': 0
+            "driver": "GTiff",
+            "dtype": "uint8",
+            "count": 1,
+            "width": self.xcount,
+            "height": self.ycount,
+            "crs": "EPSG:4326",
+            "transform": self.transform,
+            "compress": "lzw",
+            "nodata": 0,
         }
 
         self._initialized = True
@@ -223,38 +230,42 @@ class SourceMasks(FetchHook):
 
     def run(self, entries):
         if not self._initialized and entries:
-            region = next((mod.region for mod, _ in entries if getattr(mod, 'region', None)), None)
-            if region: self._init_grid(region)
+            region = next(
+                (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
+            )
+            if region:
+                self._init_grid(region)
 
         for mod, entry in entries:
-            stream = entry.get('stream')
+            stream = entry.get("stream")
             if stream and self._initialized:
-
-                src_name = os.path.basename(entry.get('dst_fn', f'unknown_{id(entry)}'))
+                src_name = os.path.basename(entry.get("dst_fn", f"unknown_{id(entry)}"))
                 base = os.path.splitext(src_name)[0]
                 tif_path = os.path.join(self.output_dir, f"{base}_mask.tif")
 
-                with rasterio.open(tif_path, 'w', **self.profile) as dst:
-                    dst.write(np.zeros((1, self.ycount, self.xcount), dtype='uint8'))
+                with rasterio.open(tif_path, "w", **self.profile) as dst:
+                    dst.write(np.zeros((1, self.ycount, self.xcount), dtype="uint8"))
                     dst.set_band_description(1, base)
 
                 with self.lock:
                     self.tifs.append(tif_path)
 
-                entry['stream'] = self._intercept(stream, tif_path, mod.region)
+                entry["stream"] = self._intercept(stream, tif_path, mod.region)
 
         return entries
 
     def _intercept(self, stream, tif_path, region):
         """Pass-through generator that writes to the specific TIF."""
 
-        pixel_binner = PointPixels(src_region=region, x_size=self.xcount, y_size=self.ycount)
-        with rasterio.open(tif_path, 'r+') as dst:
+        pixel_binner = PointPixels(
+            src_region=region, x_size=self.xcount, y_size=self.ycount
+        )
+        with rasterio.open(tif_path, "r+") as dst:
             for chunk in stream:
-                arrays, sub_win, _ = pixel_binner(chunk, mode='count')
+                arrays, sub_win, _ = pixel_binner(chunk, mode="count")
 
-                if arrays['count'] is not None:
-                    has_data = (arrays['count'] > 0).astype('uint8')
+                if arrays["count"] is not None:
+                    has_data = (arrays["count"] > 0).astype("uint8")
 
                     col_off, row_off, w, h = sub_win
                     window = Window(col_off, row_off, w, h)
@@ -264,7 +275,6 @@ class SourceMasks(FetchHook):
                     dst.write(current_mask, 1, window=window)
 
                 yield chunk
-
 
     def teardown(self):
         """Build the VRT linking all the individual masks together."""
@@ -282,20 +292,25 @@ class SourceMasks(FetchHook):
                 transform = src.transform
                 crs = src.crs.to_wkt() if src.crs else ""
                 dtype = src.dtypes[0]
-                stats = src.stats()
+                _stats = src.stats()
 
             dtype_map = {
-                'uint8': 'Byte', 'uint16': 'UInt16', 'int16': 'Int16',
-                'uint32': 'UInt32', 'int32': 'Int32', 'float32': 'Float32', 'float64': 'Float64'
+                "uint8": "Byte",
+                "uint16": "UInt16",
+                "int16": "Int16",
+                "uint32": "UInt32",
+                "int32": "Int32",
+                "float32": "Float32",
+                "float64": "Float64",
             }
-            gdal_dtype = dtype_map.get(dtype, 'Float32')
+            gdal_dtype = dtype_map.get(dtype, "Float32")
 
             gt = f"{transform.c}, {transform.a}, {transform.b}, {transform.f}, {transform.d}, {transform.e}"
 
             xml_lines = [
                 f'<VRTDataset rasterXSize="{width}" rasterYSize="{height}">',
-                f'  <SRS>{crs}</SRS>',
-                f'  <GeoTransform>{gt}</GeoTransform>'
+                f"  <SRS>{crs}</SRS>",
+                f"  <GeoTransform>{gt}</GeoTransform>",
             ]
 
             for i, tif in enumerate(self.tifs, start=1):
@@ -309,88 +324,96 @@ class SourceMasks(FetchHook):
                     continue
 
                 rel_path = os.path.relpath(tif, os.path.dirname(vrt_path))
-                name = os.path.basename(tif).replace('_mask.tif', '')
+                name = os.path.basename(tif).replace("_mask.tif", "")
 
-                xml_lines.extend([
-                    f'  <VRTRasterBand dataType="{gdal_dtype}" band="{i}">',
-                    f'    <Description>{name}</Description>',
-                    f'    <SimpleSource>',
-                    f'      <SourceFilename relativeToVRT="1">{rel_path}</SourceFilename>',
-                    f'      <SourceBand>1</SourceBand>',
-                    f'      <SrcRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
-                    f'      <DstRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
-                    f'    </SimpleSource>',
-                    f'  </VRTRasterBand>'
-                ])
+                xml_lines.extend(
+                    [
+                        f'  <VRTRasterBand dataType="{gdal_dtype}" band="{i}">',
+                        f"    <Description>{name}</Description>",
+                        "    <SimpleSource>",
+                        f'      <SourceFilename relativeToVRT="1">{rel_path}</SourceFilename>',
+                        "      <SourceBand>1</SourceBand>",
+                        f'      <SrcRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
+                        f'      <DstRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
+                        "    </SimpleSource>",
+                        "  </VRTRasterBand>",
+                    ]
+                )
 
-            xml_lines.append('</VRTDataset>')
+            xml_lines.append("</VRTDataset>")
 
-            with open(vrt_path, 'w') as f:
-                f.write('\n'.join(xml_lines))
+            with open(vrt_path, "w") as f:
+                f.write("\n".join(xml_lines))
 
             logger.info("VRT built successfully.")
 
         except Exception as e:
             logger.error(f"Failed to build VRT with rasterio: {e}")
 
-    def teardown_(self):
-        """Build the VRT linking all the individual masks together."""
+    # def teardown_(self):
+    #     """Build the VRT linking all the individual masks together."""
 
-        if not self._initialized or not self.tifs:
-            return
+    #     if not self._initialized or not self.tifs:
+    #         return
 
-        vrt_path = os.path.join(self.output_dir, self.vrt_name)
-        logger.info(f"Building master VRT mask: {vrt_path}")
+    #     vrt_path = os.path.join(self.output_dir, self.vrt_name)
+    #     logger.info(f"Building master VRT mask: {vrt_path}")
 
-        try:
-            #Use gdal Python bindings if available
-            from osgeo import gdal
-            vrt_options = gdal.BuildVRTOptions(separate=True)
-            vrt_ds = gdal.BuildVRT(vrt_path, self.tifs, options=vrt_options)
+    #     try:
+    #         # Use gdal Python bindings if available
+    #         from osgeo import gdal
 
-            if vrt_ds:
-                # Name the bands after the files so they show up beautifully in QGIS
-                for i, tif in enumerate(self.tifs):
-                    band = vrt_ds.GetRasterBand(i + 1)
-                    name = os.path.basename(tif).replace('_mask.tif', '')
-                    band.SetDescription(name)
+    #         vrt_options = gdal.BuildVRTOptions(separate=True)
+    #         vrt_ds = gdal.BuildVRT(vrt_path, self.tifs, options=vrt_options)
 
-                vrt_ds.FlushCache()
-                vrt_ds = None
+    #         if vrt_ds:
+    #             # Name the bands after the files so they show up beautifully in QGIS
+    #             for i, tif in enumerate(self.tifs):
+    #                 band = vrt_ds.GetRasterBand(i + 1)
+    #                 name = os.path.basename(tif).replace("_mask.tif", "")
+    #                 band.SetDescription(name)
 
-        except ImportError:
-            import subprocess
-            logger.debug("osgeo Python bindings not found. Falling back to gdalbuildvrt CLI.")
+    #             vrt_ds.FlushCache()
+    #             vrt_ds = None
 
-            cmd = ["gdalbuildvrt", "-separate", vrt_path] + self.tifs
+    #     except ImportError:
+    #         import subprocess
 
-            try:
-                subprocess.run(
-                    cmd,
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-            except FileNotFoundError:
-                logger.error("gdalbuildvrt command not found on system. Skipping VRT generation.")
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to build VRT via CLI: {e}")
+    #         logger.debug(
+    #             "osgeo Python bindings not found. Falling back to gdalbuildvrt CLI."
+    #         )
 
-    def teardown_gdal(self):
-        """Build the VRT linking all the individual masks together."""
+    #         cmd = ["gdalbuildvrt", "-separate", vrt_path] + self.tifs
 
-        if self._initialized and self.tifs:
-            vrt_path = os.path.join(self.output_dir, self.vrt_name)
-            logger.info(f"Building master VRT mask: {vrt_path}")
+    #         try:
+    #             subprocess.run(
+    #                 cmd,
+    #                 check=True,
+    #                 stdout=subprocess.DEVNULL,
+    #                 stderr=subprocess.DEVNULL,
+    #             )
+    #         except FileNotFoundError:
+    #             logger.error(
+    #                 "gdalbuildvrt command not found on system. Skipping VRT generation."
+    #             )
+    #         except subprocess.CalledProcessError as e:
+    #             logger.error(f"Failed to build VRT via CLI: {e}")
 
-            vrt_options = gdal.BuildVRTOptions(separate=True)
-            vrt_ds = gdal.BuildVRT(vrt_path, self.tifs, options=vrt_options)
+    # def teardown_gdal(self):
+    #     """Build the VRT linking all the individual masks together."""
 
-            if vrt_ds:
-                for i, tif in enumerate(self.tifs):
-                    band = vrt_ds.GetRasterBand(i + 1)
-                    name = os.path.basename(tif).replace('_mask.tif', '')
-                    band.SetDescription(name)
+    #     if self._initialized and self.tifs:
+    #         vrt_path = os.path.join(self.output_dir, self.vrt_name)
+    #         logger.info(f"Building master VRT mask: {vrt_path}")
 
-                vrt_ds.FlushCache()
-                vrt_ds = None
+    #         vrt_options = gdal.BuildVRTOptions(separate=True)
+    #         vrt_ds = gdal.BuildVRT(vrt_path, self.tifs, options=vrt_options)
+
+    #         if vrt_ds:
+    #             for i, tif in enumerate(self.tifs):
+    #                 band = vrt_ds.GetRasterBand(i + 1)
+    #                 name = os.path.basename(tif).replace("_mask.tif", "")
+    #                 band.SetDescription(name)
+
+    #             vrt_ds.FlushCache()
+    #             vrt_ds = None

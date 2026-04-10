@@ -11,18 +11,14 @@ pointz class to bin point data and a Point Cloud Filtering Engine.
 :license: MIT, see LICENSE for more details.
 """
 
-import os
-import sys
 import logging
 import numpy as np
-import warnings
 
 from fetchez.hooks import FetchHook
-from fetchez.utils import int_or, float_or, str2bool
+from fetchez.utils import int_or, float_or
 
 import rasterio
 from rasterio.windows import Window
-from scipy.spatial import cKDTree
 
 from transformez.spatial import TransRegion as Region
 
@@ -37,8 +33,15 @@ class PointPixels:
     Incoming data are numpy structured arrays (rec-arrays) of x, y, z, <w, u>.
     """
 
-    def __init__(self, src_region=None, x_size=None, y_size=None,
-                 verbose=True, ppm=False, **kwargs):
+    def __init__(
+        self,
+        src_region=None,
+        x_size=None,
+        y_size=None,
+        verbose=True,
+        ppm=False,
+        **kwargs,
+    ):
         self.src_region = src_region
         self.x_size = int_or(x_size, 10)
         self.y_size = int_or(y_size, 10)
@@ -46,15 +49,18 @@ class PointPixels:
         self.ppm = ppm
         self.dst_gt = None
 
-
     def init_region_from_points(self, points):
         """Initialize the source region based on point extents."""
 
         if self.src_region is None:
-            self.src_region = Region.from_list([
-                np.min(points['x']), np.max(points['x']),
-                np.min(points['y']), np.max(points['y'])
-            ])
+            self.src_region = Region.from_list(
+                [
+                    np.min(points["x"]),
+                    np.max(points["x"]),
+                    np.min(points["y"]),
+                    np.max(points["y"]),
+                ]
+            )
         else:
             self.src_region = Region(*self.src_region)
 
@@ -62,12 +68,11 @@ class PointPixels:
             self.src_region.buffer(2)
 
             if not self.src_region.valid_p():
-                epsilon = 0.00001
+                _epsilon = 0.00001
                 # todo: expand in each direction by epsilon
                 self.src_region.buffer(10)
 
         self.init_gt()
-
 
     def init_gt(self):
         """Initialize the GeoTransform based on region and size."""
@@ -77,8 +82,7 @@ class PointPixels:
                 x_count=self.x_size, y_count=self.y_size
             )
 
-
-    def __call__(self, points, weight=1.0, uncertainty=0.0, mode='mean'):
+    def __call__(self, points, weight=1.0, uncertainty=0.0, mode="mean"):
         """Process points into a gridded array.
 
         Args:
@@ -91,15 +95,21 @@ class PointPixels:
 
         # mrl: removed 'mask': None
         out_arrays = {
-            "z": None, "count": None, "weight": None, "uncertainty": None,
-            "x": None, "y": None, "pixel_x": None, "pixel_y": None
+            "z": None,
+            "count": None,
+            "weight": None,
+            "uncertainty": None,
+            "x": None,
+            "y": None,
+            "pixel_x": None,
+            "pixel_y": None,
         }
 
         if points is None or len(points) == 0:
             return out_arrays, None, None
 
         # If input points are pandas dataframe, tranform it to recarray
-        if hasattr(points, 'to_records'):
+        if hasattr(points, "to_records"):
             points = points.to_records(index=False)
 
         # Ensure region and geotransform are set
@@ -112,17 +122,25 @@ class PointPixels:
         uncertainty = float_or(uncertainty, 0.0)
         mode = mode.lower()
 
-        points_x = np.array(points['x'])
-        points_y = np.array(points['y'])
-        pixel_z = np.array(points['z'])
+        points_x = np.array(points["x"])
+        points_y = np.array(points["y"])
+        pixel_z = np.array(points["z"])
 
         # This still gives a warning sometimes:
         #   RuntimeWarning: invalid value encountered in divide
         #   pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
         #   RuntimeWarning: invalid value encountered in cast
         # TODO: Figure this out and fix.
-        pixel_w = np.array(points['w']) if 'w' in points.dtype.names else np.ones_like(pixel_z)
-        pixel_u = np.array(points['u']) if 'u' in points.dtype.names else np.zeros_like(pixel_z)
+        pixel_w = (
+            np.array(points["w"])
+            if "w" in points.dtype.names
+            else np.ones_like(pixel_z)
+        )
+        pixel_u = (
+            np.array(points["u"])
+            if "u" in points.dtype.names
+            else np.zeros_like(pixel_z)
+        )
 
         pixel_w[np.isnan(pixel_w)] = 1
         pixel_u[np.isnan(pixel_u)] = 0
@@ -134,8 +152,10 @@ class PointPixels:
 
         # Filter pixels outside window
         valid_mask = (
-            (pixel_x >= 0) & (pixel_x < self.x_size) &
-            (pixel_y >= 0) & (pixel_y < self.y_size)
+            (pixel_x >= 0)
+            & (pixel_x < self.x_size)
+            & (pixel_y >= 0)
+            & (pixel_y < self.y_size)
         )
 
         if not np.any(valid_mask):
@@ -167,12 +187,11 @@ class PointPixels:
         pixel_xy = np.vstack((local_py, local_px)).T
 
         unq, unq_idx, unq_inv, unq_cnt = np.unique(
-            pixel_xy, axis=0, return_inverse=True,
-            return_index=True, return_counts=True
+            pixel_xy, axis=0, return_inverse=True, return_index=True, return_counts=True
         )
 
         # Initial values
-        if mode == 'sums':
+        if mode == "sums":
             ww = pixel_w[unq_idx] * weight
             zz = pixel_z[unq_idx] * ww
             xx = points_x[unq_idx] * ww
@@ -196,49 +215,55 @@ class PointPixels:
 
             # Filter groups with duplicates
             dup_indices = [grouped_indices[i] for i in np.flatnonzero(cnt_msk)]
-            #dup_stds = []
+            # dup_stds = []
             dup_stds = np.zeros(len(dup_indices))
 
-            if mode == 'min':
+            if mode == "min":
                 zz[cnt_msk] = [np.min(pixel_z[idx]) for idx in dup_indices]
                 xx[cnt_msk] = [np.min(points_x[idx]) for idx in dup_indices]
                 yy[cnt_msk] = [np.min(points_y[idx]) for idx in dup_indices]
                 dup_stds = np.zeros(len(dup_indices))
 
-            elif mode == 'max':
+            elif mode == "max":
                 zz[cnt_msk] = [np.max(pixel_z[idx]) for idx in dup_indices]
                 xx[cnt_msk] = [np.max(points_x[idx]) for idx in dup_indices]
                 yy[cnt_msk] = [np.max(points_y[idx]) for idx in dup_indices]
                 dup_stds = np.zeros(len(dup_indices))
 
-            elif mode == 'mean':
+            elif mode == "mean":
                 zz[cnt_msk] = [np.mean(pixel_z[idx]) for idx in dup_indices]
                 xx[cnt_msk] = [np.mean(points_x[idx]) for idx in dup_indices]
                 yy[cnt_msk] = [np.mean(points_y[idx]) for idx in dup_indices]
                 dup_stds = [np.std(pixel_z[idx]) for idx in dup_indices]
 
-            elif mode == 'median':
+            elif mode == "median":
                 zz[cnt_msk] = [np.median(pixel_z[idx]) for idx in dup_indices]
                 xx[cnt_msk] = [np.mean(points_x[idx]) for idx in dup_indices]
                 yy[cnt_msk] = [np.mean(points_y[idx]) for idx in dup_indices]
                 dup_stds = [np.std(pixel_z[idx]) for idx in dup_indices]
 
-            elif mode == 'std':
+            elif mode == "std":
                 zz[cnt_msk] = [np.std(pixel_z[idx]) for idx in dup_indices]
                 xx[cnt_msk] = [np.mean(points_x[idx]) for idx in dup_indices]
                 yy[cnt_msk] = [np.mean(points_y[idx]) for idx in dup_indices]
                 dup_stds = np.zeros(len(dup_indices))
 
-            elif mode == 'var':
+            elif mode == "var":
                 zz[cnt_msk] = [np.var(pixel_z[idx]) for idx in dup_indices]
                 xx[cnt_msk] = [np.mean(points_x[idx]) for idx in dup_indices]
                 yy[cnt_msk] = [np.mean(points_y[idx]) for idx in dup_indices]
                 dup_stds = np.zeros(len(dup_indices))
 
-            elif mode == 'sums':
-                zz[cnt_msk] = [np.sum(pixel_z[idx] * pixel_w[idx] * weight) for idx in dup_indices]
-                xx[cnt_msk] = [np.sum(points_x[idx] * pixel_w[idx] * weight) for idx in dup_indices]
-                yy[cnt_msk] = [np.sum(points_y[idx] * pixel_w[idx] * weight) for idx in dup_indices]
+            elif mode == "sums":
+                zz[cnt_msk] = [
+                    np.sum(pixel_z[idx] * pixel_w[idx] * weight) for idx in dup_indices
+                ]
+                xx[cnt_msk] = [
+                    np.sum(points_x[idx] * pixel_w[idx] * weight) for idx in dup_indices
+                ]
+                yy[cnt_msk] = [
+                    np.sum(points_y[idx] * pixel_w[idx] * weight) for idx in dup_indices
+                ]
                 ww[cnt_msk] = [np.sum(pixel_w[idx] * weight) for idx in dup_indices]
                 dup_stds = [np.std(pixel_z[idx]) for idx in dup_indices]
 
@@ -246,34 +271,34 @@ class PointPixels:
             uu[cnt_msk] = np.sqrt(np.power(uu[cnt_msk], 2) + np.power(dup_stds, 2))
 
         # --- Fill Output Grids ---
-        grid_shape = (this_srcwin[3], this_srcwin[2]) # rows, cols
+        grid_shape = (this_srcwin[3], this_srcwin[2])  # rows, cols
 
         def fill_grid(values, fill_val=np.nan):
             grid = np.full(grid_shape, fill_val)
             grid[unq[:, 0], unq[:, 1]] = values
             return grid
 
-        out_arrays['z'] = fill_grid(zz)
-        out_arrays['x'] = fill_grid(xx)
-        out_arrays['y'] = fill_grid(yy)
-        out_arrays['count'] = fill_grid(unq_cnt, fill_val=0)
+        out_arrays["z"] = fill_grid(zz)
+        out_arrays["x"] = fill_grid(xx)
+        out_arrays["y"] = fill_grid(yy)
+        out_arrays["count"] = fill_grid(unq_cnt, fill_val=0)
 
         # Uncertainty
-        out_arrays['uncertainty'] = fill_grid(
-            np.sqrt(uu**2 + (uncertainty)**2), fill_val=0.0
+        out_arrays["uncertainty"] = fill_grid(
+            np.sqrt(uu**2 + (uncertainty) ** 2), fill_val=0.0
         )
 
         # Weights
-        out_arrays['weight'] = np.ones(grid_shape)
-        if mode == 'sums':
-            out_arrays['weight'][unq[:, 0], unq[:, 1]] = ww
+        out_arrays["weight"] = np.ones(grid_shape)
+        if mode == "sums":
+            out_arrays["weight"][unq[:, 0], unq[:, 1]] = ww
         else:
-            out_arrays['weight'][:] = weight
-            out_arrays['weight'][unq[:, 0], unq[:, 1]] *= (ww * unq_cnt)
+            out_arrays["weight"][:] = weight
+            out_arrays["weight"][unq[:, 0], unq[:, 1]] *= ww * unq_cnt
 
         # Helper coords for calling class to map back
-        out_arrays['pixel_x'] = local_px
-        out_arrays['pixel_y'] = local_py
+        out_arrays["pixel_x"] = local_px
+        out_arrays["pixel_y"] = local_py
 
         return out_arrays, this_srcwin, self.dst_gt
 
@@ -286,7 +311,7 @@ class PixelsToPoints(FetchHook):
     meta_category = "stream-transform"
 
     def _raster_to_xyz(self, raster_stream):
-        profile = next(raster_stream)
+        _profile = next(raster_stream)
 
         for window, buff_win, data, ndv, transform in raster_stream:
             cols, rows = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
@@ -302,8 +327,7 @@ class PixelsToPoints(FetchHook):
                 valid = ~np.isnan(z)
 
             chunk = np.core.records.fromarrays(
-                [x[valid], y[valid], z[valid]],
-                names='x,y,z'
+                [x[valid], y[valid], z[valid]], names="x,y,z"
             )
 
             if chunk.size > 0:
@@ -322,6 +346,7 @@ class PixelsToPoints(FetchHook):
 
         return entries
 
+
 # Base Stream Transformer
 class Point2PixelStream(FetchHook):
     """Base class for streaming point filters."""
@@ -336,26 +361,22 @@ class Point2PixelStream(FetchHook):
         self.y_inc = float_or(y_inc)
         self.want_sums = want_sums
 
-
     def process_chunk(self, chunk, region=None):
         """Override this. Return filtered chunk (recarray) or None."""
 
         if region:
             xcount, ycount, _ = region.geo_transform(
-                x_inc=self.x_inc, y_inc=self.y_inc, node='grid'
+                x_inc=self.x_inc, y_inc=self.y_inc, node="grid"
             )
 
             point_array = PointPixels(
-                src_region=region,
-                x_size=xcount,
-                y_size=ycount,
-                verbose=True
+                src_region=region, x_size=xcount, y_size=ycount, verbose=True
             )
-            arrs, srcwin, gt =  point_array(
+            arrs, srcwin, gt = point_array(
                 chunk,
                 weight=1,
                 uncertainty=0,
-                mode='sums' if self.want_sums else 'mean'
+                mode="sums" if self.want_sums else "mean",
             )
 
             return arrs, srcwin, gt
@@ -365,7 +386,7 @@ class Point2PixelStream(FetchHook):
 
         if region:
             xcount, ycount, gt = region.geo_transform(
-                x_inc=self.x_inc, y_inc=self.y_inc, node='grid'
+                x_inc=self.x_inc, y_inc=self.y_inc, node="grid"
             )
             transform = rasterio.transform.from_origin(gt[0], gt[3], gt[1], abs(gt[5]))
 
@@ -388,7 +409,7 @@ class Point2PixelStream(FetchHook):
                 count += chunk.size
                 arrs, srcwin, chunk_gt = self.process_chunk(chunk, region=region)
 
-                if arrs is None or arrs.get('z') is None:
+                if arrs is None or arrs.get("z") is None:
                     continue
 
                 col_off, row_off, width, height = srcwin
@@ -399,13 +420,19 @@ class Point2PixelStream(FetchHook):
 
                 # Stack the dictionary of arrays into a 3D numpy array (Bands, Rows, Cols)
                 if self.want_sums:
-                    data = np.stack([
-                        arrs['z'], arrs['count'], arrs['weight'],
-                        arrs['uncertainty'], arrs.get('src_uncertainty', np.zeros_like(arrs['z'])),
-                        arrs['x'], arrs['y']
-                    ]).astype(np.float32)
+                    data = np.stack(
+                        [
+                            arrs["z"],
+                            arrs["count"],
+                            arrs["weight"],
+                            arrs["uncertainty"],
+                            arrs.get("src_uncertainty", np.zeros_like(arrs["z"])),
+                            arrs["x"],
+                            arrs["y"],
+                        ]
+                    ).astype(np.float32)
                 else:
-                    data = arrs['z'].astype(np.float32)
+                    data = arrs["z"].astype(np.float32)
                     # Add a band dimension so it's (1, Rows, Cols)
                     data = data[np.newaxis, ...]
 
@@ -413,7 +440,7 @@ class Point2PixelStream(FetchHook):
                 # Note: window and buff_win are the same here since points don't have native buffers
                 yield window, window, data, -9999, chunk_transform
 
-        logger.info(f'Parsed {count} data records from {entry["dst_fn"]}')
+        logger.info(f"Parsed {count} data records from {entry['dst_fn']}")
 
     def run(self, entries):
         for mod, entry in entries:
@@ -421,7 +448,9 @@ class Point2PixelStream(FetchHook):
             stream_type = entry.get("stream_type", "")
             if stream and stream_type == "xyz_recarray":
                 # Swap the stream keys to indicate it is now a raster stream!
-                entry["raster_stream"] = self._stream_wrapper(stream, entry=entry, region=getattr(mod, "region", None))
+                entry["raster_stream"] = self._stream_wrapper(
+                    stream, entry=entry, region=getattr(mod, "region", None)
+                )
                 entry["stream_type"] = "raster"
                 del entry["stream"]
 

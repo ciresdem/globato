@@ -12,7 +12,6 @@ import os
 import logging
 import numpy as np
 import rasterio
-from rasterio.transform import xy
 
 from .base import RasterGlobalHook
 from fetchez.core import run_fetchez
@@ -20,6 +19,7 @@ from transformez.spatial import TransRegion
 
 try:
     from sklearn.ensemble import RandomForestRegressor
+
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -36,7 +36,9 @@ class SDBInterpolation(RasterGlobalHook):
     name = "interp_sdb"
     default_suffix = "_sdb"
 
-    def __init__(self, sat_image=None, n_trees=100, max_depth=-0.5, cloud_cover=10, **kwargs):
+    def __init__(
+        self, sat_image=None, n_trees=100, max_depth=-0.5, cloud_cover=10, **kwargs
+    ):
         super().__init__(**kwargs)
         self.sat_image = sat_image
         self.n_trees = int(n_trees)
@@ -51,7 +53,9 @@ class SDBInterpolation(RasterGlobalHook):
         w, s, e, n = bounds
         region = TransRegion.from_list([w, e, s, n])
 
-        logger.info("No local sat_image provided. Auto-fetching Sentinel-2 data from CDSE...")
+        logger.info(
+            "No local sat_image provided. Auto-fetching Sentinel-2 data from CDSE..."
+        )
         s2_fetcher = Sentinel2_CDSE(src_region=region, cloud_cover=self.cloud_cover)
         s2_fetcher.run()
         run_fetchez([s2_fetcher])
@@ -59,11 +63,15 @@ class SDBInterpolation(RasterGlobalHook):
         # bands we need for SDB (B02=Blue, B03=Green, B04=Red, B08=NIR)
         bands = {}
         for entry in s2_fetcher.results:
-            fn = entry.get('dst_fn', '')
-            if 'B02' in fn: bands[1] = fn
-            elif 'B03' in fn: bands[2] = fn
-            elif 'B04' in fn: bands[3] = fn
-            elif 'B08' in fn: bands[4] = fn
+            fn = entry.get("dst_fn", "")
+            if "B02" in fn:
+                bands[1] = fn
+            elif "B03" in fn:
+                bands[2] = fn
+            elif "B04" in fn:
+                bands[3] = fn
+            elif "B08" in fn:
+                bands[4] = fn
 
         if len(bands) < 4:
             logger.error("Failed to download all required Sentinel-2 bands.")
@@ -75,9 +83,9 @@ class SDBInterpolation(RasterGlobalHook):
 
         with rasterio.open(bands[1]) as src:
             profile = src.profile.copy()
-            profile.update(count=4, driver='GTiff')
+            profile.update(count=4, driver="GTiff")
 
-            with rasterio.open(stack_path, 'w', **profile) as dst:
+            with rasterio.open(stack_path, "w", **profile) as dst:
                 for i in range(1, 5):
                     with rasterio.open(bands[i]) as b_src:
                         dst.write(b_src.read(1), i)
@@ -96,7 +104,8 @@ class SDBInterpolation(RasterGlobalHook):
             sat_path = self.sat_image
             if not sat_path or not os.path.exists(sat_path):
                 sat_path = self._fetch_sentinel2(src_dem.bounds, src_dem.crs)
-                if not sat_path: return False
+                if not sat_path:
+                    return False
 
             with rasterio.open(sat_path) as src_sat:
                 sat_data = src_sat.read()
@@ -107,7 +116,11 @@ class SDBInterpolation(RasterGlobalHook):
                 dem_flat = dem_data.flatten()
                 sat_flat = sat_data.reshape(n_bands, -1).T
 
-                valid_dem = (dem_flat != nodata) & (~np.isnan(dem_flat)) & (dem_flat < self.max_depth)
+                valid_dem = (
+                    (dem_flat != nodata)
+                    & (~np.isnan(dem_flat))
+                    & (dem_flat < self.max_depth)
+                )
                 valid_sat = np.all(sat_flat > 0, axis=1)
 
                 train_mask = valid_dem & valid_sat
@@ -120,17 +133,21 @@ class SDBInterpolation(RasterGlobalHook):
                 y_train = dem_flat[train_mask]
 
                 logger.info(f"Training SDB Random Forest on {len(X_train)} points...")
-                rf = RandomForestRegressor(n_estimators=self.n_trees, n_jobs=-1, random_state=42)
+                rf = RandomForestRegressor(
+                    n_estimators=self.n_trees, n_jobs=-1, random_state=42
+                )
                 rf.fit(X_train, y_train)
 
                 gap_mask = (~valid_dem) & valid_sat
 
-                logger.info(f"Predicting bathymetry for {np.sum(gap_mask)} shallow water pixels...")
+                logger.info(
+                    f"Predicting bathymetry for {np.sum(gap_mask)} shallow water pixels..."
+                )
                 dem_flat[gap_mask] = rf.predict(sat_flat[gap_mask])
                 result_arr = dem_flat.reshape(src_dem.height, src_dem.width)
 
                 profile = src_dem.profile.copy()
-                with rasterio.open(dst_path, 'w', **profile) as dst:
-                    dst.write(result_arr.astype(profile['dtype']), 1)
+                with rasterio.open(dst_path, "w", **profile) as dst:
+                    dst.write(result_arr.astype(profile["dtype"]), 1)
 
                 return True

@@ -30,7 +30,9 @@ class RasterCrop(RasterGlobalHook):
         """Find the tightest data window and rewrite the raster."""
 
         with rasterio.open(src_path) as src:
-            logger.info(f"[{self.name}] Scanning {os.path.basename(src_path)} for valid data bounds...")
+            logger.info(
+                f"[{self.name}] Scanning {os.path.basename(src_path)} for valid data bounds..."
+            )
 
             min_row, min_col = src.height, src.width
             max_row, max_col = 0, 0
@@ -38,9 +40,11 @@ class RasterCrop(RasterGlobalHook):
             for _, window in src.block_windows(1):
                 data = src.read(window=window)
 
-                mask = (data != src.nodata) if src.nodata is not None else ~np.isnan(data)
+                mask = (
+                    (data != src.nodata) if src.nodata is not None else ~np.isnan(data)
+                )
                 if mask.ndim == 3:
-                    mask = np.any(mask, axis=0) # Flatten bands
+                    mask = np.any(mask, axis=0)  # Flatten bands
 
                 if not np.any(mask):
                     continue
@@ -59,21 +63,25 @@ class RasterCrop(RasterGlobalHook):
                 logger.warning(f"[{self.name}] Raster is entirely NoData. Cannot crop.")
                 return False
 
-            crop_window = Window.from_slices((min_row, max_row + 1), (min_col, max_col + 1))
+            crop_window = Window.from_slices(
+                (min_row, max_row + 1), (min_col, max_col + 1)
+            )
 
             kwargs = src.profile.copy()
             kwargs = self.modify_profile(kwargs)
-            kwargs.update({
-                'height': crop_window.height,
-                'width': crop_window.width,
-                'transform': src.window_transform(crop_window)
-            })
+            kwargs.update(
+                {
+                    "height": crop_window.height,
+                    "width": crop_window.width,
+                    "transform": src.window_transform(crop_window),
+                }
+            )
 
             logger.info(
                 f"[{self.name}] Cropping from {src.width}x{src.height} to {crop_window.width}x{crop_window.height}..."
             )
 
-            with rasterio.open(dst_path, 'w', **kwargs) as dst:
+            with rasterio.open(dst_path, "w", **kwargs) as dst:
                 for _, write_window in src.block_windows(1):
                     try:
                         overlap = intersection(write_window, crop_window)
@@ -89,7 +97,7 @@ class RasterCrop(RasterGlobalHook):
                         overlap.col_off - crop_window.col_off,
                         overlap.row_off - crop_window.row_off,
                         overlap.width,
-                        overlap.height
+                        overlap.height,
                     )
                     dst.write(data, window=dst_window)
 

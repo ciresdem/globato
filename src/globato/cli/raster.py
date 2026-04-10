@@ -54,14 +54,20 @@ def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
                 click.echo(f"    Valid Before    : {s_count:,}")
                 click.echo(f"    Valid After     : {d_count:,}")
                 click.secho(f"    Pixels Modified : {modified:,}", fg="cyan")
-                click.secho(f"    Pixels Removed  : {removed:,} (Set to NoData)", fg="red")
-                click.secho(f"    Pixels Added    : {added:,} (Filled/Interpolated)", fg="yellow")
+                click.secho(
+                    f"    Pixels Removed  : {removed:,} (Set to NoData)", fg="red"
+                )
+                click.secho(
+                    f"    Pixels Added    : {added:,} (Filled/Interpolated)",
+                    fg="yellow",
+                )
     except Exception as e:
         click.secho(f"  [Could not compute pixel stats: {e}]", fg="yellow")
 
     click.echo("=" * 60 + "\n")
 
-def run_raster_hook(hook_instance, src, dst, strip_bands=False):#, region=None):
+
+def run_raster_hook(hook_instance, src, dst, strip_bands=False):  # , region=None):
     """Execution wrapper for standalone raster commands."""
 
     # if region:
@@ -79,12 +85,16 @@ def run_raster_hook(hook_instance, src, dst, strip_bands=False):#, region=None):
     if strip_bands:
         hook_instance.strip_bands = True
 
-    entry = {'src_fn': src, 'dst_fn': dst, 'weight': 1.0}
+    entry = {"src_fn": src, "dst_fn": dst, "weight": 1.0}
 
-    click.secho(f"\nStarting {hook_instance.name} on {os.path.basename(src)}...", fg="cyan", bold=True)
+    click.secho(
+        f"\nStarting {hook_instance.name} on {os.path.basename(src)}...",
+        fg="cyan",
+        bold=True,
+    )
     start_time = time.time()
 
-    #try:
+    # try:
     success = hook_instance.process_raster(src, dst, entry)
     elapsed = time.time() - start_time
 
@@ -93,7 +103,7 @@ def run_raster_hook(hook_instance, src, dst, strip_bands=False):#, region=None):
     else:
         click.secho("Operation failed (hook returned False)", fg="red")
         sys.exit(1)
-    #except Exception as e:
+    # except Exception as e:
     #    click.secho(f"Error during processing: {e}", fg="red")
     #    sys.exit(1)
 
@@ -101,7 +111,9 @@ def run_raster_hook(hook_instance, src, dst, strip_bands=False):#, region=None):
 def raster_io(f):
     """Click Decorator to share standard IO arguments across all raster commands."""
 
-    f = click.option("--strip-bands", is_flag=True, help="Strip extra bands in the output.")(f)
+    f = click.option(
+        "--strip-bands", is_flag=True, help="Strip extra bands in the output."
+    )(f)
     f = click.argument("dst")(f)
     f = click.argument("src")(f)
     return f
@@ -120,12 +132,15 @@ def raster_group():
 @raster_group.command("diff")
 @raster_io
 @click.option("--aux", required=True, help="Auxiliary/Reference Raster")
-@click.option("--mode", type=click.Choice(["difference", "filter"]), default="difference")
+@click.option(
+    "--mode", type=click.Choice(["difference", "filter"]), default="difference"
+)
 @click.option("--threshold", type=float, help="Filter threshold")
 def raster_diff(src, dst, strip_bands, aux, mode, threshold):
     """Calculate difference (Src - Aux)."""
 
     from globato.hooks.rasters.diff import RasterDiff
+
     hook = RasterDiff(aux_path=aux, mode=mode, threshold=threshold)
     run_raster_hook(hook, src, dst, strip_bands)
 
@@ -138,6 +153,7 @@ def raster_slope(src, dst, strip_bands, min_val, max_val):
     """Filter by Slope."""
 
     from globato.hooks.rasters.slope import RasterSlopeFilter
+
     hook = RasterSlopeFilter(min_val=min_val, max_val=max_val)
     run_raster_hook(hook, src, dst, strip_bands)
 
@@ -149,6 +165,7 @@ def raster_cut(src, dst, strip_bands, region):
     """Cut/Mask to Region."""
 
     from globato.hooks.rasters.cut import RasterCut
+
     hook = RasterCut(region=region)
     run_raster_hook(hook, src, dst, strip_bands)
 
@@ -159,17 +176,21 @@ def raster_crop(src, dst, strip_bands):
     """Crop a raster to its valid data bounds (removes NoData moat)."""
 
     from globato.hooks.rasters.crop import RasterCrop
+
     hook = RasterCrop()
     run_raster_hook(hook, src, dst, strip_bands)
 
 
 @raster_group.command("flats")
 @raster_io
-@click.option("--threshold", type=float, default=1.0, help="Minimum size of a flat-zone")
+@click.option(
+    "--threshold", type=float, default=1.0, help="Minimum size of a flat-zone"
+)
 def raster_flats(src, dst, strip_bands, threshold):
     """Remove Flat-Zones."""
 
     from globato.hooks.rasters.flats import RasterFlats
+
     hook = RasterFlats(size_threshold=threshold)
     run_raster_hook(hook, src, dst, strip_bands)
 
@@ -182,29 +203,38 @@ def raster_fill(src, dst, strip_bands, dist, smooth):
     """Fill NoData using IDW."""
 
     from globato.hooks.rasters.fill import RasterFill
+
     hook = RasterFill(max_dist=dist, smoothing=smooth)
     run_raster_hook(hook, src, dst, strip_bands)
 
 
 @raster_group.command("morph")
 @raster_io
-@click.option("--op", type=click.Choice(["erosion", "dilation", "opening", "closing"]), default="erosion")
+@click.option(
+    "--op",
+    type=click.Choice(["erosion", "dilation", "opening", "closing"]),
+    default="erosion",
+)
 @click.option("--kernel", type=int, default=3, help="Kernel size")
 def raster_morph(src, dst, strip_bands, op, kernel):
     """Morphology Operations."""
 
     from globato.hooks.rasters.morphology import RasterMorphology
+
     hook = RasterMorphology(op=op, kernel=kernel)
     run_raster_hook(hook, src, dst, strip_bands)
 
 
 @raster_group.command("interp")
 @raster_io
-@click.option("--method", type=click.Choice(["linear", "cubic", "nearest"]), default="linear")
+@click.option(
+    "--method", type=click.Choice(["linear", "cubic", "nearest"]), default="linear"
+)
 def raster_interp(src, dst, strip_bands, method):
     """Interpolate Gaps."""
 
     from globato.hooks.rasters.scipy_griddata import ScipyInterp
+
     hook = ScipyInterp(method=method)
     run_raster_hook(hook, src, dst, strip_bands)
 
@@ -215,23 +245,38 @@ def raster_interp(src, dst, strip_bands, method):
 @click.option("--blend-dist", type=float, default=20.0, help="Max blend distance")
 @click.option("--core-dist", type=float, default=5.0, help="Max core blend distance")
 @click.option("--slope-scale", type=float, default=0.5, help="Normalize the slope-gate")
-@click.option("--random-scale", type=float, default=0.05, help="Density of random points")
-def raster_blend(src, dst, strip_bands, aux, blend_dist, core_dist, slope_scale, random_scale):
+@click.option(
+    "--random-scale", type=float, default=0.05, help="Density of random points"
+)
+def raster_blend(
+    src, dst, strip_bands, aux, blend_dist, core_dist, slope_scale, random_scale
+):
     """Blend rasters (Src -> Aux)."""
 
     from globato.hooks.rasters.blend import RasterBlend
-    hook = RasterBlend(aux_path=aux, blend_dist=blend_dist, core_dist=core_dist,
-                       slope_scale=slope_scale, random_scale=random_scale)
+
+    hook = RasterBlend(
+        aux_path=aux,
+        blend_dist=blend_dist,
+        core_dist=core_dist,
+        slope_scale=slope_scale,
+        random_scale=random_scale,
+    )
     run_raster_hook(hook, src, dst, strip_bands)
 
 
 @raster_group.command("zscore")
 @raster_io
-@click.option("--threshold", type=float, default=3.0, help="Mask zscore over this threshold")
-@click.option("--size", type=int, default=5, help="The size of the neighborhood window.")
+@click.option(
+    "--threshold", type=float, default=3.0, help="Mask zscore over this threshold"
+)
+@click.option(
+    "--size", type=int, default=5, help="The size of the neighborhood window."
+)
 def raster_zscore(src, dst, strip_bands, threshold, size):
     """Filter based on neighborhood z-score."""
 
     from globato.hooks.rasters.zscore import RasterZScore
+
     hook = RasterZScore(threshold=threshold, kernel_size=size)
     run_raster_hook(hook, src, dst, strip_bands)

@@ -24,13 +24,31 @@ def transform_group():
 
 @transform_group.command("run")
 @click.argument("input_file", required=False)
-@click.option("-R", "--region", help="Bounding box or location string (if no input file).")
-@click.option("-E", "--increment", help="Resolution (e.g., 1s, 30m) (if no input file).")
-@click.option("-I", "--input-datum", required=True, help="Source Datum (e.g., 'mllw', '5703').")
-@click.option("-O", "--output-datum", required=True, help="Target Datum (e.g., '4979', '5703:g2012b').")
+@click.option(
+    "-R", "--region", help="Bounding box or location string (if no input file)."
+)
+@click.option(
+    "-E", "--increment", help="Resolution (e.g., 1s, 30m) (if no input file)."
+)
+@click.option(
+    "-I", "--input-datum", required=True, help="Source Datum (e.g., 'mllw', '5703')."
+)
+@click.option(
+    "-O",
+    "--output-datum",
+    required=True,
+    help="Target Datum (e.g., '4979', '5703:g2012b').",
+)
 @click.option("--out", "-o", help="Output filename (default: auto-named).")
-@click.option("--decay-pixels", type=int, default=100, help="Number of pixels to decay tidal shifts inland.")
-def transform_run(input_file, region, increment, input_datum, output_datum, out, decay_pixels):
+@click.option(
+    "--decay-pixels",
+    type=int,
+    default=100,
+    help="Number of pixels to decay tidal shifts inland.",
+)
+def transform_run(
+    input_file, region, increment, input_datum, output_datum, out, decay_pixels
+):
     """Transform a raster's vertical datum or generate a standalone shift grid.
 
     If an INPUT_FILE is provided, that specific raster is transformed in place.
@@ -51,17 +69,21 @@ def transform_run(input_file, region, increment, input_datum, output_datum, out,
             datum_out=output_datum,
             decay_pixels=decay_pixels,
             output_raster=out,
-            verbose=True
+            verbose=True,
         )
 
         if result:
-            click.secho(f"Successfully transformed raster: {result}", fg="green", bold=True)
+            click.secho(
+                f"Successfully transformed raster: {result}", fg="green", bold=True
+            )
         else:
             click.secho("Failed to transform raster.", fg="red")
             sys.exit(1)
 
     elif region and increment:
-        click.secho(f"Generating vertical shift grid for region...", fg="cyan", bold=True)
+        click.secho(
+            "Generating vertical shift grid for region...", fg="cyan", bold=True
+        )
         click.echo(f"   Shift: {input_datum} ➔ {output_datum} @ {increment}")
 
         # Auto-generate an output name if one wasn't provided
@@ -74,18 +96,24 @@ def transform_run(input_file, region, increment, input_datum, output_datum, out,
             datum_out=output_datum,
             decay_pixels=decay_pixels,
             out_fn=out_fn,
-            verbose=True
+            verbose=True,
         )
 
         if result is not None:
-            click.secho(f"Successfully generated shift grid: {out_fn}", fg="green", bold=True)
+            click.secho(
+                f"Successfully generated shift grid: {out_fn}", fg="green", bold=True
+            )
         else:
             click.secho("Failed to generate shift grid.", fg="red")
             sys.exit(1)
 
     else:
-        click.secho("Error: You must provide either an INPUT_FILE or both --region and --increment.", fg="red")
+        click.secho(
+            "Error: You must provide either an INPUT_FILE or both --region and --increment.",
+            fg="red",
+        )
         sys.exit(1)
+
 
 @transform_group.command("list")
 def transform_list():
@@ -96,7 +124,7 @@ def transform_list():
 
         click.secho("\n🌊 Supported Tidal Surfaces:", fg="cyan", bold=True)
         for k, v in Datums.SURFACES.items():
-            region_str = v.get('region', 'global').upper()
+            region_str = v.get("region", "global").upper()
             click.echo(f"  {v['name']:<10} : {v['description']} [{region_str}]")
 
         click.secho("\n🌐 Ellipsoidal / Frame Datums:", fg="cyan", bold=True)
@@ -105,7 +133,7 @@ def transform_list():
 
         click.secho("\n🏔️  Orthometric / Geoid-Based:", fg="cyan", bold=True)
         for k, v in Datums.CDN.items():
-            geoid_str = v.get('default_geoid', 'None')
+            geoid_str = v.get("default_geoid", "None")
             click.echo(f"  {v['name']:<20} (Default Geoid: {geoid_str})")
 
         click.secho("\n🌍 Available Geoids:", fg="cyan", bold=True)

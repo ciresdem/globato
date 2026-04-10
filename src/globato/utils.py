@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -40,21 +39,26 @@ def run_cmd(cmd, data_fun=None, verbose=False, cwd="."):
     cols, _ = shutil.get_terminal_size()
     width = cols - 55
 
-    with tqdm(desc=f'`{cmd.rstrip()[:width]}...`', leave=verbose) as pbar:
+    with tqdm(desc=f"`{cmd.rstrip()[:width]}...`", leave=verbose) as pbar:
         pipe_stdin = subprocess.PIPE if data_fun is not None else None
 
         p = subprocess.Popen(
-            cmd, shell=True, stdin=pipe_stdin, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, close_fds=True, cwd=cwd
+            cmd,
+            shell=True,
+            stdin=pipe_stdin,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            close_fds=True,
+            cwd=cwd,
         )
 
         if data_fun is not None:
             if verbose:
-                logger.info('Piping data to cmd subprocess...')
+                logger.info("Piping data to cmd subprocess...")
             data_fun(p.stdin)
             p.stdin.close()
 
-        io_reader = io.TextIOWrapper(p.stderr, encoding='utf-8')
+        io_reader = io.TextIOWrapper(p.stderr, encoding="utf-8")
         while p.poll() is None:
             err_line = io_reader.readline()
             if verbose and err_line:
@@ -67,12 +71,12 @@ def run_cmd(cmd, data_fun=None, verbose=False, cwd="."):
         p.stdout.close()
 
         if verbose:
-            logger.info(f'Ran cmd {cmd.rstrip()} and returned {p.returncode}')
+            logger.info(f"Ran cmd {cmd.rstrip()} and returned {p.returncode}")
 
     return out, p.returncode
 
 
-def yield_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
+def yield_cmd(cmd, data_fun=None, verbose=False, cwd="."):
     """Yield output from a system command.
 
     `data_fun` should be a function to write to a file-port:
@@ -80,37 +84,41 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd='.'):
     """
 
     if verbose:
-        logger.info(f'Running cmd {cmd.rstrip()}...')
+        logger.info(f"Running cmd {cmd.rstrip()}...")
 
     pipe_stdin = subprocess.PIPE if data_fun is not None else None
 
     p = subprocess.Popen(
-        cmd, shell=True, stdin=pipe_stdin, stdout=subprocess.PIPE,
-        close_fds=True, cwd=cwd
+        cmd,
+        shell=True,
+        stdin=pipe_stdin,
+        stdout=subprocess.PIPE,
+        close_fds=True,
+        cwd=cwd,
     )
 
     if data_fun is not None:
         if verbose:
-            logger.info('Piping data to cmd subprocess...')
+            logger.info("Piping data to cmd subprocess...")
         data_fun(p.stdin)
         p.stdin.close()
 
     while p.poll() is None:
-        line = p.stdout.readline().decode('utf-8')
+        line = p.stdout.readline().decode("utf-8")
         if not line:
             break
         yield line
 
     p.stdout.close()
     if verbose:
-        logger.info(f'Ran cmd {cmd.rstrip()}, returned {p.returncode}.')
+        logger.info(f"Ran cmd {cmd.rstrip()}, returned {p.returncode}.")
 
 
 def cmd_check(cmd_str, cmd_vers_str):
     """check system for availability of 'cmd_str'"""
 
     if cmd_exists(cmd_str):
-        cmd_vers, status = run_cmd(f'{cmd_vers_str}')
+        cmd_vers, status = run_cmd(f"{cmd_vers_str}")
         return cmd_vers.rstrip()
     return b"0"
 
@@ -152,6 +160,6 @@ def yield_parsed_regions(region_str):
     is_batch = len(raw_regions) > 1
     for i, r in enumerate(raw_regions):
         t_reg = TransRegion(*r)
-        #feat_name = f"tile_{i:03d}" if is_batch else None
-        feat_name = t_reg.format('fn') if is_batch else None
+        # feat_name = f"tile_{i:03d}" if is_batch else None
+        feat_name = t_reg.format("fn") if is_batch else None
         yield t_reg, feat_name

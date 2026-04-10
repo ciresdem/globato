@@ -35,7 +35,6 @@ def test_globato_imports():
 
         # Walk through the Abstract Syntax Tree looking for import statements
         for node in ast.walk(tree):
-
             # Check `from module import X` statements
             if isinstance(node, ast.ImportFrom):
                 module = node.module or ""
@@ -44,16 +43,24 @@ def test_globato_imports():
                     imported_name = alias.name
 
                     # parse_hook_string MUST come from fetchez.utils
-                    if imported_name == "parse_hook_string" and module != "fetchez.utils":
+                    if (
+                        imported_name == "parse_hook_string"
+                        and module != "fetchez.utils"
+                    ):
                         errors.append(
                             f"[{py_file.name}] Violation: 'parse_hook_string' imported from '{module}'. "
                             f"Must be imported from 'fetchez.utils'."
                         )
 
                     # parse_source_string MUST come from globato.utils
-                    if imported_name == "parse_source_string" and module != "globato.utils":
+                    if (
+                        imported_name == "parse_source_string"
+                        and module != "globato.utils"
+                    ):
                         # Allow fetchez/utils.py to be imported in globato/utils.py itself
-                        if not (py_file.name == "utils.py" and module == "fetchez.utils"):
+                        if not (
+                            py_file.name == "utils.py" and module == "fetchez.utils"
+                        ):
                             errors.append(
                                 f"[{py_file.name}] Violation: 'parse_source_string' imported from '{module}'. "
                                 f"Must be imported from 'globato.utils' (to ensure stream_data injection)."

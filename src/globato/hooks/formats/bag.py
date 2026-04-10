@@ -12,11 +12,9 @@ Handles VR-BAGs, standard BAGs, uncertainty bands, and corrupt XML metadata.
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 import rasterio
-from rasterio.errors import RasterioIOError
 from fetchez.utils import float_or
 
 from .rio import RasterioReader
@@ -41,7 +39,8 @@ class BAGReader(RasterioReader):
         """Weight = (3 * (10 if res <=3 else 1)) / res"""
 
         x_res = transform.a
-        if x_res == 0: return 1.0
+        if x_res == 0:
+            return 1.0
 
         base_mult = 10 if x_res <= 3.0 else 1
         calc_weight = (3 * base_mult) / x_res
@@ -52,13 +51,13 @@ class BAGReader(RasterioReader):
         """Internal generator that reads chunks from an open rasterio dataset."""
 
         bag_weight = self._calculate_bag_weight(src.transform)
-        has_unc = (src.count >= 2)
+        has_unc = src.count >= 2
 
         for ji, window in src.block_windows(1):
             z = src.read(1, window=window)
 
             if src.nodata is not None:
-                mask = (z != src.nodata)
+                mask = z != src.nodata
             else:
                 mask = ~np.isnan(z)
 
@@ -78,13 +77,15 @@ class BAGReader(RasterioReader):
             global_cols = cols + window.col_off
 
             # with rasterio.Env(CPL_MIN_LOG_LEVEL=rasterio.logging.ERROR):
-            xs, ys = rasterio.transform.xy(src.transform, global_rows, global_cols, offset="center")
+            xs, ys = rasterio.transform.xy(
+                src.transform, global_rows, global_cols, offset="center"
+            )
 
             count = len(z_valid)
-            chunk = np.zeros(count, dtype=[
-                ("x", "f8"), ("y", "f8"), ("z", "f4"),
-                ("w", "f4"), ("u", "f4")
-            ])
+            chunk = np.zeros(
+                count,
+                dtype=[("x", "f8"), ("y", "f8"), ("z", "f4"), ("w", "f4"), ("u", "f4")],
+            )
 
             chunk["x"] = xs
             chunk["y"] = ys
@@ -106,7 +107,6 @@ class BAGReader(RasterioReader):
         try:
             with rasterio.Env(**env_opts):
                 with rasterio.open(self.src_fn) as src:
-
                     tags = src.tags(ns="IMAGE_STRUCTURE")
                     if tags.get("HAS_SUPERGRIDS") == "TRUE":
                         is_vr = True
@@ -120,7 +120,9 @@ class BAGReader(RasterioReader):
             return
 
         if is_vr:
-            logger.debug(f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}")
+            logger.debug(
+                f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}"
+            )
             vr_opts = {"MODE": "RESAMPLED_GRID", "RES_STRATEGY": "MIN"}
 
             try:

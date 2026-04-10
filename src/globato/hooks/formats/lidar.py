@@ -15,11 +15,11 @@ import os
 import logging
 import numpy as np
 import laspy as lp
-import subprocess
-import json
 
 from fetchez.utils import str_or
 from fetchez.hooks import FetchHook
+
+from .xyz import XYZReader
 
 logger = logging.getLogger(__name__)
 
@@ -28,21 +28,21 @@ class LASReader:
     """Process LAS/LAZ lidar files using laspy."""
 
     def __init__(
-            self,
-            src_fn: str,
-            classes="2/29/40",
-            **kwargs,
+        self,
+        src_fn: str,
+        classes="2/29/40",
+        **kwargs,
     ):
 
         self.src_fn = src_fn
         try:
             if isinstance(str_or(classes), str):
-                self.classes = [int(x) for x in str(classes).split('/')]
+                self.classes = [int(x) for x in str(classes).split("/")]
             elif isinstance(classes, (list, tuple)):
                 self.classes = [int(x) for x in classes]
             else:
                 self.classes = []
-        except Exception as e:
+        except Exception:
             self.classes = []
 
     def get_srs(self):
@@ -66,13 +66,12 @@ class LASReader:
                             if isinstance(srs, bytes):
                                 return srs.decode("utf-8").strip("\0")
                             return srs
-                        except:
+                        except Exception:
                             pass
         except Exception:
             pass
 
         return None
-
 
     def yield_chunks(self):
         """Yield points from local file using standard laspy."""
@@ -90,7 +89,8 @@ class LASReader:
                         points_y = chunk.y
                         points_z = chunk.z
 
-                    if len(points_x) == 0: continue
+                    if len(points_x) == 0:
+                        continue
 
                     w = np.ones_like(points_z)
                     u = np.zeros_like(points_z)
@@ -117,7 +117,6 @@ class LASStream(FetchHook):
         super().__init__(**kwargs)
         self.classes = classes
 
-
     def run(self, entries):
         new_entries = []
         for mod, entry in entries:
@@ -135,7 +134,7 @@ class LASStream(FetchHook):
             try:
                 reader = XYZReader(src, **self.params)
                 # Get EPSG for metadata (unused right now but good to have)
-                #src_epsg = reader.get_epsg()
+                # src_epsg = reader.get_epsg()
 
                 entry["stream"] = reader.yield_chunks()
                 entry["stream_type"] = "xyz_recarray"

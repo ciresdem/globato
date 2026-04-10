@@ -52,7 +52,9 @@ class VectorCrop(GlobatoFilter):
                 geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
 
             if not geoms:
-                logger.warning(f"Vector file {self.vector_path} contains no valid geometries.")
+                logger.warning(
+                    f"Vector file {self.vector_path} contains no valid geometries."
+                )
                 return False
 
             self.geometry = MultiPolygon(geoms) if len(geoms) > 1 else geoms[0]

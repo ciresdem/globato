@@ -14,6 +14,7 @@ Registers CRM DEM-specific schema into the Fetchez engine.
 from fetchez.schemas import BaseSchema  # , SchemaRegistry
 from fetchez.spatial import parse_region
 
+
 class CRMSchema(BaseSchema):
     """The "CRM" schema.
 
@@ -31,17 +32,15 @@ class CRMSchema(BaseSchema):
     @classmethod
     def apply(cls, config):
         recipe_region = config.get("region")
-        dist_region = (
-            parse_region(recipe_region) if recipe_region else [None]
-        )[0]
+        dist_region = (parse_region(recipe_region) if recipe_region else [None])[0]
         if not dist_region:
             return config
 
-        res_deg = 0.0002777777777777778 # 1 arc-second
+        res_deg = 0.0002777777777777778  # 1 arc-second
         # buffer_deg = 100 * res_deg   # 100 cell buffer for fetching/gridding
 
         proc_region = dist_region.copy()
-        proc_region.buffer(10) # Buffering slightly to ensure overlap coverage
+        proc_region.buffer(10)  # Buffering slightly to ensure overlap coverage
         config["region"] = proc_region.to_list()
 
         global_hooks = config.get("global_hooks", [])
@@ -59,11 +58,13 @@ class CRMSchema(BaseSchema):
         for hook in global_hooks:
             if hook.get("name") == "multi_stack":
                 hook.setdefault("args", {})
-                hook["args"].update({
-                    "resolution": res_deg,
-                    "registration": "grid",
-                    "srs": "EPSG:4326+3855"
-                })
+                hook["args"].update(
+                    {
+                        "resolution": res_deg,
+                        "registration": "grid",
+                        "srs": "EPSG:4326+3855",
+                    }
+                )
 
         # Find where to insert the cut/crop hooks!
         # We want to put it after dem_uncertainty, but before viz_geoshade
@@ -77,15 +78,19 @@ class CRMSchema(BaseSchema):
         base_proj_name = proj_name.split("_tile_")[0].split("_L_")[0]
         delivery_fn = f"{base_proj_name}_{dist_region.format('delivery')}.tif"
 
-        global_hooks.insert(insert_idx, {
-            "name": "raster_crop",
-            "args": {"output": delivery_fn}
-        })
+        global_hooks.insert(
+            insert_idx, {"name": "raster_crop", "args": {"output": delivery_fn}}
+        )
 
-        global_hooks.insert(insert_idx, {
-            "name": "raster_cut",
-            "args": {"region": dist_region.to_list(), }
-        })
+        global_hooks.insert(
+            insert_idx,
+            {
+                "name": "raster_cut",
+                "args": {
+                    "region": dist_region.to_list(),
+                },
+            },
+        )
 
         config["global_hooks"] = global_hooks
         return config

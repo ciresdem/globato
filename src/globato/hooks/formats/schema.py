@@ -12,9 +12,6 @@ Makes sure incoming format streams make the correct rec-array
 """
 
 import numpy as np
-from fetchez import utils
-
-import numpy as np
 import numpy.lib.recfunctions as rfn
 
 
@@ -61,7 +58,7 @@ def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
                 names=list(new_fields.keys()),
                 data=list(new_fields.values()),
                 usemask=False,
-                asrecarray=True
+                asrecarray=True,
             )
 
         # Apply Weight

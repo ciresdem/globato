@@ -33,7 +33,7 @@ def fetch_list(search):
     ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
-    click.secho(f"\nAvailable Curated Globato Sources:", fg="cyan", bold=True)
+    click.secho("\nAvailable Curated Globato Sources:", fg="cyan", bold=True)
     click.echo("=" * 60)
 
     count = 0
@@ -46,7 +46,7 @@ def fetch_list(search):
         if search and search.lower() not in name.lower():
             continue
 
-        desc = meta.get('desc', 'No description available')
+        desc = meta.get("desc", "No description available")
 
         click.secho(f"  {name:<15}", fg="green", bold=True, nl=False)
         click.echo(f" - {desc}")
@@ -54,13 +54,25 @@ def fetch_list(search):
 
     click.echo("=" * 60)
     click.echo(f"Total curated sources found: {count}")
-    click.echo("(Note: For raw, uncurated data access, use the 'fetchez' CLI directly)\n")
+    click.echo(
+        "(Note: For raw, uncurated data access, use the 'fetchez' CLI directly)\n"
+    )
 
 
 @fetch_group.command("run")
 @click.argument("module_name")
-@click.option("-R", "--region", required=True, help="Spatial bounding box (W/E/S/N or loc:\"Name\").")
-@click.option("-O", "--outdir", default=".", help="Output directory to save data (default: current directory).")
+@click.option(
+    "-R",
+    "--region",
+    required=True,
+    help='Spatial bounding box (W/E/S/N or loc:"Name").',
+)
+@click.option(
+    "-O",
+    "--outdir",
+    default=".",
+    help="Output directory to save data (default: current directory).",
+)
 @click.argument("extra_args", nargs=-1)
 def fetch_run(module_name, region, outdir, extra_args):
     """Download data from a curated Globato source.
@@ -75,27 +87,39 @@ def fetch_run(module_name, region, outdir, extra_args):
     mod_cls = ModuleRegistry.get_class(module_name)
 
     if not mod_cls:
-        click.secho(f"Error: Unknown module '{module_name}'. Run 'globato fetch list' to see available options.", fg="red")
+        click.secho(
+            f"Error: Unknown module '{module_name}'. Run 'globato fetch list' to see available options.",
+            fg="red",
+        )
         sys.exit(1)
 
     meta = ModuleRegistry.get_info(module_name)
     if meta.get("category") != "Globato":
-        click.secho(f"Error: '{module_name}' is a raw Fetchez module, not a curated Globato source.", fg="red")
-        click.secho("Please use the 'fetchez' CLI to download raw data, or select a curated source from 'globato fetch list'.", fg="yellow")
+        click.secho(
+            f"Error: '{module_name}' is a raw Fetchez module, not a curated Globato source.",
+            fg="red",
+        )
+        click.secho(
+            "Please use the 'fetchez' CLI to download raw data, or select a curated source from 'globato fetch list'.",
+            fg="yellow",
+        )
         sys.exit(1)
 
     try:
         for parsed_region, feat_name in yield_parsed_regions(region):
-            prefix = f"{feat_name}: " if feat_name else ""
+            # prefix = f"{feat_name}: " if feat_name else ""
 
-            click.secho(f"Target Region: [{parsed_region.xmin:.4f}, {parsed_region.xmax:.4f}, {parsed_region.ymin:.4f}, {parsed_region.ymax:.4f}]", fg="blue")
+            click.secho(
+                f"Target Region: [{parsed_region.xmin:.4f}, {parsed_region.xmax:.4f}, {parsed_region.ymin:.4f}, {parsed_region.ymax:.4f}]",
+                fg="blue",
+            )
 
             kwargs = {}
             for arg in extra_args:
                 if "=" in arg:
                     k, v = arg.split("=", 1)
                     try:
-                        v = float(v) if '.' in v else int(v)
+                        v = float(v) if "." in v else int(v)
                     except ValueError:
                         pass
                     kwargs[k] = v
@@ -113,7 +137,9 @@ def fetch_run(module_name, region, outdir, extra_args):
                 fetcher = mod_cls(src_region=parsed_region, **kwargs)
                 fetcher.run()
                 run_fetchez([fetcher])
-                click.secho(f"\nFetch complete! Data saved to: {outdir}", fg="green", bold=True)
+                click.secho(
+                    f"\nFetch complete! Data saved to: {outdir}", fg="green", bold=True
+                )
             except Exception as e:
                 click.secho(f"\nFetch failed: {e}", fg="red", bold=True)
             finally:

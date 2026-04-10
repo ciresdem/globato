@@ -32,18 +32,18 @@ class GlobatoFilter(FetchHook):
     meta_category = "stream-filter"
 
     def __init__(
-            self,
-            set_class=7,
-            exclude_classes=None,
-            invert=False,
-            **kwargs,
+        self,
+        set_class=7,
+        exclude_classes=None,
+        invert=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.set_class = int(set_class)
         self.invert = utils.str2bool(invert)
 
         if exclude_classes:
-            self.exclude_classes = [int(x) for x in str(exclude_classes).split('/')]
+            self.exclude_classes = [int(x) for x in str(exclude_classes).split("/")]
         else:
             self.exclude_classes = []
 
@@ -52,7 +52,8 @@ class GlobatoFilter(FetchHook):
 
         for mod, entry in entries:
             stream = entry.get("stream")
-            if not stream: continue
+            if not stream:
+                continue
 
             # `setup` allows subclass to prepare resources based on region/module
             if hasattr(self, "setup"):
@@ -72,7 +73,9 @@ class GlobatoFilter(FetchHook):
 
                 if self.exclude_classes:
                     # True = Available to filter.
-                    eligible_mask = ~np.isin(chunk["classification"], self.exclude_classes)
+                    eligible_mask = ~np.isin(
+                        chunk["classification"], self.exclude_classes
+                    )
 
                     if not np.any(eligible_mask):
                         yield chunk
@@ -103,7 +106,7 @@ class GlobatoFilter(FetchHook):
                     yield result
 
         finally:
-            if hasattr(self, 'teardown'):
+            if hasattr(self, "teardown"):
                 self.teardown()
 
     def filter_chunk(self, chunk):

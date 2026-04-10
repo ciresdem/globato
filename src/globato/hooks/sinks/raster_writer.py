@@ -38,17 +38,20 @@ class RasterWrite(FetchHook):
         profile = next(stream)
         yield profile
 
-        with rasterio.open(dst_fn, 'w', **profile) as dst:
+        with rasterio.open(dst_fn, "w", **profile) as dst:
             for window, buff_win, data, ndv, transform in stream:
-
                 y_off = window.row_off - buff_win.row_off
                 x_off = window.col_off - buff_win.col_off
 
                 if data.ndim == 3:
-                    final_chunk = data[:, y_off : y_off + window.height, x_off : x_off + window.width]
+                    final_chunk = data[
+                        :, y_off : y_off + window.height, x_off : x_off + window.width
+                    ]
                     dst.write(final_chunk, window=window)
                 else:
-                    final_chunk = data[y_off : y_off + window.height, x_off : x_off + window.width]
+                    final_chunk = data[
+                        y_off : y_off + window.height, x_off : x_off + window.width
+                    ]
                     dst.write(final_chunk, 1, window=window)
 
                 # YIELD THE CHUNK ONWARD to keep the stream alive!
@@ -59,6 +62,7 @@ class RasterWrite(FetchHook):
         for mod, entry in entries:
             if entry.get("stream_type") == "xyz_recarray":
                 from globato.hooks.transforms.point_pixels import Point2PixelStream
+
                 gridder = Point2PixelStream()
                 gridder.run([(mod, entry)])
 

@@ -38,12 +38,16 @@ def recipe_list(search):
     RecipeRegistry.load_all()
     registry = RecipeRegistry.get_registry()
 
-    click.secho(f"\nAvailable Curated Recipes:", fg="cyan", bold=True)
+    click.secho("\nAvailable Curated Recipes:", fg="cyan", bold=True)
     click.echo("=" * 60)
 
     count = 0
     for name, meta in sorted(registry.items()):
-        if search and search.lower() not in name.lower() and search.lower() not in meta["desc"].lower():
+        if (
+            search
+            and search.lower() not in name.lower()
+            and search.lower() not in meta["desc"].lower()
+        ):
             continue
 
         click.secho(f"  {name:<25}", fg="green", bold=True, nl=False)
@@ -57,7 +61,7 @@ def recipe_list(search):
 def _load_yaml(target):
     base_config = None
     if os.path.exists(target):
-        with open(target, 'r', encoding='utf-8') as f:
+        with open(target, "r", encoding="utf-8") as f:
             base_config = yaml.safe_load(f)
     else:
         recipe_meta = RecipeRegistry.get_recipe(target)
@@ -65,7 +69,7 @@ def _load_yaml(target):
             base_config = recipe_meta["config"]
             click.secho(f"Loaded curated recipe: {target}", fg="cyan")
 
-    return(base_config)
+    return base_config
 
 
 def _absolutize_local_sources(config, base_dir):
@@ -78,12 +82,16 @@ def _absolutize_local_sources(config, base_dir):
 
             # Handle local_fs 'path'
             if "path" in args:
-                args["path"] = os.path.normpath(os.path.join(base_dir, str(args["path"])))
+                args["path"] = os.path.normpath(
+                    os.path.join(base_dir, str(args["path"]))
+                )
 
             # Handle file 'paths' (which could be comma-separated)
             if "paths" in args:
                 paths = str(args["paths"]).split(",")
-                abs_paths = [os.path.normpath(os.path.join(base_dir, p.strip())) for p in paths]
+                abs_paths = [
+                    os.path.normpath(os.path.join(base_dir, p.strip())) for p in paths
+                ]
                 args["paths"] = ",".join(abs_paths)
 
     return config
@@ -91,12 +99,22 @@ def _absolutize_local_sources(config, base_dir):
 
 @recipe_group.command("run")
 @click.argument("target")
-@click.option("-R", "--region", help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.")
-@click.option("-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10m).")
+@click.option(
+    "-R",
+    "--region",
+    help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.",
+)
+@click.option(
+    "-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10m)."
+)
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
 @click.option("--outdir", default=".", help="Base output directory for the tiles.")
-@click.option("--overwrite", is_flag=True, help="Force rebuild of already completed tiles in a batch run.")
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Force rebuild of already completed tiles in a batch run.",
+)
 def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
@@ -104,7 +122,9 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
 
     base_config = _load_yaml(target)
     if not base_config:
-        click.secho(f"Error: Recipe '{target}' not found locally or in the registry.", fg="red")
+        click.secho(
+            f"Error: Recipe '{target}' not found locally or in the registry.", fg="red"
+        )
         sys.exit(1)
 
     if outname:
@@ -132,7 +152,11 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_stack.tif"
 
-            if hook_name == "ms_cudem" or hook_name == "interp_gmt" or hook_name == "raster_fill":
+            if (
+                hook_name == "ms_cudem"
+                or hook_name == "interp_gmt"
+                or hook_name == "raster_fill"
+            ):
                 if increment and hook_name == "ms_cudem":
                     hook.setdefault("args", {})["resolutions"] = increment
                 if outname:
@@ -148,42 +172,63 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
 
     if os.path.exists(state_file) and not overwrite:
         try:
-            with open(state_file, 'r') as f:
+            with open(state_file, "r") as f:
                 completed_tiles = json.load(f)
         except Exception:
-            pass # If the state file is corrupted, we just ignore it
+            pass  # If the state file is corrupted, we just ignore it
 
     import copy
+
     for t_reg, feat_name in yield_parsed_regions(region):
         try:
             is_batch = False
             config = copy.deepcopy(base_config)
             if t_reg:
-                config['region'] = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
+                config["region"] = (
+                    f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
+                )
 
             if feat_name:
                 is_batch = True
-                orig_name = config.get('project', {}).get('name', 'globato_dem')
+                orig_name = config.get("project", {}).get("name", "globato_dem")
                 batch_name = f"{orig_name}_{feat_name}"
-                config.setdefault('project', {})['name'] = batch_name
-                click.secho(f"\n--- Running Batch Tile: {batch_name} ({config['region']}) ---", fg="cyan", bold=True)
+                config.setdefault("project", {})["name"] = batch_name
+                click.secho(
+                    f"\n--- Running Batch Tile: {batch_name} ({config['region']}) ---",
+                    fg="cyan",
+                    bold=True,
+                )
             elif outname:
                 batch_name = outname
-                click.secho(f"\n--- Running Recipe with Override: {batch_name} ---", fg="cyan", bold=True)
+                click.secho(
+                    f"\n--- Running Recipe with Override: {batch_name} ---",
+                    fg="cyan",
+                    bold=True,
+                )
             else:
-                batch_name = config.get('project', {}).get('name', 'globato_dem')
+                batch_name = config.get("project", {}).get("name", "globato_dem")
 
             if batch_name in completed_tiles and not overwrite:
-                click.secho(f"  Skipping completed tile: {batch_name} (use --overwrite to force)", fg="yellow", bold=True)
+                click.secho(
+                    f"  Skipping completed tile: {batch_name} (use --overwrite to force)",
+                    fg="yellow",
+                    bold=True,
+                )
                 continue
 
             for hook in config.get("global_hooks", []):
                 hook_name = hook.get("name")
                 if hook_name == "provenance":
-                    hook.setdefault("args", {})["output"] = f"{batch_name}_provenance.tif"
+                    hook.setdefault("args", {})["output"] = (
+                        f"{batch_name}_provenance.tif"
+                    )
                 if hook_name == "multi_stack":
                     hook.setdefault("args", {})["output"] = f"{batch_name}_stack.tif"
-                if hook_name == "ms_cudem" or hook_name == "interp_gmt" or hook_name == "raster_fill":
+                if (
+                    hook_name == "ms_cudem"
+                    or hook_name == "interp_gmt"
+                    or hook_name == "raster_fill"
+                ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
 
             if is_batch:
@@ -192,19 +237,22 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 os.chdir(tile_dir)
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
-            with open(batch_config_fn, 'w') as f:
+            with open(batch_config_fn, "w") as f:
                 yaml.dump(config, f, sort_keys=False, default_flow_style=False)
 
             try:
                 Recipe.from_file(config).run()
 
                 completed_tiles.append(batch_name)
-                with open(state_file, 'w') as f:
+                with open(state_file, "w") as f:
                     json.dump(completed_tiles, f, indent=2)
 
             except Exception as e:
                 click.secho(f"\n Tile {batch_name} failed: {e}", fg="red", bold=True)
-                click.secho("Batch processing halted. Re-run command to resume from this tile.", fg="yellow")
+                click.secho(
+                    "Batch processing halted. Re-run command to resume from this tile.",
+                    fg="yellow",
+                )
                 sys.exit(1)
 
         except ValueError as e:
@@ -275,7 +323,9 @@ def recipe_copy(name, outdir):
         f.write(yaml.dump(recipe_meta["config"], sort_keys=False))
 
     click.secho(f"Copied '{name}' to {out_path}", fg="green", bold=True)
-    click.echo("You can now edit this file and run it with: globato recipe run " + out_path)
+    click.echo(
+        "You can now edit this file and run it with: globato recipe run " + out_path
+    )
 
 
 @recipe_group.command("validate")
@@ -284,12 +334,15 @@ def recipe_validate(target):
     """Check a YAML recipe for syntax errors and missing modules/hooks."""
 
     from fetchez.registry import ModuleRegistry, HookRegistry
+
     ModuleRegistry.load_all()
     HookRegistry.load_all()
 
     base_config = _load_yaml(target)
     if not base_config:
-        click.secho(f"Error: Recipe '{target}' not found locally or in the registry.", fg="red")
+        click.secho(
+            f"Error: Recipe '{target}' not found locally or in the registry.", fg="red"
+        )
         sys.exit(1)
 
     errors = 0
@@ -297,7 +350,10 @@ def recipe_validate(target):
 
     for mod in base_config.get("modules", []):
         mod_name = mod.get("module")
-        if not ModuleRegistry.get_class(mod_name) and mod_name not in ["file", "local_fs"]:
+        if not ModuleRegistry.get_class(mod_name) and mod_name not in [
+            "file",
+            "local_fs",
+        ]:
             click.secho(f"  Missing Module: '{mod_name}'", fg="red")
             errors += 1
         else:
@@ -305,10 +361,16 @@ def recipe_validate(target):
 
         for hook in mod.get("hooks", []):
             if not HookRegistry.get_class(hook.get("name")):
-                click.secho(f"  Missing Hook: '{hook.get('name')}' (in module {mod_name})", fg="red")
+                click.secho(
+                    f"  Missing Hook: '{hook.get('name')}' (in module {mod_name})",
+                    fg="red",
+                )
                 errors += 1
             else:
-                click.secho(f"  Valid Hook: '{hook.get('name')}' (in module {mod_name})", fg="green")
+                click.secho(
+                    f"  Valid Hook: '{hook.get('name')}' (in module {mod_name})",
+                    fg="green",
+                )
 
     for hook in base_config.get("global_hooks", []):
         if not HookRegistry.get_class(hook.get("name")):
@@ -325,6 +387,7 @@ def recipe_validate(target):
 
 
 # --- Build command ---
+
 
 def _parse_source(src_str):
     """Parses 'module:key=val+hook:k=v' or local paths into a dictionary for the recipe."""
@@ -345,17 +408,19 @@ def _parse_source(src_str):
                 try:
                     v = float(v) if "." in v else int(v)
                 except ValueError:
-                    if v.lower() in ['true', 'yes']: v = True
-                    elif v.lower() in ['false', 'no']: v = False
+                    if v.lower() in ["true", "yes"]:
+                        v = True
+                    elif v.lower() in ["false", "no"]:
+                        v = False
                 args[k] = v
 
     if os.path.exists(mod_name):
         if os.path.isfile(mod_name):
-            args['paths'] = mod_name
-            mod_name = 'file'
+            args["paths"] = mod_name
+            mod_name = "file"
         elif os.path.isdir(mod_name):
-            args['path'] = mod_name
-            mod_name = 'local_fs'
+            args["path"] = mod_name
+            mod_name = "local_fs"
 
     mod_dict = {
         "module": mod_name,
@@ -377,8 +442,10 @@ def _parse_source(src_str):
                     try:
                         v = float(v) if "." in v else int(v)
                     except ValueError:
-                        if v.lower() in ['true', 'yes']: v = True
-                        elif v.lower() in ['false', 'no']: v = False
+                        if v.lower() in ["true", "yes"]:
+                            v = True
+                        elif v.lower() in ["false", "no"]:
+                            v = False
                     h_args[k] = v
 
         hook_dict = {"name": h_name}
@@ -397,6 +464,7 @@ def _list_sources(ctx, param, value):
         return
 
     from fetchez.registry import ModuleRegistry
+
     ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
@@ -405,7 +473,10 @@ def _list_sources(ctx, param, value):
 
     count = 0
     for name, meta in sorted(registry.items()):
-        if meta.get("mod", "").startswith("globato.modules") or meta.get("category") == "Globato":
+        if (
+            meta.get("mod", "").startswith("globato.modules")
+            or meta.get("category") == "Globato"
+        ):
             if name in meta.get("aliases", []):
                 continue
 
@@ -419,9 +490,13 @@ def _list_sources(ctx, param, value):
     click.echo("  You can also pass local files and directories directly!")
     click.echo("  Files will be wrapped in the 'file' module.")
     click.echo("  Directories will be crawled using the 'local_fs' module.")
-    click.echo("  Example: globato recipe build -R ... ./my_data.tif ./my_folder:ext=.xyz")
+    click.echo(
+        "  Example: globato recipe build -R ... ./my_data.tif ./my_folder:ext=.xyz"
+    )
 
-    click.echo(f"\nTry 'globato recipe build --info-source <name>' for details. Total: {count}\n")
+    click.echo(
+        f"\nTry 'globato recipe build --info-source <name>' for details. Total: {count}\n"
+    )
     ctx.exit()
 
 
@@ -432,6 +507,7 @@ def _info_source(ctx, param, value):
         return
 
     from fetchez.registry import ModuleRegistry
+
     ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
@@ -442,8 +518,14 @@ def _info_source(ctx, param, value):
 
     meta = registry[source_name]
 
-    if not (meta.get("mod", "").startswith("globato.modules") or meta.get("category") == "Globato"):
-        click.secho(f" Note: '{source_name}' is a core Fetchez module, not a curated Globato DEM source.", fg="yellow")
+    if not (
+        meta.get("mod", "").startswith("globato.modules")
+        or meta.get("category") == "Globato"
+    ):
+        click.secho(
+            f" Note: '{source_name}' is a core Fetchez module, not a curated Globato DEM source.",
+            fg="yellow",
+        )
 
     click.secho(f"\nSOURCE: {source_name.upper()}", fg="cyan", bold=True)
     click.echo("=" * 60)
@@ -453,11 +535,23 @@ def _info_source(ctx, param, value):
     mod_cls = ModuleRegistry.get_class(source_name)
     if mod_cls:
         import inspect
+
         sig = inspect.signature(mod_cls.__init__)
         params = []
         for p_name, param in sig.parameters.items():
-            if p_name not in ["self", "kwargs", "src_region", "callback", "outdir", "name"]:
-                default = param.default if param.default is not inspect.Parameter.empty else "None"
+            if p_name not in [
+                "self",
+                "kwargs",
+                "src_region",
+                "callback",
+                "outdir",
+                "name",
+            ]:
+                default = (
+                    param.default
+                    if param.default is not inspect.Parameter.empty
+                    else "None"
+                )
                 params.append(f"{p_name}={default}")
         if params:
             click.echo(f"  Arguments   : {', '.join(params)}")
@@ -466,21 +560,85 @@ def _info_source(ctx, param, value):
 
 
 @recipe_group.command("build")
-@click.option("--list-sources", is_flag=True, is_eager=True, expose_value=False, callback=_list_sources, help="List available data sources and exit.")
-@click.option("--info-source", metavar="NAME", is_eager=True, expose_value=False, callback=_info_source, help="Show details for a specific data source and exit.")
+@click.option(
+    "--list-sources",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_list_sources,
+    help="List available data sources and exit.",
+)
+@click.option(
+    "--info-source",
+    metavar="NAME",
+    is_eager=True,
+    expose_value=False,
+    callback=_info_source,
+    help="Show details for a specific data source and exit.",
+)
 @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
-@click.option("-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)")
-@click.option("-O", "--outname", default="globato_dem", help="Output Basename (default: globato_dem)")
-@click.option("-F", "--format", default="GTiff", help="Output Format (GTiff, NetCDF, etc.). Default: GTiff.")
-@click.option("-P", "--crs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)")
-@click.option("-N", "--nodata", type=float, default=-9999.0, help="NoData Value. Default: -9999.")
-@click.option("-M", "--algo", default="ms_cudem", help="Interpolation algorithm and options (e.g., interp_gmt:tension=0.35)")
-@click.option("-A", "--stack-mode", type=click.Choice(['mean', 'min', 'max', 'mixed', 'supercede']), default="mixed", help="Stacking mode")
-@click.option("-T", "--filter", "filters", multiple=True, help="Apply Grits Filter (e.g. 'blur:radius=3'). May be set multiple times.")
+@click.option(
+    "-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)"
+)
+@click.option(
+    "-O",
+    "--outname",
+    default="globato_dem",
+    help="Output Basename (default: globato_dem)",
+)
+@click.option(
+    "-F",
+    "--format",
+    default="GTiff",
+    help="Output Format (GTiff, NetCDF, etc.). Default: GTiff.",
+)
+@click.option(
+    "-P", "--crs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)"
+)
+@click.option(
+    "-N", "--nodata", type=float, default=-9999.0, help="NoData Value. Default: -9999."
+)
+@click.option(
+    "-M",
+    "--algo",
+    default="ms_cudem",
+    help="Interpolation algorithm and options (e.g., interp_gmt:tension=0.35)",
+)
+@click.option(
+    "-A",
+    "--stack-mode",
+    type=click.Choice(["mean", "min", "max", "mixed", "supercede"]),
+    default="mixed",
+    help="Stacking mode",
+)
+@click.option(
+    "-T",
+    "--filter",
+    "filters",
+    multiple=True,
+    help="Apply Grits Filter (e.g. 'blur:radius=3'). May be set multiple times.",
+)
 @click.option("-C", "--clip", help="Clip output to polygon file. e.g. 'clip_ply.shp'")
-@click.option("--save-only", is_flag=True, help="Save the generated YAML recipe to disk WITHOUT running it.")
+@click.option(
+    "--save-only",
+    is_flag=True,
+    help="Save the generated YAML recipe to disk WITHOUT running it.",
+)
 @click.argument("sources", nargs=-1)
-def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mode, filters, clip, save_only, sources):
+def recipe_build(
+    region,
+    increment,
+    outname,
+    format,
+    crs,
+    nodata,
+    algo,
+    stack_mode,
+    filters,
+    clip,
+    save_only,
+    sources,
+):
     """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
 
     if not sources:
@@ -493,24 +651,56 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
             tile_outname = f"{outname}_{feat_name}" if feat_name else outname
 
             if feat_name:
-                click.secho(f"\n--- Building Batch Tile: {feat_name} ({r_str}) ---", fg="cyan", bold=True)
+                click.secho(
+                    f"\n--- Building Batch Tile: {feat_name} ({r_str}) ---",
+                    fg="cyan",
+                    bold=True,
+                )
 
             global_hooks = []
 
             # The Base Stack
             global_hooks.append({"name": "drop_class"})
-            global_hooks.append({
-                "name": "multi_stack",
-                "args": {"res": increment, "crs": crs, "mode": stack_mode, "nodata": nodata, "output": f"{tile_outname}_stack.tif"}
-            })
-            global_hooks.append({"name": "focus_sink", "args": {"target": "multi_stack"}})
-            global_hooks.append({"name": "raster_stream", "args": {"stream_type": "raster", "chunk_size": 2048, "stage": "collection"}})
+            global_hooks.append(
+                {
+                    "name": "multi_stack",
+                    "args": {
+                        "res": increment,
+                        "crs": crs,
+                        "mode": stack_mode,
+                        "nodata": nodata,
+                        "output": f"{tile_outname}_stack.tif",
+                    },
+                }
+            )
+            global_hooks.append(
+                {"name": "focus_sink", "args": {"target": "multi_stack"}}
+            )
+            global_hooks.append(
+                {
+                    "name": "raster_stream",
+                    "args": {
+                        "stream_type": "raster",
+                        "chunk_size": 2048,
+                        "stage": "collection",
+                    },
+                }
+            )
 
             # Add requested Filters (-T)
             for f in filters:
                 global_hooks.append(parse_hook_string(f))
 
-            global_hooks.append({"name": "ms_blend", "args": {"weight_threshold": .5, "blend_dist": 20, "random_scale": .25}})
+            global_hooks.append(
+                {
+                    "name": "ms_blend",
+                    "args": {
+                        "weight_threshold": 0.5,
+                        "blend_dist": 20,
+                        "random_scale": 0.25,
+                    },
+                }
+            )
 
             # Add requested Interpolation Algorithm (-M)
             algo_hook = parse_hook_string(algo)
@@ -532,7 +722,7 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
                 "project": {"name": tile_outname},
                 "region": r_str,
                 "modules": [parse_source_string(s) for s in sources],
-                "global_hooks": global_hooks
+                "global_hooks": global_hooks,
             }
 
             yaml_str = yaml.dump(config, sort_keys=False)
@@ -543,7 +733,9 @@ def recipe_build(region, increment, outname, format, crs, nodata, algo, stack_mo
             click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
 
             if not save_only:
-                click.secho(f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True)
+                click.secho(
+                    f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True
+                )
                 Recipe.from_file(config).run()
 
     except ValueError as e:

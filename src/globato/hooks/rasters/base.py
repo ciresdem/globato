@@ -18,7 +18,6 @@ import numpy as np
 import rasterio
 from rasterio.windows import Window
 import fiona
-from transformez.spatial import TransRegion
 from transformez.spatial import parse_region
 from fetchez.hooks import FetchHook
 
@@ -70,17 +69,22 @@ class RasterBaseHook(FetchHook):
             found_poly = None
             if os.path.exists(base_dir):
                 import glob
-                search_pattern = os.path.join(base_dir, f"coastline_{w}_{s}_{res}*.gpkg")
+
+                search_pattern = os.path.join(
+                    base_dir, f"coastline_{w}_{s}_{res}*.gpkg"
+                )
                 matches = glob.glob(search_pattern)
                 if matches:
                     # If both exist, prefer the filled version
-                    matches.sort(key=lambda x: 'filled' in x, reverse=True)
+                    matches.sort(key=lambda x: "filled" in x, reverse=True)
                     found_poly = matches[0]
 
             if found_poly:
                 barrier_path = found_poly
             else:
-                logger.info(f"[{self.name}] Auto-generating coastline barrier for region...")
+                logger.info(
+                    f"[{self.name}] Auto-generating coastline barrier for region..."
+                )
                 from fetchez.registry import ModuleRegistry
                 from fetchez.core import run_fetchez
 
@@ -91,7 +95,7 @@ class RasterBaseHook(FetchHook):
                         src_region=mod.region,
                         res=res,
                         outdir=outdir,
-                        fill_inland_holes=True
+                        fill_inland_holes=True,
                     )
                     coast_instance.run()
                     run_fetchez([coast_instance])
@@ -141,7 +145,9 @@ class RasterBaseHook(FetchHook):
                 for col_off in range(0, src.width, c_size):
                     width = min(c_size, src.width - col_off)
                     height = min(c_size, src.height - row_off)
-                    windows.append(((row_off, col_off), Window(col_off, row_off, width, height)))
+                    windows.append(
+                        ((row_off, col_off), Window(col_off, row_off, width, height))
+                    )
         else:
             windows = list(src.block_windows(1))
 
@@ -155,7 +161,9 @@ class RasterBaseHook(FetchHook):
             row_stop = min(src.height, window.row_off + window.height + buffer_size)
             col_stop = min(src.width, window.col_off + window.width + buffer_size)
 
-            buffered_window = Window.from_slices((row_start, row_stop), (col_start, col_stop))
+            buffered_window = Window.from_slices(
+                (row_start, row_stop), (col_start, col_stop)
+            )
             yield window, buffered_window
 
 
@@ -226,25 +234,43 @@ class RasterStreamHook(RasterBaseHook):
             profile = src.profile.copy()
             profile = self.modify_profile(profile)
 
-            with rasterio.open(dst_path, 'w', **profile) as dst:
-                for window, buff_win in self.yield_buffered_windows(src, self.buffer, self.chunk_size):
+            with rasterio.open(dst_path, "w", **profile) as dst:
+                for window, buff_win in self.yield_buffered_windows(
+                    src, self.buffer, self.chunk_size
+                ):
                     data = src.read(window=buff_win)
-                    chunk_transform = rasterio.windows.transform(buff_win, src.transform)
+                    chunk_transform = rasterio.windows.transform(
+                        buff_win, src.transform
+                    )
 
-                    result = self.process_chunk(data, src.nodata, entry, transform=chunk_transform, window=buff_win)
+                    result = self.process_chunk(
+                        data,
+                        src.nodata,
+                        entry,
+                        transform=chunk_transform,
+                        window=buff_win,
+                    )
 
                     y_off = window.row_off - buff_win.row_off
                     x_off = window.col_off - buff_win.col_off
 
                     if result.ndim == 3:
-                        final_chunk = result[:, y_off : y_off + window.height, x_off : x_off + window.width]
+                        final_chunk = result[
+                            :,
+                            y_off : y_off + window.height,
+                            x_off : x_off + window.width,
+                        ]
                         dst.write(final_chunk, window=window)
                     else:
-                        final_chunk = result[y_off : y_off + window.height, x_off : x_off + window.width]
+                        final_chunk = result[
+                            y_off : y_off + window.height, x_off : x_off + window.width
+                        ]
                         dst.write(final_chunk, 1, window=window)
 
         return True
+
     process_raster = _process_file_fallback
+
 
 # =============================================================================
 # THE GLOBAL HOOK
@@ -266,7 +292,9 @@ class RasterGlobalHook(RasterBaseHook):
             src_fn = entry.get("dst_fn")
 
             if stream:
-                logger.info(f"[{self.name}] Global hook detected active stream. Draining to disk...")
+                logger.info(
+                    f"[{self.name}] Global hook detected active stream. Draining to disk..."
+                )
                 from globato.hooks.sinks.raster_writer import RasterWrite
 
                 drain_fn = f"{os.path.splitext(src_fn)[0]}_drained_{self.name}.tif"

@@ -35,22 +35,23 @@ class RasterSieveHook(RasterStreamHook):
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         working_data = data[0] if data.ndim == 3 else data
-        is_float = working_data.dtype.kind == 'f'
+        is_float = working_data.dtype.kind == "f"
 
         if is_float:
             valid_mask = ~np.isnan(working_data)
             int_data = np.where(valid_mask, working_data, 0).astype(np.int32)
             mask_arg = valid_mask
         else:
-            valid_mask = (working_data != ndv) if ndv is not None else np.ones_like(working_data, dtype=bool)
+            valid_mask = (
+                (working_data != ndv)
+                if ndv is not None
+                else np.ones_like(working_data, dtype=bool)
+            )
             int_data = working_data.copy()
             mask_arg = valid_mask
 
         sieved = sieve(
-            int_data,
-            size=self.size,
-            connectivity=self.connectivity,
-            mask=mask_arg
+            int_data, size=self.size, connectivity=self.connectivity, mask=mask_arg
         )
 
         result = sieved.astype(data.dtype)

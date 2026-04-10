@@ -50,10 +50,10 @@ class RasterSlopeFilter(RasterStreamHook):
         remove_mask = np.zeros(slope_arr.shape, dtype=bool)
 
         if self.min_val is not None:
-            remove_mask |= (slope_arr < self.min_val)
+            remove_mask |= slope_arr < self.min_val
 
         if self.max_val is not None:
-            remove_mask |= (slope_arr > self.max_val)
+            remove_mask |= slope_arr > self.max_val
 
         final_mask = remove_mask & valid_mask
 

@@ -16,12 +16,10 @@ import logging
 import json
 import math
 import fiona
-import shapely.wkb
 from shapely.geometry import box, LineString, Point, mapping
 from shapely.ops import linemerge, unary_union
 from fetchez.hooks import FetchHook
 from fetchez.core import Fetch, urlencode
-from fetchez import utils
 
 try:
     from fetchez.modules.gmrt import gmrt_fetch_point
@@ -48,7 +46,8 @@ class OSMLandmask(FetchHook):
         regions = [getattr(mod, "region", None) for mod, _ in entries]
         valid_regions = [r for r in regions if r]
 
-        if not valid_regions: return entries
+        if not valid_regions:
+            return entries
 
         w = min(r[0] for r in valid_regions)
         e = max(r[1] for r in valid_regions)
@@ -111,7 +110,7 @@ class OSMLandmask(FetchHook):
         check_poly = poly.buffer(buffer_size * 2.0)
 
         if not check_poly.intersects(lines_geom):
-            return None # Indeterminate
+            return None  # Indeterminate
 
         if lines_geom.geom_type == "MultiLineString":
             geoms = list(lines_geom.geoms)
@@ -128,18 +127,20 @@ class OSMLandmask(FetchHook):
 
             for i in range(0, len(coords) - 1, step):
                 p1 = coords[i]
-                p2 = coords[i+1]
+                p2 = coords[i + 1]
                 dx, dy = p2[0] - p1[0], p2[1] - p1[1]
 
                 # Normal Vector pointing LEFT (-dy, dx)
                 nx, ny = -dy, dx
-                mag = math.sqrt(nx*nx + ny*ny)
+                mag = math.sqrt(nx * nx + ny * ny)
                 if mag == 0:
                     continue
 
                 scale = buffer_size * 4.0
-                test_pt = Point(p1[0] + dx*0.5 + (nx/mag)*scale,
-                                p1[1] + dy*0.5 + (ny/mag)*scale)
+                test_pt = Point(
+                    p1[0] + dx * 0.5 + (nx / mag) * scale,
+                    p1[1] + dy * 0.5 + (ny / mag) * scale,
+                )
 
                 if poly.contains(test_pt):
                     votes.append(True)
@@ -154,34 +155,37 @@ class OSMLandmask(FetchHook):
     def _is_land_by_gmrt(self, poly):
         """Fallback: Check GMRT elevation."""
 
-        if not gmrt_fetch_point: return False
+        if not gmrt_fetch_point:
+            return False
         try:
             pt = poly.centroid
             val = float(gmrt_fetch_point(latitude=pt.y, longitude=pt.x))
             return val >= 0
-        except: return False
+        except Exception:
+            return False
 
     def _handle_fallback(self, dst_file, region):
         """If OSM fails, guess whole tile based on center point."""
 
         w, e, s, n = region
-        cx, cy = (w + e)/2, (s + n)/2
+        cx, cy = (w + e) / 2, (s + n) / 2
         is_land = False
         if gmrt_fetch_point:
-            try: is_land = float(gmrt_fetch_point(latitude=cy, longitude=cx)) >= 0
-            except: pass
+            try:
+                is_land = float(gmrt_fetch_point(latitude=cy, longitude=cx)) >= 0
+            except Exception:
+                pass
 
         poly = box(w, s, e, n) if is_land else None
         self._write_geojson(dst_file, [poly] if poly else [])
 
     def _write_geojson(self, dst_file, polygons):
         schema = {"geometry": "Polygon", "properties": {"class": "str"}}
-        with fiona.open(dst_file, "w", driver="GeoJSON", crs="EPSG:4326", schema=schema) as dst:
+        with fiona.open(
+            dst_file, "w", driver="GeoJSON", crs="EPSG:4326", schema=schema
+        ) as dst:
             for poly in polygons:
-                dst.write({
-                    "geometry": mapping(poly),
-                    "properties": {"class": "land"}
-                })
+                dst.write({"geometry": mapping(poly), "properties": {"class": "land"}})
 
     def _polygonize(self, osm_file, dst_file, region):
         """Polygonize the osm data"""
@@ -190,13 +194,13 @@ class OSMLandmask(FetchHook):
 
         try:
             # 1. Native Python JSON Parsing (NO GDAL REQUIRED!)
-            with open(osm_file, 'r', encoding='utf-8') as f:
+            with open(osm_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            for element in data.get('elements', []):
+            for element in data.get("elements", []):
                 # 'out geom' embeds the lat/lon directly into the way elements!
-                if element.get('type') == 'way' and 'geometry' in element:
-                    coords = [(pt['lon'], pt['lat']) for pt in element['geometry']]
+                if element.get("type") == "way" and "geometry" in element:
+                    coords = [(pt["lon"], pt["lat"]) for pt in element["geometry"]]
                     if len(coords) >= 2:
                         lines.append(LineString(coords))
 
@@ -225,10 +229,15 @@ class OSMLandmask(FetchHook):
             return
 
         land_polys = []
-        polys = [split_geom] if split_geom.geom_type == "Polygon" else list(split_geom.geoms)
+        polys = (
+            [split_geom]
+            if split_geom.geom_type == "Polygon"
+            else list(split_geom.geoms)
+        )
 
         for poly in polys:
-            if poly.is_empty: continue
+            if poly.is_empty:
+                continue
 
             is_land = self._is_land_by_topology(poly, coastline_geom, cut_width)
 

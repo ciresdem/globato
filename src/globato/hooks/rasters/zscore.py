@@ -61,7 +61,7 @@ class RasterZScore(RasterStreamHook):
         )
 
         local_var = local_sq_mean - local_mean**2
-        local_std = np.sqrt(np.maximum(0, local_var)) # Ensure non-negative
+        local_std = np.sqrt(np.maximum(0, local_var))  # Ensure non-negative
 
         # Avoid div by zero
         local_std[local_std == 0] = 1e-6
@@ -72,5 +72,5 @@ class RasterZScore(RasterStreamHook):
         mask = (z_score > self.threshold) & (~np.isnan(data))
         data[np.isnan(data)] = ndv
         data[mask] = ndv
-        #logger.info(mask)
+        # logger.info(mask)
         return data

@@ -21,6 +21,7 @@ from .base import RasterGlobalHook
 
 try:
     from pykrige.ok import OrdinaryKriging
+
     HAS_PYKRIGE = True
 except ImportError:
     HAS_PYKRIGE = False
@@ -34,7 +35,7 @@ class KrigingSurface(RasterGlobalHook):
     name = "interp_krige"
     default_suffix = "_krige"
 
-    def __init__(self, model='linear', nlags=6, max_points=10000, **kwargs):
+    def __init__(self, model="linear", nlags=6, max_points=10000, **kwargs):
         super().__init__(**kwargs)
         self.model = model
         self.nlags = int(nlags)
@@ -60,7 +61,9 @@ class KrigingSurface(RasterGlobalHook):
             x_vals, y_vals = xy(src.transform, rows, cols)
 
             if len(z_vals) > self.max_points:
-                logger.info(f"Decimating {len(z_vals)} training points down to {self.max_points}...")
+                logger.info(
+                    f"Decimating {len(z_vals)} training points down to {self.max_points}..."
+                )
                 indices = np.random.choice(len(z_vals), self.max_points, replace=False)
                 x_vals = np.array(x_vals)[indices]
                 y_vals = np.array(y_vals)[indices]
@@ -68,23 +71,35 @@ class KrigingSurface(RasterGlobalHook):
 
             logger.info(f"Training Ordinary Kriging ({self.model})...")
             OK = OrdinaryKriging(
-                x_vals, y_vals, z_vals,
-                variogram_model=self.model, nlags=self.nlags, enable_plotting=False
+                x_vals,
+                y_vals,
+                z_vals,
+                variogram_model=self.model,
+                nlags=self.nlags,
+                enable_plotting=False,
             )
 
             # Generate grid coordinates
-            grid_cols, grid_rows = np.meshgrid(np.arange(src.width), np.arange(src.height))
+            grid_cols, grid_rows = np.meshgrid(
+                np.arange(src.width), np.arange(src.height)
+            )
             grid_x, grid_y = xy(src.transform, grid_rows.flatten(), grid_cols.flatten())
 
             # Predict
-            z_pred, _ = OK.execute('points', grid_x, grid_y, backend='loop', n_closest_points=10)
+            z_pred, _ = OK.execute(
+                "points", grid_x, grid_y, backend="loop", n_closest_points=10
+            )
             result_arr = z_pred.reshape(src.height, src.width)
             result_arr = np.nan_to_num(result_arr, nan=nodata)
 
             if barrier_geoms:
                 barrier_mask = rasterize(
-                    barrier_geoms, out_shape=data.shape,
-                    transform=src.transform, fill=0, default_value=1, dtype='uint8'
+                    barrier_geoms,
+                    out_shape=data.shape,
+                    transform=src.transform,
+                    fill=0,
+                    default_value=1,
+                    dtype="uint8",
                 ).astype(bool)
                 result_arr = np.where(~barrier_mask, result_arr, nodata)
 

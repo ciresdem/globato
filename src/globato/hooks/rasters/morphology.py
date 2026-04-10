@@ -15,6 +15,7 @@ import numpy as np
 import scipy.ndimage
 from .base import RasterStreamHook
 
+
 class RasterMorphology(RasterStreamHook):
     """Apply morphological operations to the raster.
 
@@ -24,7 +25,7 @@ class RasterMorphology(RasterStreamHook):
     name = "raster_morphology"
     default_suffix = "_morph"
 
-    def __init__(self, op='erosion', kernel=3, **kwargs):
+    def __init__(self, op="erosion", kernel=3, **kwargs):
         super().__init__(**kwargs)
         self.op = op.lower()
         self.kernel = int(kernel)
@@ -32,11 +33,13 @@ class RasterMorphology(RasterStreamHook):
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         footprint = np.ones((self.kernel, self.kernel), dtype=bool)
 
-        is_float = data.dtype.kind == 'f'
+        is_float = data.dtype.kind == "f"
         if is_float:
             valid_mask = (data != ndv) & ~np.isnan(data)
         else:
-            valid_mask = (data != ndv) if ndv is not None else np.ones_like(data, dtype=bool)
+            valid_mask = (
+                (data != ndv) if ndv is not None else np.ones_like(data, dtype=bool)
+            )
 
         if not np.any(valid_mask):
             return data

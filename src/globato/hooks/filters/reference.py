@@ -9,11 +9,12 @@ globato.hooks.filters.reference
 :license: MIT, see LICENSE for more details.
 """
 
+import os
 import logging
 import numpy as np
 import rasterio
 from fetchez.hooks import FetchHook
-from fetchez import utils
+from fetchez.utils import str2bool, float_or, add_field_to_recarray
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class RasterSampling:
 
         try:
             with rasterio.open(raster_fn) as src:
-                coords = list(zip(points['x'], points['y']))
+                coords = list(zip(points["x"], points["y"]))
 
                 sampled = np.array([val[0] for val in src.sample(coords)])
 
@@ -56,14 +57,16 @@ class RasterMask(FetchHook, RasterSampling):
         super().__init__(**kwargs)
         self.mask_fn = mask_fn
         self.invert = str2bool(invert)
-        self.set_class=set_class
+        self.set_class = set_class
 
     def run(self, entries):
         for mod, entry in entries:
             stream = entry.get("stream")
-            if not stream: continue
+            if not stream:
+                continue
 
-            if not self.mask_fn: continue
+            if not self.mask_fn:
+                continue
 
             entry["stream"] = self._process_stream(stream)
         return entries
@@ -71,7 +74,7 @@ class RasterMask(FetchHook, RasterSampling):
     def _process_stream(self, stream):
         for chunk in stream:
             if "classification" not in chunk.dtype.names:
-                chunk = utils.add_field_to_recarray(chunk, "classification", np.uint8, 0)
+                chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
 
             vals = self.sample_raster(self.mask_fn, chunk, default_val=0)
 
@@ -95,7 +98,9 @@ class DiffZ(FetchHook, RasterSampling):
     meta_desc = "filter points based on a reference raster residuals"
     meta_category = "stream-filter"
 
-    def __init__(self, raster=None, min_diff=None, max_diff=None, invert=False, **kwargs):
+    def __init__(
+        self, raster=None, min_diff=None, max_diff=None, invert=False, **kwargs
+    ):
         super().__init__(**kwargs)
         self.raster = raster
         self.min_diff = float_or(min_diff)
@@ -105,9 +110,11 @@ class DiffZ(FetchHook, RasterSampling):
     def run(self, entries):
         for mod, entry in entries:
             stream = entry.get("stream")
-            if not stream: continue
+            if not stream:
+                continue
 
-            if not self.raster: continue
+            if not self.raster:
+                continue
 
             entry["stream"] = self._process_stream(stream)
         return entries
@@ -115,7 +122,7 @@ class DiffZ(FetchHook, RasterSampling):
     def _process_stream(self, stream):
         for chunk in stream:
             if "classification" not in chunk.dtype.names:
-                chunk = utils.add_field_to_recarray(chunk, "classification", np.uint8, 0)
+                chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
 
             ref_z = self.sample_raster(self.raster, chunk)
             diff = chunk["z"] - ref_z
@@ -123,8 +130,10 @@ class DiffZ(FetchHook, RasterSampling):
             keep = np.ones(len(diff), dtype=bool)
             keep &= ~np.isnan(diff)
 
-            if self.min_diff is not None: keep &= (diff >= self.min_diff)
-            if self.max_diff is not None: keep &= (diff <= self.max_diff)
+            if self.min_diff is not None:
+                keep &= diff >= self.min_diff
+            if self.max_diff is not None:
+                keep &= diff <= self.max_diff
 
             mask = ~keep if not self.invert else keep
             if np.any(mask):

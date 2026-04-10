@@ -10,11 +10,9 @@ SDB generation
 
 import os
 import logging
-import rasterio
 
 from fetchez.hooks.datatype import SetDataType
 from fetchez.modules import FetchModule
-from fetchez.registry import ModuleRegistry
 
 
 logger = logging.getLogger(__name__)
@@ -28,11 +26,20 @@ class GlobSDB(FetchModule):
     """
 
     name = "glob_sdb"
-    meta_tags = ["bathymetry", "sdb", "sentinel2", "icesat2", "machine-learning", "globato"]
+    meta_tags = [
+        "bathymetry",
+        "sdb",
+        "sentinel2",
+        "icesat2",
+        "machine-learning",
+        "globato",
+    ]
     meta_category = "Globato"
     meta_agency = "Globato"
 
-    def __init__(self, train_source="icesat2", cloud_cover=10, max_depth=-0.5, **kwargs):
+    def __init__(
+        self, train_source="icesat2", cloud_cover=10, max_depth=-0.5, **kwargs
+    ):
         super().__init__(**kwargs)
         self.train_source = train_source
         self.cloud_cover = cloud_cover
@@ -45,20 +52,27 @@ class GlobSDB(FetchModule):
         from globato.hooks.rasters.sdb_interp import SDBInterpolation
         from globato.cli.recipe import Recipe
 
-        logger.info(f"Initializing SDB Super-Module. Training source: {self.train_source}")
+        logger.info(
+            f"Initializing SDB Super-Module. Training source: {self.train_source}"
+        )
 
         # Generate a 'micro-recipe' to train the data
         train_dem_path = "temp_sdb_train_stack.tif"
         micro_config = {
             "project": {"name": "sdb_trainer"},
-            "region": [self.region.xmin, self.region.xmax, self.region.ymin, self.region.ymax],
+            "region": [
+                self.region.xmin,
+                self.region.xmax,
+                self.region.ymin,
+                self.region.ymax,
+            ],
             "modules": [{"module": self.train_source}],
             "global_hooks": [
                 {
                     "name": "multi_stack",
-                    "args": {"res": "10m", "output": train_dem_path, "nodata": -9999}
+                    "args": {"res": "10m", "output": train_dem_path, "nodata": -9999},
                 }
-            ]
+            ],
         }
 
         logger.info(f"Fetching and gridding training data via {self.train_source}...")
@@ -70,9 +84,7 @@ class GlobSDB(FetchModule):
 
         # auto-fetch Sentinel-2!
         sdb_hook = SDBInterpolation(
-            sat_image=None,
-            cloud_cover=self.cloud_cover,
-            max_depth=self.max_depth
+            sat_image=None, cloud_cover=self.cloud_cover, max_depth=self.max_depth
         )
 
         final_sdb_path = "glob_sdb_output.tif"
@@ -83,7 +95,7 @@ class GlobSDB(FetchModule):
                 url=f"file://{final_sdb_path}",
                 dst_fn=final_sdb_path,
                 data_type=self.datatype,
-                status=0
+                status=0,
             )
 
         return self

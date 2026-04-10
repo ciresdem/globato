@@ -42,17 +42,17 @@ class GeoHillshade(RasterStreamHook):
         azimuth=315,
         altitude=45,
         vert_exag=1,
-        cmap='etopo',
-        blend_mode='multiply',
+        cmap="etopo",
+        blend_mode="multiply",
         alpha=False,
         gamma=None,
         z_min=None,
         z_max=None,
-        scale=111120.0, # Degrees to Meters conversion
+        scale=111120.0,  # Degrees to Meters conversion
         split_cpt=0,
         **kwargs,
     ):
-        kwargs.setdefault('buffer', 2)
+        kwargs.setdefault("buffer", 2)
         super().__init__(**kwargs)
 
         self.azimuth = float(azimuth)
@@ -60,7 +60,7 @@ class GeoHillshade(RasterStreamHook):
         self.vert_exag = float(vert_exag)
         self.cmap_name = cmap
         self.blend_mode = blend_mode
-        self.alpha = str(alpha).lower() in ['true', '1', 'yes']
+        self.alpha = str(alpha).lower() in ["true", "1", "yes"]
         self.gamma = float(gamma) if gamma else None
 
         self.z_min = float(z_min) if z_min is not None else None
@@ -76,12 +76,7 @@ class GeoHillshade(RasterStreamHook):
 
     def modify_profile(self, profile):
         count = 4 if self.alpha else 3
-        profile.update(
-            dtype='uint8',
-            count=count,
-            nodata=None,
-            photometric='RGB'
-        )
+        profile.update(dtype="uint8", count=count, nodata=None, photometric="RGB")
         return profile
 
     def _auto_detect_z_limits(self, src_fn):
@@ -90,21 +85,28 @@ class GeoHillshade(RasterStreamHook):
             return
 
         import rasterio
+
         try:
             with rasterio.open(src_fn) as src:
-                if hasattr(src, 'crs') and not src.crs.is_geographic:
+                if hasattr(src, "crs") and not src.crs.is_geographic:
                     self.scale = 1.0
 
                 tags = src.tags(1)
-                if 'STATISTICS_MINIMUM' in tags and 'STATISTICS_MAXIMUM' in tags:
-                    self.z_min = float(tags['STATISTICS_MINIMUM'])
-                    self.z_max = float(tags['STATISTICS_MAXIMUM'])
-                    logger.info(f"[{self.name}] Locked Z-limits from metadata: {self.z_min} to {self.z_max}")
+                if "STATISTICS_MINIMUM" in tags and "STATISTICS_MAXIMUM" in tags:
+                    self.z_min = float(tags["STATISTICS_MINIMUM"])
+                    self.z_max = float(tags["STATISTICS_MAXIMUM"])
+                    logger.info(
+                        f"[{self.name}] Locked Z-limits from metadata: {self.z_min} to {self.z_max}"
+                    )
                     return
 
-                logger.info(f"[{self.name}] No Z-stats in metadata. Calculating global limits for colormap...")
+                logger.info(
+                    f"[{self.name}] No Z-stats in metadata. Calculating global limits for colormap..."
+                )
                 data = src.read(1, out_shape=(src.height // 10, src.width // 10))
-                valid_mask = (data != src.nodata) if src.nodata is not None else ~np.isnan(data)
+                valid_mask = (
+                    (data != src.nodata) if src.nodata is not None else ~np.isnan(data)
+                )
 
                 if np.any(valid_mask):
                     self.z_min = float(np.nanmin(data[valid_mask]))
@@ -128,7 +130,7 @@ class GeoHillshade(RasterStreamHook):
 
         cpt_path = self.cmap_name
 
-        if self.cmap_name.lower() == 'etopo':
+        if self.cmap_name.lower() == "etopo":
             cpt_path = cpt_utils.generate_etopo_cpt(self.z_min, self.z_max)
 
         elif not os.path.exists(self.cmap_name):
@@ -136,31 +138,36 @@ class GeoHillshade(RasterStreamHook):
             cpt_path = cpt_utils.fetch_cpt_city(self.cmap_name)
 
         if not cpt_path or not os.path.exists(cpt_path):
-            logger.warning(f"[{self.name}] Colormap '{self.cmap_name}' not found. Defaulting to 'terrain'.")
-            return plt.get_cmap('terrain')
+            logger.warning(
+                f"[{self.name}] Colormap '{self.cmap_name}' not found. Defaulting to 'terrain'."
+            )
+            return plt.get_cmap("terrain")
 
-        logger.info(f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})")
+        logger.info(
+            f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
+        )
         stretched_cpt = cpt_utils.process_cpt(
             cpt_path,
             gmin=self.z_min,
             gmax=self.z_max,
             split_cpt=self.split_cpt,
-            gdal=False
+            gdal=False,
         )
 
         if stretched_cpt and os.path.exists(stretched_cpt):
             cm = cpt_utils.load_cmap(stretched_cpt)
             os.remove(stretched_cpt)
             # Cleanup etopo base if generated
-            if self.cmap_name.lower() == 'etopo' and os.path.exists(cpt_path):
+            if self.cmap_name.lower() == "etopo" and os.path.exists(cpt_path):
                 os.remove(cpt_path)
             if cm:
                 return cm
 
-        return plt.get_cmap('terrain')
+        return plt.get_cmap("terrain")
 
     def _apply_gamma(self, arr):
-        if self.gamma is None: return arr
+        if self.gamma is None:
+            return arr
         if np.issubdtype(arr.dtype, np.integer):
             arr = arr / 255.0
         return arr ** (1 / self.gamma)
@@ -169,21 +176,21 @@ class GeoHillshade(RasterStreamHook):
         H = hs_norm[..., np.newaxis]
         C = rgb_norm
 
-        if self.blend_mode == 'multiply':
+        if self.blend_mode == "multiply":
             return H * C
 
-        elif self.blend_mode == 'screen':
+        elif self.blend_mode == "screen":
             return 1 - (1 - H) * (1 - C)
 
-        elif self.blend_mode == 'overlay':
+        elif self.blend_mode == "overlay":
             return np.where(H < 0.5, 2 * H * C, 1 - 2 * (1 - H) * (1 - C))
 
-        elif self.blend_mode == 'hard_light':
+        elif self.blend_mode == "hard_light":
             # Hard light is the same as overlay, but hinges on C instead of H
             return np.where(C < 0.5, 2 * H * C, 1 - 2 * (1 - C) * (1 - H))
 
-        elif self.blend_mode == 'soft_light':
-            return (1 - 2 * H) * (C ** 2) + 2 * H * C
+        elif self.blend_mode == "soft_light":
+            return (1 - 2 * H) * (C**2) + 2 * H * C
 
         return H * C
 
@@ -196,7 +203,7 @@ class GeoHillshade(RasterStreamHook):
             return data
 
         if self.z_min is None or self.z_max is None:
-            self._auto_detect_z_limits(entry.get('src_fn'))
+            self._auto_detect_z_limits(entry.get("src_fn"))
 
         if self.cm is None:
             self.cm = self._resolve_colormap()
@@ -214,8 +221,9 @@ class GeoHillshade(RasterStreamHook):
         slope = 0.5 * np.pi - np.arctan(np.hypot(dx_grad, dy_grad))
         aspect = np.arctan2(dy_grad, dx_grad)
 
-        hs = (np.sin(self.altrad) * np.sin(slope) +
-              np.cos(self.altrad) * np.cos(slope) * np.cos(self.azrad - aspect))
+        hs = np.sin(self.altrad) * np.sin(slope) + np.cos(self.altrad) * np.cos(
+            slope
+        ) * np.cos(self.azrad - aspect)
         hs = np.clip(hs, 0.0, 1.0)
 
         norm = mcolors.Normalize(vmin=self.z_min, vmax=self.z_max, clip=True)

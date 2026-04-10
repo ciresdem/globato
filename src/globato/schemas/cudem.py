@@ -36,13 +36,13 @@ class CUDEMSchema(BaseSchema):
             return config
 
         res_deg = 0.0000308641975  # 1/9 arc-second
-        buffer_deg = 6 * res_deg   # 6 cell overlap
+        buffer_deg = 6 * res_deg  # 6 cell overlap
 
         proc_region = [
             dist_region[0] - buffer_deg,
             dist_region[1] + buffer_deg,
             dist_region[2] - buffer_deg,
-            dist_region[3] + buffer_deg
+            dist_region[3] + buffer_deg,
         ]
 
         config["region"] = proc_region
@@ -52,16 +52,15 @@ class CUDEMSchema(BaseSchema):
         for hook in global_hooks:
             if hook.get("name") == "multi_stack":
                 hook.setdefault("args", {})
-                hook["args"].update({
-                    "resolution": res_deg,
-                    "registration": "grid",
-                    "srs": "EPSG:4269+5703"
-                })
+                hook["args"].update(
+                    {
+                        "resolution": res_deg,
+                        "registration": "grid",
+                        "srs": "EPSG:4269+5703",
+                    }
+                )
 
-        global_hooks.append({
-            "name": "raster_crop",
-            "args": {"bounds": dist_region}
-        })
+        global_hooks.append({"name": "raster_crop", "args": {"bounds": dist_region}})
 
         config["global_hooks"] = global_hooks
         return config

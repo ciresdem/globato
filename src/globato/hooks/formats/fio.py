@@ -11,6 +11,7 @@ Fiona/Shapely based Vector Reader (Shapefile, GeoPackage, S-57).
 :license: MIT, see LICENSE for more details.
 """
 
+import os
 import logging
 import numpy as np
 from fetchez.hooks import FetchHook
@@ -19,6 +20,7 @@ from fetchez.utils import float_or
 try:
     import fiona
     from shapely.geometry import shape
+
     HAS_FIONA = True
 except ImportError:
     HAS_FIONA = False
@@ -29,20 +31,26 @@ logger = logging.getLogger(__name__)
 class FionaReader:
     """Streaming Fiona Vector Parser for extracting 3D points/vertices."""
 
-    KNOWN_LAYERS = ["SOUNDG", "SurveyPoint_HD", "SurveyPoint", "Mass_Point", "Spot_Elevation"]
+    KNOWN_LAYERS = [
+        "SOUNDG",
+        "SurveyPoint_HD",
+        "SurveyPoint",
+        "Mass_Point",
+        "Spot_Elevation",
+    ]
     KNOWN_Z_FIELDS = ["VALSOU", "Elevation", "elev", "z", "depth", "height", "value"]
 
     def __init__(
-            self,
-            src_fn,
-            layer=None,
-            z_field=None,
-            weight_field=None,
-            unc_field=None,
-            z_scale=1.0,
-            elevation_value=None,
-            chunk_size=50000,
-            **kwargs,
+        self,
+        src_fn,
+        layer=None,
+        z_field=None,
+        weight_field=None,
+        unc_field=None,
+        z_scale=1.0,
+        elevation_value=None,
+        chunk_size=50000,
+        **kwargs,
     ):
         self.src_fn = src_fn
         self.target_layer = layer
@@ -76,7 +84,8 @@ class FionaReader:
     def _extract_vertices(self, geom):
         """Recursively flattens Shapely geometries into a list of (x,y,[z]) tuples."""
 
-        if geom.is_empty: return []
+        if geom.is_empty:
+            return []
         g_type = geom.geom_type
 
         if g_type == "Point":
@@ -84,7 +93,9 @@ class FionaReader:
         elif g_type in ("LineString", "LinearRing"):
             return list(geom.coords)
         elif g_type == "Polygon":
-            return list(geom.exterior.coords) + [c for r in geom.interiors for c in r.coords]
+            return list(geom.exterior.coords) + [
+                c for r in geom.interiors for c in r.coords
+            ]
         elif g_type.startswith("Multi") or g_type == "GeometryCollection":
             pts = []
             for part in geom.geoms:
@@ -113,9 +124,19 @@ class FionaReader:
                     geom = shape(feat.geometry)
                     props = feat.properties
 
-                    w_val = float_or(props.get(self.weight_field), 1.0) if self.weight_field else 1.0
-                    u_val = float_or(props.get(self.unc_field), 0.0) if self.unc_field else 0.0
-                    z_attr = props.get(z_attr_name) if z_attr_name else self.elevation_value
+                    w_val = (
+                        float_or(props.get(self.weight_field), 1.0)
+                        if self.weight_field
+                        else 1.0
+                    )
+                    u_val = (
+                        float_or(props.get(self.unc_field), 0.0)
+                        if self.unc_field
+                        else 0.0
+                    )
+                    z_attr = (
+                        props.get(z_attr_name) if z_attr_name else self.elevation_value
+                    )
 
                     for pt in self._extract_vertices(geom):
                         z_val = float_or(pt[2]) if len(pt) > 2 else float_or(z_attr)

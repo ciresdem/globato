@@ -38,7 +38,14 @@ class RasterDiff(RasterGlobalHook):
     name = "raster_diff"
     default_suffix = "_diff"
 
-    def __init__(self, aux_path=None, threshold=None, mode='filter', resample='bilinear', **kwargs):
+    def __init__(
+        self,
+        aux_path=None,
+        threshold=None,
+        mode="filter",
+        resample="bilinear",
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.aux_path = aux_path
         self.threshold = float(threshold) if threshold is not None else None
@@ -52,31 +59,33 @@ class RasterDiff(RasterGlobalHook):
             logger.error(f"[Diff] Aux path not found: {self.aux_path}")
             return False
 
-        if self.mode == 'difference' and '_processed' in dst_path:
-            dst_path = dst_path.replace('_processed', '_diff')
+        if self.mode == "difference" and "_processed" in dst_path:
+            dst_path = dst_path.replace("_processed", "_diff")
 
         with rasterio.open(src_path) as src:
             profile = src.profile.copy()
 
-            if self.mode == 'difference':
+            if self.mode == "difference":
                 profile.update(dtype=rasterio.float32, nodata=np.nan)
 
             with rasterio.open(self.aux_path) as aux:
-                with WarpedVRT(aux,
-                               crs=src.crs,
-                               transform=src.transform,
-                               width=src.width,
-                               height=src.height,
-                               resampling=self.resample_alg) as vrt_aux:
-
-                    with rasterio.open(dst_path, 'w', **profile) as dst:
-                        for window, buff_win in self.yield_buffered_windows(src, buffer_size=0):
-
+                with WarpedVRT(
+                    aux,
+                    crs=src.crs,
+                    transform=src.transform,
+                    width=src.width,
+                    height=src.height,
+                    resampling=self.resample_alg,
+                ) as vrt_aux:
+                    with rasterio.open(dst_path, "w", **profile) as dst:
+                        for window, buff_win in self.yield_buffered_windows(
+                            src, buffer_size=0
+                        ):
                             src_data = src.read(1, window=window)
                             src_ndv = src.nodata
 
                             aux_data = vrt_aux.read(1, window=window)
-                            aux_ndv = vrt_aux.nodata # Usually inherited or set in VRT
+                            aux_ndv = vrt_aux.nodata  # Usually inherited or set in VRT
 
                             s_arr = src_data.astype(np.float32)
                             s_arr[src_data == src_ndv] = np.nan
@@ -87,13 +96,13 @@ class RasterDiff(RasterGlobalHook):
 
                             diff = s_arr - a_arr
 
-                            if self.mode == 'difference':
-                                diff[np.isnan(diff)] = profile['nodata']
+                            if self.mode == "difference":
+                                diff[np.isnan(diff)] = profile["nodata"]
                                 dst.write(diff, 1, window=window)
 
-                            elif self.mode == 'filter':
+                            elif self.mode == "filter":
                                 if self.threshold is not None:
-                                    with np.errstate(invalid='ignore'):
+                                    with np.errstate(invalid="ignore"):
                                         mask = np.abs(diff) > self.threshold
 
                                     src_data[mask] = src_ndv

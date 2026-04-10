@@ -14,8 +14,6 @@ Optimized by rasterizing vectors to a boolean mask on-the-fly.
 
 import os
 import logging
-import numpy as np
-from fetchez import utils
 from .base import GlobatoFilter
 from .reference import RasterSampling
 
@@ -65,8 +63,7 @@ class VectorMask(GlobatoFilter, RasterSampling):
         # Hash the region to allow reuse if multiple modules share the same area
         r_hash = hash(tuple(mod.region))
         self.mask_fn = os.path.join(
-            mod._outdir,
-            f"mask_{os.path.basename(self.vector_fn)}_{r_hash}.tif"
+            mod._outdir, f"mask_{os.path.basename(self.vector_fn)}_{r_hash}.tif"
         )
 
         if os.path.exists(self.mask_fn):
@@ -86,16 +83,22 @@ class VectorMask(GlobatoFilter, RasterSampling):
 
         try:
             driver = gdal.GetDriverByName("GTiff")
-            ds = driver.Create(self.mask_fn, width, height, 1, gdal.GDT_Byte,
-                               options=["COMPRESS=LZW", "TILED=YES"])
+            ds = driver.Create(
+                self.mask_fn,
+                width,
+                height,
+                1,
+                gdal.GDT_Byte,
+                options=["COMPRESS=LZW", "TILED=YES"],
+            )
             ds.SetGeoTransform([w, self.res, 0, n, 0, -self.res])
-            ds.SetProjection("EPSG:4326") # Assuming WGS84 for now
+            ds.SetProjection("EPSG:4326")  # Assuming WGS84 for now
 
             vec_ds = ogr.Open(self.vector_fn)
             lyr = vec_ds.GetLayer()
 
             gdal.RasterizeLayer(ds, [1], lyr, burn_values=[1])
-            ds = None # Save/Close
+            ds = None  # Save/Close
             return True
 
         except Exception as e:
@@ -107,7 +110,7 @@ class VectorMask(GlobatoFilter, RasterSampling):
             return None
 
         vals = self.sample_raster(self.mask_fn, chunk, default_val=0)
-        is_inside = (vals == 1)
+        is_inside = vals == 1
 
         return is_inside
 
