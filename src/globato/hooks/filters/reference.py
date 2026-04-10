@@ -14,7 +14,8 @@ import logging
 import numpy as np
 import rasterio
 from fetchez.hooks import FetchHook
-from fetchez.utils import str2bool, float_or, add_field_to_recarray
+from fetchez.utils import str2bool, float_or
+from globato.utils import add_field_to_recarray
 
 logger = logging.getLogger(__name__)
 
