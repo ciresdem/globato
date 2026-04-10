@@ -22,6 +22,10 @@ Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and 
 
 ## ❓ Why Globato?
 
+Traditional DEM generation is often a disjointed, manual process of hunting down, organizing and processing disparate datasets using a wide variety of software and one-off processing scripts.
+
+**Globato** standardizes this workflow by unifying data fetching, spatial filtering, datum transformations, and gridding into a single, memory-safe streaming pipeline. Using declarative YAML recipes, it allows you to orchestrate massive, reproducible Topo-Bathy DEMs directly from your terminal!
+
 ---
 
 ## 📦 Installation
@@ -48,4 +52,11 @@ Would you like to know more? Check out our [Official Documentation](https://glob
 
 * **DEM Recipes:** Build reproducable DEMs using simple YAML recipes.
 
-**👉 [Read the Globato Documentation](https://globato.readthedocs.io/)**
+---
+
+## ⚖ License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/continuous-dems/fetchez/blob/main/LICENSE) file for details.
+
+Copyright (c) 2010-2026 Regents of the University of Colorado
+
