@@ -97,3 +97,18 @@ globato region split loc:"California" --size 0.25 -O cali_tiles.geojson
 The transition to this modern, modular architecture is just the beginning. Our vision is to cultivate a thriving open-source community around high-accuracy elevation modeling.
 
 We welcome contributions! Whether you want to write a new data-fetching module, build a custom visualization hook, or simply share a YAML recipe for your local coastline, check out our [GitHub Repository](https://github.com/continuous-dems) or join our [Zulip Chatspace](https://cudem.zulipchat.com/) to get involved.
+
+
+```{toctree}
+:maxdepth: 2
+:hidden:
+:caption: User Guide:
+
+```
+
+Indices and tables
+==================
+
+* {ref}`genindex`
+* {ref}`modindex`
+* {ref}`search`
