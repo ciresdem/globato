@@ -15,10 +15,6 @@ build:
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --group docs
 
-system_packages:
-  - libgdal-dev
-  - gdal-bin
-
 sphinx:
   configuration: "docs/source/conf.py"
   fail_on_warning: true
