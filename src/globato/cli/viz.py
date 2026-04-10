@@ -14,9 +14,10 @@ import time
 import click
 import logging
 from fetchez.registry import HookRegistry
+from fetchez.utils import parse_hook_string
 from transformez.spatial import TransRegion
 
-from globato.utils import parse_hook_string, add_field_to_recarray
+from globato.utils import add_field_to_recarray
 
 logger = logging.getLogger(__name__)
 

@@ -14,13 +14,14 @@ import logging
 import numpy as np
 
 from fetchez.registry import HookRegistry, ModuleRegistry
+from fetchez.utils import parse_hook_string
 from fetchez.core import run_fetchez
 
 from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.transforms.reproject import StreamReproject
 from transformez.spatial import TransRegion
 
-from globato.utils import parse_source_string, parse_hook_string
+from globato.utils import parse_source_string
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ Registers CRM DEM-specific schema into the Fetchez engine.
 """
 
 from fetchez.schemas import BaseSchema  # , SchemaRegistry
-
+from fetchez.spatial import parse_region
 
 class CRMSchema(BaseSchema):
     """The "CRM" schema.
@@ -30,26 +30,24 @@ class CRMSchema(BaseSchema):
 
     @classmethod
     def apply(cls, config):
-        domain = config.get("domain", {})
-        dist_region = domain.get("region")
+        recipe_region = config.get("region")
+        dist_region = (
+            parse_region(recipe_region) if recipe_region else [None]
+        )[0]
         if not dist_region:
             return config
 
         res_deg = 0.0002777777777777778 # 1 arc-second
-        buffer_deg = 20 * res_deg   # 20 cell buffer for fetching
+        # buffer_deg = 100 * res_deg   # 100 cell buffer for fetching/gridding
 
-        proc_region = [
-            dist_region[0] - buffer_deg,
-            dist_region[1] + buffer_deg,
-            dist_region[2] - buffer_deg,
-            dist_region[3] + buffer_deg
-        ]
-
-        config["region"] = proc_region
+        proc_region = dist_region.copy()
+        proc_region.buffer(10) # Buffering slightly to ensure overlap coverage
+        config["region"] = proc_region.to_list()
 
         global_hooks = config.get("global_hooks", [])
         modules = config.get("modules", [])
 
+        # Update Module reprojections
         for module in modules:
             for hook in module.get("hooks", []):
                 if hook.get("name") == "stream_reproject":
@@ -57,6 +55,7 @@ class CRMSchema(BaseSchema):
                         hook.setdefault("args", {})
                     hook["args"].update({"dst_srs": "EPSG:4326+3855"})
 
+        # Update Stack parameters
         for hook in global_hooks:
             if hook.get("name") == "multi_stack":
                 hook.setdefault("args", {})
@@ -66,9 +65,26 @@ class CRMSchema(BaseSchema):
                     "srs": "EPSG:4326+3855"
                 })
 
-        global_hooks.append({
+        # Find where to insert the cut/crop hooks!
+        # We want to put it after dem_uncertainty, but before viz_geoshade
+        insert_idx = len(global_hooks)
+        for i, hook in enumerate(global_hooks):
+            if hook.get("name") == "viz_geoshade":
+                insert_idx = i
+                break
+
+        proj_name = config.get("project", {}).get("name", "crm_dem")
+        base_proj_name = proj_name.split("_tile_")[0].split("_L_")[0]
+        delivery_fn = f"{base_proj_name}_{dist_region.format('delivery')}.tif"
+
+        global_hooks.insert(insert_idx, {
             "name": "raster_crop",
-            "args": {"bounds": dist_region}
+            "args": {"output": delivery_fn}
+        })
+
+        global_hooks.insert(insert_idx, {
+            "name": "raster_cut",
+            "args": {"region": dist_region.to_list(), }
         })
 
         config["global_hooks"] = global_hooks

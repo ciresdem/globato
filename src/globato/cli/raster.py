@@ -61,20 +61,20 @@ def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
 
     click.echo("=" * 60 + "\n")
 
-def run_raster_hook(hook_instance, src, dst, strip_bands=False, region=None):
+def run_raster_hook(hook_instance, src, dst, strip_bands=False):#, region=None):
     """Execution wrapper for standalone raster commands."""
 
-    if region:
-        try:
-            r_vals = [float(x) for x in region.replace(',', '/').split('/')]
-            if len(r_vals) == 4:
-                hook_instance.region = TransRegion(r_vals)
-            else:
-                click.secho("Error: Region must be W/E/S/N", fg="red")
-                sys.exit(1)
-        except Exception as e:
-            click.secho(f"Invalid region format: {e}", fg="red")
-            sys.exit(1)
+    # if region:
+    #     try:
+    #         r_vals = [float(x) for x in region.replace(',', '/').split('/')]
+    #         if len(r_vals) == 4:
+    #             hook_instance.region = TransRegion(r_vals)
+    #         else:
+    #             click.secho("Error: Region must be W/E/S/N", fg="red")
+    #             sys.exit(1)
+    #     except Exception as e:
+    #         click.secho(f"Invalid region format: {e}", fg="red")
+    #         sys.exit(1)
 
     if strip_bands:
         hook_instance.strip_bands = True
@@ -149,8 +149,18 @@ def raster_cut(src, dst, strip_bands, region):
     """Cut/Mask to Region."""
 
     from globato.hooks.rasters.cut import RasterCut
-    hook = RasterCut()
-    run_raster_hook(hook, src, dst, strip_bands, region=region)
+    hook = RasterCut(region=region)
+    run_raster_hook(hook, src, dst, strip_bands)
+
+
+@raster_group.command("crop")
+@raster_io
+def raster_crop(src, dst, strip_bands):
+    """Crop a raster to its valid data bounds (removes NoData moat)."""
+
+    from globato.hooks.rasters.crop import RasterCrop
+    hook = RasterCrop()
+    run_raster_hook(hook, src, dst, strip_bands)
 
 
 @raster_group.command("flats")
