@@ -60,6 +60,9 @@ class CudemStepDown(RasterGlobalHook):
             res_val = float(self.resolutions[-1]) * 3
             self.resolutions.append(res_val)
 
+        # make sure we pull all data into the first step
+        self.weights[-1] = 0.0
+
     def _decimate_raster(self, src_path, dst_path, target_res):
         """Downsamples the main stack using average pooling."""
 
@@ -187,7 +190,6 @@ class CudemStepDown(RasterGlobalHook):
             step_interp = f"temp_interp_step{i}.tif"
 
             self._decimate_raster(src_path, step_stack, target_res=res)
-
             if previous_surface and os.path.exists(previous_surface):
                 self._blend_background(
                     step_stack, previous_surface, current_weight=weight

@@ -46,6 +46,7 @@ class MultiStackBlend(RasterStreamHook):
         self,
         weight_threshold=1.0,
         blend_dist=5,
+        core_dist=1,
         slope_scale=0.5,
         random_scale=0.025,
         algo="linear",
@@ -53,11 +54,12 @@ class MultiStackBlend(RasterStreamHook):
     ):
 
         # Ensure we have enough buffer to cover the blend distance + interpolation context
-        buffer_req = int(blend_dist) * 2
+        buffer_req = int(blend_dist + core_dist) * 2
         super().__init__(buffer=buffer_req, **kwargs)
 
         self.weight_threshold = float(weight_threshold)
         self.blend_dist = int(blend_dist)
+        self.core_dist = int(core_dist)
         self.slope_scale = float(slope_scale)
         self.random_scale = float(random_scale)
         self.algo = algo
@@ -126,11 +128,18 @@ class MultiStackBlend(RasterStreamHook):
         import scipy.ndimage
 
         struct = scipy.ndimage.generate_binary_structure(2, 2)
-        fg_closed = scipy.ndimage.binary_closing(fg_mask, structure=struct)
-        blend_mask = scipy.ndimage.binary_dilation(
-            fg_closed, iterations=self.blend_dist
-        )
-        transition_zone = blend_mask & (~fg_closed) & valid_mask
+
+        if self.core_dist > 0:
+            fg_core = scipy.ndimage.binary_closing(fg_mask, structure=struct, iterations=self.core_dist)
+        else:
+            fg_core = fg_mask.copy()
+
+        gap_mask = fg_core & (~fg_mask) & valid_mask
+
+        blend_mask = scipy.ndimage.binary_dilation(fg_core, iterations=self.blend_dist)
+        outer_transition = blend_mask & (~fg_core) & valid_mask
+
+        transition_zone = outer_transition | gap_mask
 
         if not np.any(transition_zone):
             return data
@@ -140,15 +149,14 @@ class MultiStackBlend(RasterStreamHook):
             rand_keep = rand_arr < self.random_scale
 
             if self.slope_scale > 0:
-                slope_norm = self._get_slope_norm(z, transition_zone)
+                slope_norm = self._get_slope_norm(z, outer_transition)
                 if slope_norm is not None:
                     flat_areas = slope_norm < self.slope_scale
                     rand_keep[flat_areas] = False
-        # ... (Keep your existing random gating logic here) ...
 
         anchors_mask = fg_mask | (bg_mask & ~transition_zone)
         if self.random_scale > 0:
-            anchors_mask = anchors_mask | (transition_zone & rand_keep)
+            anchors_mask = anchors_mask | (outer_transition & rand_keep)
 
         rows, cols = np.indices(z.shape)
         anchor_pts = np.array([rows[anchors_mask], cols[anchors_mask]]).T
@@ -162,8 +170,10 @@ class MultiStackBlend(RasterStreamHook):
             interp_vals = scipy.interpolate.griddata(
                 anchor_pts, anchor_vals, target_pts, method=self.algo
             )
-            dist = scipy.ndimage.distance_transform_cdt(~fg_mask, metric="taxicab")
+
+            dist = scipy.ndimage.distance_transform_cdt(~fg_core, metric="taxicab")
             d_vals = dist[transition_zone]
+
             if d_vals.size > 0:
                 d_min, d_max = d_vals.min(), d_vals.max()
                 if d_max > d_min:
@@ -173,15 +183,19 @@ class MultiStackBlend(RasterStreamHook):
             else:
                 weights = np.zeros(len(interp_vals))
 
+            gap_indices = gap_mask[transition_zone]
+            weights[gap_indices] = 0.0
+
             original_vals = z[transition_zone]
-            original_vals[np.isnan(original_vals)] = interp_vals[
-                np.isnan(original_vals)
-            ]
+            original_vals[np.isnan(original_vals)] = interp_vals[np.isnan(original_vals)]
+
             blended_vals = (1 - weights) * interp_vals + (weights) * original_vals
 
-            # Apply the blended Z values back into the stack array!
             z[transition_zone] = blended_vals
             data[0] = z
+
+            w[gap_mask] = self.weight_threshold
+            data[2] = w
 
         except Exception as e:
             logger.warning(f"Blend failed in chunk: {e}")

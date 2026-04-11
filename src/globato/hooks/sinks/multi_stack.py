@@ -315,7 +315,7 @@ class MultiStackAccumulator:
                             y[valid] = y[valid] / w[valid]
                             src_u[valid] = src_u[valid] / w[valid]
                             unc[valid] = np.sqrt(unc[valid]) / cnt[valid]
-
+                            w[valid] = w[valid] / cnt[valid]
                     dst.write(data, window=window)
 
                 # Copy the provenance registry over to the final file!

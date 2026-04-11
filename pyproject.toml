@@ -82,6 +82,9 @@ globato_schemas = "globato.schemas"
 [project.entry-points."fetchez.recipes"]
 globato_recipes = "globato.recipes"
 
+[project.entry-points."fetchez.presets"]
+globato_presets = "globato.presets"
+
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
 

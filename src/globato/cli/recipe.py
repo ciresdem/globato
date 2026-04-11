@@ -231,10 +231,10 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
 
-            if is_batch:
-                tile_dir = os.path.join(base_outdir, batch_name)
-                os.makedirs(tile_dir, exist_ok=True)
-                os.chdir(tile_dir)
+            # if is_batch:
+            tile_dir = os.path.join(base_outdir, batch_name)
+            os.makedirs(tile_dir, exist_ok=True)
+            os.chdir(tile_dir)
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
             with open(batch_config_fn, "w") as f:
