@@ -80,7 +80,7 @@ class RasterFill(RasterGlobalHook):
                     filled_arr = np.where(~barrier_mask, filled_arr, nodata)
 
                 profile = src.profile.copy()
-                profile.update(dtype=rasterio.float32, nodata=nodata)
+                profile.update(dtype=rasterio.float32, nodata=nodata, count=1)
 
                 with rasterio.open(dst_path, "w", **profile) as dst:
                     dst.write(filled_arr.astype(rasterio.float32), 1)
