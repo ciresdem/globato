@@ -130,7 +130,9 @@ class MultiStackBlend(RasterStreamHook):
         struct = scipy.ndimage.generate_binary_structure(2, 2)
 
         if self.core_dist > 0:
-            fg_core = scipy.ndimage.binary_closing(fg_mask, structure=struct, iterations=self.core_dist)
+            fg_core = scipy.ndimage.binary_closing(
+                fg_mask, structure=struct, iterations=self.core_dist
+            )
         else:
             fg_core = fg_mask.copy()
 
@@ -187,7 +189,9 @@ class MultiStackBlend(RasterStreamHook):
             weights[gap_indices] = 0.0
 
             original_vals = z[transition_zone]
-            original_vals[np.isnan(original_vals)] = interp_vals[np.isnan(original_vals)]
+            original_vals[np.isnan(original_vals)] = interp_vals[
+                np.isnan(original_vals)
+            ]
 
             blended_vals = (1 - weights) * interp_vals + (weights) * original_vals
 

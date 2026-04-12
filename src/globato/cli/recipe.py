@@ -181,7 +181,7 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
 
     for t_reg, feat_name in yield_parsed_regions(region):
         try:
-            is_batch = False
+            _is_batch = False
             config = copy.deepcopy(base_config)
             if t_reg:
                 config["region"] = (
@@ -189,7 +189,7 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 )
 
             if feat_name:
-                is_batch = True
+                _is_batch = True
                 orig_name = config.get("project", {}).get("name", "globato_dem")
                 batch_name = f"{orig_name}_{feat_name}"
                 config.setdefault("project", {})["name"] = batch_name

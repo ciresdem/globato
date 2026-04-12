@@ -1,4 +1,4 @@
-name: standard_blend
+name: stack_and_blend
 description: "Grids points via multi_stack, pivots the pipeline, and performs a double-pass blend."
 hooks:
   # Build the Multi-Band Stack
