@@ -107,7 +107,6 @@ class GmtSurface(RasterGlobalHook):
 
                 profile = src.profile.copy()
                 profile.update(dtype=rasterio.float32, nodata=nodata, count=1)
-                print(profile)
 
                 if barrier_geoms:
                     barrier_mask = rasterize(
