@@ -234,7 +234,7 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
 
-            if is_batch or not outdir:
+            if _is_batch or not outdir:
                 tile_dir = os.path.join(base_outdir, batch_name)
                 os.makedirs(tile_dir, exist_ok=True)
                 os.chdir(tile_dir)
