@@ -109,7 +109,7 @@ def _absolutize_local_sources(config, base_dir):
 )
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
-@click.option("--outdir", default=".", help="Base output directory for the tiles.")
+@click.option("--outdir", default=None, help="Base output directory for the tiles.")
 @click.option(
     "--overwrite",
     is_flag=True,
@@ -117,6 +117,8 @@ def _absolutize_local_sources(config, base_dir):
 )
 def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
+
+    import copy
 
     RecipeRegistry.load_all()
 
@@ -162,7 +164,10 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
 
-    base_outdir = os.path.abspath(outdir)
+    if outdir is None:
+        base_outdir = os.path.abspath(".")
+    else:
+        base_outdir = os.path.abspath(outdir)
     os.makedirs(base_outdir, exist_ok=True)
     original_cwd = os.getcwd()
     base_config = _absolutize_local_sources(base_config, original_cwd)
@@ -176,8 +181,6 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 completed_tiles = json.load(f)
         except Exception:
             pass  # If the state file is corrupted, we just ignore it
-
-    import copy
 
     for t_reg, feat_name in yield_parsed_regions(region):
         try:
@@ -231,10 +234,10 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
 
-            # if is_batch:
-            tile_dir = os.path.join(base_outdir, batch_name)
-            os.makedirs(tile_dir, exist_ok=True)
-            os.chdir(tile_dir)
+            if is_batch or not outdir:
+                tile_dir = os.path.join(base_outdir, batch_name)
+                os.makedirs(tile_dir, exist_ok=True)
+                os.chdir(tile_dir)
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
             with open(batch_config_fn, "w") as f:
