@@ -200,13 +200,13 @@ global_hooks:
       algo: "interp_gmt"
       output: "crm_standard_dem.tif"
 
-  # Uncertainty
-  - name: dem_uncertainty
-    args:
-      mode: "split_sample"
-      algo: "interp_gmt"
-      fit_method: "curve"
-      append_band: true
+  # # Uncertainty
+  # - name: dem_uncertainty
+  #   args:
+  #     mode: "split_sample"
+  #     algo: "interp_gmt"
+  #     fit_method: "curve"
+  #     append_band: true
 
   # Generate a hillshade.
   - name: viz_geoshade
