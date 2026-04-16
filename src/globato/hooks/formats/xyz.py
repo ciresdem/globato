@@ -185,7 +185,7 @@ class XYZReader:
                             if self.rem:
                                 x = np.fmod(x + 180, 360) - 180
 
-                                w = np.ones_like(z)
+                            w = np.ones_like(z)
                             u = np.zeros_like(z)
 
                             if self.wpos is not None:
