@@ -34,6 +34,8 @@ class StreamReproject(FetchHook):
         self.vert_grid = vert_grid
         self._cache = {}
 
+        # print(dst_srs, src_srs)
+
     def _get_pipeline(self, entry_src_srs, region=None):
         if not SRSParser:
             return None

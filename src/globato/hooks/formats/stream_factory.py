@@ -69,6 +69,18 @@ class StreamFactory:
             "z_field": "hdp",
             "z_scale": -1,
         },
+        "gdb": {
+            "reader": FionaReader,
+        },
+        "fiona": {
+            "reader": FionaReader,
+        },
+        "ehydro_gdb": {
+            "reader": FionaReader,
+            "z_field": "Z_label",  # Force Fiona to use this field for elevation
+            "z_scale": -0.3048,  # -1.0,      # eHydro is typically positive-down depth! Flip it.
+            "vert_srs": "EPSG:5866",  # <--- Forces MLLW vertical datum!
+        },
     }
 
     @staticmethod
@@ -229,6 +241,10 @@ class DataStream(FetchHook):
 
             # try and sanitize raster chunk_sizes so we don't crash
             kwargs_copy = self.reader_kwargs.copy()
+
+            hook_dtype = kwargs_copy.pop("data_type", None)
+            dtype = hook_dtype or dtype
+
             kwargs_copy["region"] = getattr(mod, "region", None)
             if dtype in ["raster", "bag"] or src.lower().endswith(
                 (".tif", ".tiff", ".nc", ".vrt", ".bag")
@@ -251,8 +267,17 @@ class DataStream(FetchHook):
             mod.region = TransRegion.from_list(mod.region)
 
             if raw_stream:
+                base_srs = "EPSG:4326"
                 if hasattr(reader, "get_srs"):
-                    entry["src_srs"] = reader.get_srs() or "EPSG:4326"
+                    base_srs = reader.get_srs() or base_srs
+
+                profile = StreamFactory.FORMAT_PROFILES.get(dtype, {})
+                vert_srs = kwargs_copy.get("vert_srs") or profile.get("vert_srs")
+
+                if vert_srs and "+" not in base_srs:
+                    base_srs = f"{base_srs}+{vert_srs}"
+
+                entry["src_srs"] = base_srs
 
                 entry["stream"] = ensure_schema(
                     raw_stream, module_weight=w, module_unc=u

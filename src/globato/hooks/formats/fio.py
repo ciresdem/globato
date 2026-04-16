@@ -38,7 +38,17 @@ class FionaReader:
         "Mass_Point",
         "Spot_Elevation",
     ]
-    KNOWN_Z_FIELDS = ["VALSOU", "Elevation", "elev", "z", "depth", "height", "value"]
+    KNOWN_Z_FIELDS = [
+        "VALSOU",
+        "Elevation",
+        "elev",
+        "z",
+        "depth",
+        "height",
+        "value",
+        "Z_use",
+        "Z_depth",
+    ]
 
     def __init__(
         self,
@@ -53,6 +63,28 @@ class FionaReader:
         **kwargs,
     ):
         self.src_fn = src_fn
+        if self.src_fn.lower().endswith(".zip"):
+            import zipfile
+
+            internal_target = ""
+            try:
+                # Peek inside the zip to find the exact .gdb folder!
+                with zipfile.ZipFile(self.src_fn, "r") as z:
+                    for name in z.namelist():
+                        # Look for the Geodatabase folder
+                        if name.lower().endswith(".gdb/") or name.lower().endswith(
+                            ".gdb"
+                        ):
+                            internal_target = f"!{name.strip('/')}"
+                            break
+                        # (Optional fallback) If it's a zipped shapefile instead
+                        elif name.lower().endswith(".shp"):
+                            internal_target = f"!{name}"
+
+            except Exception as e:
+                logger.debug(f"Could not inspect zip file: {e}")
+
+            self.src_fn = f"zip://{self.src_fn}{internal_target}"
         self.target_layer = layer
         self.z_field = z_field
         self.weight_field = weight_field
@@ -61,6 +93,26 @@ class FionaReader:
         self.elevation_value = float_or(elevation_value)
         self.chunk_size = chunk_size
 
+    def get_srs(self):
+        """Extracts the Coordinate Reference System (SRS) from the vector file."""
+
+        if not HAS_FIONA:
+            return None
+
+        try:
+            layer_name = self._resolve_layer()
+            with fiona.open(self.src_fn, "r", layer=layer_name) as src:
+                # Fiona natively exposes the exact WKT string
+                if src.crs_wkt:
+                    return src.crs_wkt
+                # Fallback for older fiona versions
+                elif src.crs and "init" in src.crs:
+                    return src.crs["init"].upper()
+            return None
+        except Exception as e:
+            logger.debug(f"Could not extract SRS from {self.src_fn}: {e}")
+            return None
+
     def _resolve_layer(self):
         layers = fiona.listlayers(self.src_fn)
         if self.target_layer and self.target_layer in layers:
@@ -68,7 +120,7 @@ class FionaReader:
 
         for name in self.KNOWN_LAYERS:
             if name in layers:
-                logger.info(f"Auto-detected vector layer: {name}")
+                logger.debug(f"Auto-detected vector layer: {name}")
                 return name
         return layers[0]
 
