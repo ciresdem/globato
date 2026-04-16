@@ -38,7 +38,17 @@ class FionaReader:
         "Mass_Point",
         "Spot_Elevation",
     ]
-    KNOWN_Z_FIELDS = ["VALSOU", "Elevation", "elev", "z", "depth", "height", "value", "Z_use", "Z_depth"]
+    KNOWN_Z_FIELDS = [
+        "VALSOU",
+        "Elevation",
+        "elev",
+        "z",
+        "depth",
+        "height",
+        "value",
+        "Z_use",
+        "Z_depth",
+    ]
 
     def __init__(
         self,
@@ -55,13 +65,16 @@ class FionaReader:
         self.src_fn = src_fn
         if self.src_fn.lower().endswith(".zip"):
             import zipfile
+
             internal_target = ""
             try:
                 # Peek inside the zip to find the exact .gdb folder!
-                with zipfile.ZipFile(self.src_fn, 'r') as z:
+                with zipfile.ZipFile(self.src_fn, "r") as z:
                     for name in z.namelist():
                         # Look for the Geodatabase folder
-                        if name.lower().endswith(".gdb/") or name.lower().endswith(".gdb"):
+                        if name.lower().endswith(".gdb/") or name.lower().endswith(
+                            ".gdb"
+                        ):
                             internal_target = f"!{name.strip('/')}"
                             break
                         # (Optional fallback) If it's a zipped shapefile instead
@@ -158,7 +171,6 @@ class FionaReader:
                 count = 0
 
                 for feat in src:
-
                     if not feat.geometry:
                         continue
                     geom = shape(feat.geometry)
@@ -179,7 +191,6 @@ class FionaReader:
                     )
 
                     for pt in self._extract_vertices(geom):
-
                         z_val = float_or(pt[2]) if len(pt) > 2 else float_or(z_attr)
                         if z_val is None:
                             continue
