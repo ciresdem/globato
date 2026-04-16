@@ -63,6 +63,7 @@ class FionaReader:
         **kwargs,
     ):
         self.src_fn = src_fn
+        # this is very specific to EHydro GDB. We need to generalize this.
         if self.src_fn.lower().endswith(".zip"):
             import zipfile
 
@@ -102,10 +103,8 @@ class FionaReader:
         try:
             layer_name = self._resolve_layer()
             with fiona.open(self.src_fn, "r", layer=layer_name) as src:
-                # Fiona natively exposes the exact WKT string
                 if src.crs_wkt:
                     return src.crs_wkt
-                # Fallback for older fiona versions
                 elif src.crs and "init" in src.crs:
                     return src.crs["init"].upper()
             return None

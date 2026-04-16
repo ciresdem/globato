@@ -77,9 +77,9 @@ class StreamFactory:
         },
         "ehydro_gdb": {
             "reader": FionaReader,
-            "z_field": "Z_label",  # Force Fiona to use this field for elevation
-            "z_scale": -0.3048,  # -1.0,      # eHydro is typically positive-down depth! Flip it.
-            "vert_srs": "EPSG:5866",  # <--- Forces MLLW vertical datum!
+            "z_field": "Z_label",
+            "z_scale": -0.3048,
+            "vert_srs": "EPSG:5866",
         },
     }
 
