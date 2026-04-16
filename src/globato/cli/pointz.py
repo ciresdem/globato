@@ -5,6 +5,9 @@
 globato.cli.pointz
 ~~~~~~~~~~~~~~~~~~
 Point cloud filtering and manipulation.
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import os
