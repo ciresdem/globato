@@ -214,8 +214,8 @@ class RasterStreamHook(RasterBaseHook):
                 new_entries.append((mod, entry))
                 continue
 
-            #dst_fn = self.output or f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
-            #dst_fn = f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
+            # dst_fn = self.output or f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
+            # dst_fn = f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
 
             base_name = os.path.splitext(os.path.basename(src_fn))[0]
             dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
@@ -304,8 +304,11 @@ class RasterGlobalHook(RasterBaseHook):
                 )
                 from globato.hooks.sinks.raster_writer import RasterWrite
 
-                drain_fn = os.path.join(tmp_dir, f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif")
-                #drain_fn = f"{os.path.splitext(src_fn)[0]}_drained_{self.name}.tif"
+                base_name = os.path.basename(src_fn)
+                drain_fn = os.path.join(
+                    tmp_dir, f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif"
+                )
+                # drain_fn = f"{os.path.splitext(src_fn)[0]}_drained_{self.name}.tif"
                 entry["dst_fn"] = drain_fn
 
                 drainer = RasterWrite(suffix="", inline=False)

@@ -15,12 +15,32 @@ import yaml
 from fetchez.recipe import Recipe
 from fetchez.utils import parse_source_string, parse_hook_string
 
+# --- OLD POINTZ-GROUP --
+import os
+import sys
+import logging
+import numpy as np
+
+from fetchez.registry import HookRegistry, ModuleRegistry
+from fetchez.core import run_fetchez
+
+from globato.hooks.formats.stream_factory import StreamFactory
+from globato.hooks.transforms.reproject import StreamReproject
+from transformez.spatial import TransRegion
+
+logger = logging.getLogger(__name__)
+
+
 @click.command(name="pointz")
 @click.argument("src", nargs=-1, required=True)
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
-@click.option("-I", "--inc", help="Grid increment (e.g., 1s, 0.0001). Triggers stacking!")
+@click.option(
+    "-I", "--inc", help="Grid increment (e.g., 1s, 0.0001). Triggers stacking!"
+)
 @click.option("-T", "--t-srs", help="Target SRS for reprojection (e.g., EPSG:4326).")
-@click.option("-h", "--hook", multiple=True, help="Processing hooks (e.g., rq:threshold=2.5)")
+@click.option(
+    "-h", "--hook", multiple=True, help="Processing hooks (e.g., rq:threshold=2.5)"
+)
 @click.option("-o", "--output", help="Output file (Default: stdout).")
 @click.option("--save-only", is_flag=True, help="Save the pipeline as YAML.")
 def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
@@ -33,10 +53,7 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
             continue
 
         parsed = parse_source_string(src_str)
-        mod_dict = {
-            "module": parsed["module"],
-            "args": parsed.get("args", {})
-        }
+        mod_dict = {"module": parsed["module"], "args": parsed.get("args", {})}
         if parsed.get("hooks"):
             mod_dict["hooks"] = parsed["hooks"]
         modules.append(mod_dict)
@@ -60,7 +77,7 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
         "project": {"name": "pointz_pipeline"},
         "region": region,
         "modules": modules,
-        "global_hooks": global_hooks
+        "global_hooks": global_hooks,
     }
 
     if save_only:
@@ -74,25 +91,6 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
 
 
 # --- OLD POINTZ-GROUP --
-import os
-import sys
-import click
-import logging
-import numpy as np
-
-from fetchez.registry import HookRegistry, ModuleRegistry
-from fetchez.utils import parse_hook_string
-from fetchez.core import run_fetchez
-
-from globato.hooks.formats.stream_factory import StreamFactory
-from globato.hooks.transforms.reproject import StreamReproject
-from transformez.spatial import TransRegion
-
-from globato.utils import parse_source_string
-
-logger = logging.getLogger(__name__)
-
-
 @click.group(name="pointz")
 def pointz_group():
     """Filter, transform, and stream point cloud data (XYZ/LAS)."""

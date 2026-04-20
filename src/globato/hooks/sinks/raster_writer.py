@@ -19,6 +19,7 @@ from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
 
+
 class RasterWrite(FetchHook):
     """Universal sink that writes a TIFF. Can act as a terminal sink or an inline tap."""
 
@@ -26,7 +27,14 @@ class RasterWrite(FetchHook):
     meta_stage = "collection"
     meta_category = "sink"
 
-    def __init__(self, output_path=None, suffix="_final", artifact_id=None, inline=False, **kwargs):
+    def __init__(
+        self,
+        output_path=None,
+        suffix="_final",
+        artifact_id=None,
+        inline=False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.output_path = output_path
         self.suffix = suffix
@@ -45,10 +53,14 @@ class RasterWrite(FetchHook):
                 x_off = window.col_off - buff_win.col_off
 
                 if data.ndim == 3:
-                    final_chunk = data[:, y_off : y_off + window.height, x_off : x_off + window.width]
+                    final_chunk = data[
+                        :, y_off : y_off + window.height, x_off : x_off + window.width
+                    ]
                     dst.write(final_chunk, window=window)
                 else:
-                    final_chunk = data[y_off : y_off + window.height, x_off : x_off + window.width]
+                    final_chunk = data[
+                        y_off : y_off + window.height, x_off : x_off + window.width
+                    ]
                     dst.write(final_chunk, 1, window=window)
 
                 yield window, buff_win, data, ndv, transform

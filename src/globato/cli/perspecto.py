@@ -15,9 +15,13 @@ from fetchez.utils import parse_source_string, parse_hook_string
 
 @click.command(name="perspecto")
 @click.argument("src", nargs=-1, required=True)
-@click.option("-h", "--hook", multiple=True, help="Visualization hooks (e.g., hillshade:exag=2.0)")
+@click.option(
+    "-h", "--hook", multiple=True, help="Visualization hooks (e.g., hillshade:exag=2.0)"
+)
 @click.option("-o", "--output", help="Output image file (e.g., render.png)")
-@click.option("--save-only", is_flag=True, help="Save the pipeline as YAML without running.")
+@click.option(
+    "--save-only", is_flag=True, help="Save the pipeline as YAML without running."
+)
 def perspecto_cmd(src, hook, output, save_only):
     """Generate visual perspectives of DEMs and Point Clouds."""
 
@@ -27,7 +31,9 @@ def perspecto_cmd(src, hook, output, save_only):
         parsed = parse_source_string(src_str)
         mod_dict = {
             "module": parsed.get("module", "file"),
-            "args": parsed.get("args", {"paths": src_str}) if parsed.get("module") == "file" else parsed.get("args", {})
+            "args": parsed.get("args", {"paths": src_str})
+            if parsed.get("module") == "file"
+            else parsed.get("args", {}),
         }
         modules.append(mod_dict)
 
@@ -50,7 +56,7 @@ def perspecto_cmd(src, hook, output, save_only):
     config = {
         "project": {"name": "perspecto_render"},
         "modules": modules,
-        "global_hooks": global_hooks
+        "global_hooks": global_hooks,
     }
 
     # 4. EXECUTE

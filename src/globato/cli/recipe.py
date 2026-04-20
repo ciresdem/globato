@@ -113,7 +113,7 @@ def _absolutize_local_sources(config, base_dir):
     "--outdir",
     type=click.Path(resolve_path=True),
     default=None,
-    help="Base output directory for the tiles."
+    help="Base output directory for the tiles.",
 )
 @click.option(
     "--overwrite",
@@ -123,9 +123,11 @@ def _absolutize_local_sources(config, base_dir):
 @click.option(
     "--shared-cache",
     type=click.Path(resolve_path=True),
-    help="Centralized directory to cache fetched data across all tiles."
+    help="Centralized directory to cache fetched data across all tiles.",
 )
-def recipe_run(target, region, increment, crs, outname, outdir, overwrite, shared_cache):
+def recipe_run(
+    target, region, increment, crs, outname, outdir, overwrite, shared_cache
+):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
     import copy

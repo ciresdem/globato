@@ -112,7 +112,12 @@ class XYZWrite(FetchHook):
 
                 for chunk in stream:
                     # Filter out NaN/invalid geometries if necessary
-                    np.savetxt(out_port, chunk[["x", "y", "z", "w", "u"]], fmt="%.6f", delimiter=" ")
+                    np.savetxt(
+                        out_port,
+                        chunk[["x", "y", "z", "w", "u"]],
+                        fmt="%.6f",
+                        delimiter=" ",
+                    )
         finally:
             if self.output_path:
                 out_port.close()

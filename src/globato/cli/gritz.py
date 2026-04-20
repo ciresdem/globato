@@ -38,7 +38,7 @@ def list_gritz_tools(ctx, param, value):
     if not value or ctx.resilient_parsing:
         return
 
-    HookRegistry.load_fast() # Assuming you added the fast cache!
+    HookRegistry.load_fast()  # Assuming you added the fast cache!
     click.secho("\n Available Gritz Tools:", fg="cyan", bold=True)
     click.echo("=" * 60)
 
@@ -50,6 +50,7 @@ def list_gritz_tools(ctx, param, value):
     click.echo("=" * 60)
     click.echo("Use --tool-info <name> to see specific arguments.\n")
     ctx.exit()
+
 
 def show_tool_info(ctx, param, value):
     """Print the fetchez hook info for a specific gritz tool."""
@@ -70,9 +71,25 @@ def show_tool_info(ctx, param, value):
 
 @click.command(name="gritz")
 @click.argument("src", nargs=-1, required=True)
-@click.option("--list-tools", is_flag=True, callback=list_gritz_tools, expose_value=False, is_eager=True, help="List available raster tools and exit.")
-@click.option("--tool-info", metavar="TOOL", callback=show_tool_info, expose_value=False, is_eager=True, help="Show detailed arguments for a specific tool.")
-@click.option("-h", "--hook", multiple=True, help="Raster tools (e.g., blend:aux=ref.tif)")
+@click.option(
+    "--list-tools",
+    is_flag=True,
+    callback=list_gritz_tools,
+    expose_value=False,
+    is_eager=True,
+    help="List available raster tools and exit.",
+)
+@click.option(
+    "--tool-info",
+    metavar="TOOL",
+    callback=show_tool_info,
+    expose_value=False,
+    is_eager=True,
+    help="Show detailed arguments for a specific tool.",
+)
+@click.option(
+    "-h", "--hook", multiple=True, help="Raster tools (e.g., blend:aux=ref.tif)"
+)
 @click.option("--stream/--no-stream", default=True, help="Process in memory chunks")
 @click.option("-o", "--output", help="Final output path")
 @click.option("--save-only", is_flag=True, help="Save YAML without running")
@@ -104,7 +121,11 @@ def gritz_cmd(src, hook, stream, output, save_only):
             parsed_hook["name"] = GRITZ_HOOKS[parsed_hook["name"]]
             global_hooks.append(parsed_hook)
         else:
-            click.secho(f"{parsed_hook.get("name")} is not a valid raster hook", err=True, fg="red")
+            click.secho(
+                f"{parsed_hook.get('name')} is not a valid raster hook",
+                err=True,
+                fg="red",
+            )
 
     if output:
         global_hooks.append({"name": "raster_write", "args": {"output_path": output}})
@@ -115,7 +136,7 @@ def gritz_cmd(src, hook, stream, output, save_only):
     config = {
         "project": {"name": "gritz_pipeline"},
         "modules": modules,
-        "global_hooks": global_hooks
+        "global_hooks": global_hooks,
     }
 
     #  --- EXECUTE / SAVE THE RECIPE ---

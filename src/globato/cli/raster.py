@@ -161,7 +161,9 @@ def raster_slope(src, dst, strip_bands, min_val, max_val):
 @raster_group.command("clip")
 @raster_io
 @click.option("-B", "--barrier", required=True, help="Vector to use for clipping.")
-@click.option("-i", "--invert", is_flag=True, default=False, help="Invert the vector mask")
+@click.option(
+    "-i", "--invert", is_flag=True, default=False, help="Invert the vector mask"
+)
 def raster_clip(src, dst, strip_bands, barrier, invert):
     """Cut/Mask to Region."""
 
