@@ -24,7 +24,7 @@ class RasterClipHook(RasterStreamHook):
 
     name = "raster_clip"
     default_suffix = "_clipped"
-    meta_stage = "file"
+    # meta_stage = "file"
 
     def __init__(self, invert=False, **kwargs):
         super().__init__(**kwargs)

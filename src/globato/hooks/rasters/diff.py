@@ -31,8 +31,8 @@ class RasterDiff(RasterGlobalHook):
     - safe-nan: Handles NoData correctly.
 
     Usage:
-        --hook raster_diff:aux_path=ref.tif:threshold=10.0:mode=filter
-        --hook raster_diff:aux_path=ref.tif:mode=difference
+        --hook raster_diff:aux_path=ref.tif,threshold=10.0,mode=filter
+        --hook raster_diff:aux_path=ref.tif,mode=difference
     """
 
     name = "raster_diff"
@@ -42,7 +42,7 @@ class RasterDiff(RasterGlobalHook):
         self,
         aux_path=None,
         threshold=None,
-        mode="filter",
+        mode="difference",
         resample="bilinear",
         **kwargs,
     ):
@@ -101,6 +101,7 @@ class RasterDiff(RasterGlobalHook):
                                 dst.write(diff, 1, window=window)
 
                             elif self.mode == "filter":
+                                # output an error here if mode is filter and threshold is none
                                 if self.threshold is not None:
                                     with np.errstate(invalid="ignore"):
                                         mask = np.abs(diff) > self.threshold

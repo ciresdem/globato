@@ -14,11 +14,13 @@ from .recipe import recipe_group
 from .hook import hook_group
 
 # from .dem import dem_group
+from .gritz import gritz_cmd
 from .raster import raster_group
 from .region import region_group
 from .fetch import fetch_group
-from .pointz import pointz_group
+from .pointz import pointz_cmd, pointz_group
 from .viz import viz_group
+from .perspecto import perspecto_cmd
 from transformez.cli import transformez_cli
 
 
@@ -34,10 +36,13 @@ cli.add_command(recipe_group, name="recipe")
 # cli.add_command(dem_group, name="dem")
 cli.add_command(hook_group, name="hook")
 cli.add_command(raster_group, name="raster")
+cli.add_command(gritz_cmd, name="gritz")
 cli.add_command(region_group, name="region")
 cli.add_command(fetch_group, name="fetch")
-cli.add_command(pointz_group, name="pointz")
+cli.add_command(pointz_cmd, name="pointz")
+cli.add_command(pointz_group, name="pointz_old")
 cli.add_command(viz_group, name="viz")
+cli.add_command(perspecto_cmd, name="perspecto")
 cli.add_command(transformez_cli, name="transform")
 
 

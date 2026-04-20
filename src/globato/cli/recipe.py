@@ -109,13 +109,23 @@ def _absolutize_local_sources(config, base_dir):
 )
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
-@click.option("--outdir", default=None, help="Base output directory for the tiles.")
+@click.option(
+    "--outdir",
+    type=click.Path(resolve_path=True),
+    default=None,
+    help="Base output directory for the tiles."
+)
 @click.option(
     "--overwrite",
     is_flag=True,
     help="Force rebuild of already completed tiles in a batch run.",
 )
-def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
+@click.option(
+    "--shared-cache",
+    type=click.Path(resolve_path=True),
+    help="Centralized directory to cache fetched data across all tiles."
+)
+def recipe_run(target, region, increment, crs, outname, outdir, overwrite, shared_cache):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
     import copy
@@ -238,6 +248,14 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                 tile_dir = os.path.join(base_outdir, batch_name)
                 os.makedirs(tile_dir, exist_ok=True)
                 os.chdir(tile_dir)
+
+            if shared_cache:
+                abs_cache = os.path.abspath(shared_cache)
+                os.makedirs(abs_cache, exist_ok=True)
+
+                for mod in config.get("modules", []):
+                    if mod.get("module") not in ["file", "local_fs", "stdin"]:
+                        mod.setdefault("args", {})["outdir"] = abs_cache
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
             with open(batch_config_fn, "w") as f:
