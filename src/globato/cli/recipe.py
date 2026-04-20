@@ -258,6 +258,12 @@ def recipe_run(
                 for mod in config.get("modules", []):
                     if mod.get("module") not in ["file", "local_fs", "stdin"]:
                         mod.setdefault("args", {})["outdir"] = abs_cache
+                    for hook in mod.get("hooks", []):
+                        if hook.get("name") == "stream_reproject":
+                            if not hook.get("args", None):
+                                hook.setdefault("args", {})
+                            hook["args"].update({"cache_dir": abs_cache})
+
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
             with open(batch_config_fn, "w") as f:
