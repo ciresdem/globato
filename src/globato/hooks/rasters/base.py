@@ -37,8 +37,9 @@ class RasterBaseHook(FetchHook):
     meta_stage = "collection"
     default_suffix = "_processed"
 
-    def __init__(self, suffix=None, barrier=None, region=None, **kwargs):
+    def __init__(self, suffix=None, barrier=None, region=None, output=None, **kwargs):
         super().__init__(**kwargs)
+        self.output = output
         self.suffix = suffix or self.default_suffix
         self.barrier = barrier
         self.barrier_geoms = None
@@ -217,8 +218,11 @@ class RasterStreamHook(RasterBaseHook):
             # dst_fn = self.output or f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
             # dst_fn = f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
 
-            base_name = os.path.splitext(os.path.basename(src_fn))[0]
-            dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
+            if self.output:
+                dst_fn = self.output
+            else:
+                base_name = os.path.splitext(os.path.basename(src_fn))[0]
+                dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
 
             logger.info(f"Running local {self.name} on {os.path.basename(src_fn)}")
             try:
@@ -320,8 +324,12 @@ class RasterGlobalHook(RasterBaseHook):
                 new_entries.append((mod, entry))
                 continue
 
-            base_name = os.path.splitext(os.path.basename(src_fn))[0]
-            dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
+            if self.output:
+                dst_fn = self.output
+            else:
+                base_name = os.path.splitext(os.path.basename(src_fn))[0]
+                dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
+
             logger.info(f"Running global {self.name} on {os.path.basename(src_fn)}")
             try:
                 success = self.process_raster(src_fn, dst_fn, entry)
