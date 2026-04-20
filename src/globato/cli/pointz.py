@@ -61,7 +61,7 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
         modules.append(mod_dict)
 
     global_hooks = []
-    #global_hooks.append({"name": "stream_data", "args": {"stream_type": "xyz"}})
+    # global_hooks.append({"name": "stream_data", "args": {"stream_type": "xyz"}})
 
     if t_srs:
         global_hooks.append({"name": "stream_reproject", "args": {"dst_srs": t_srs}})
