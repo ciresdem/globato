@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+globato.hooks.rasters.multiband
+~~~~~~~~~~~~~
+
+Build a multi-band raster from collection of single-bands
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
+"""
+
 import os
 import logging
 import rasterio
