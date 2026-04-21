@@ -8,7 +8,7 @@ The main command-line interface for the Globato framework.
 """
 
 import click
-import logging
+# import logging
 
 from .recipe import recipe_group
 from .hook import hook_group
@@ -34,6 +34,7 @@ def cli(verbose, quiet):
 
     # logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     setup_logging(quiet=quiet, verbose=verbose)
+
 
 cli.add_command(recipe_group, name="recipe")
 # cli.add_command(dem_group, name="dem")

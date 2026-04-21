@@ -250,7 +250,9 @@ def recipe_run(
                 ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
                 if hook_name == "viz_geoshade":
-                    hook.setdefault("args", {})["output"] = f"{batch_name}_hillshade.tif"
+                    hook.setdefault("args", {})["output"] = (
+                        f"{batch_name}_hillshade.tif"
+                    )
 
             if _is_batch or not outdir:
                 tile_dir = os.path.join(base_outdir, batch_name)
@@ -269,7 +271,6 @@ def recipe_run(
                             if not hook.get("args", None):
                                 hook.setdefault("args", {})
                             hook["args"].update({"cache_dir": abs_cache})
-
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
             with open(batch_config_fn, "w") as f:
