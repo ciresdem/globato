@@ -25,7 +25,6 @@ from fetchez.utils import parse_source_string, parse_hook_string
 def perspecto_cmd(src, hook, output, save_only):
     """Generate visual perspectives of DEMs and Point Clouds."""
 
-    # 1. PARSE SOURCES
     modules = []
     for src_str in src:
         parsed = parse_source_string(src_str)
@@ -37,29 +36,22 @@ def perspecto_cmd(src, hook, output, save_only):
         }
         modules.append(mod_dict)
 
-    # 2. BUILD THE PIPELINE
     global_hooks = []
 
-    # Add the user's visualization hooks (e.g., -h hillshade:azimuth=315 -h color_relief:cmap=ocean)
     for h_str in hook:
         global_hooks.append(parse_hook_string(h_str))
 
-    # Add the Sink Hook
     if output:
-        # Assuming your viz hooks output a raster stream of RGB pixels,
-        # we can just use your standard raster_write to save the PNG/TIF!
         global_hooks.append({"name": "raster_write", "args": {"output_path": output}})
     else:
         global_hooks.append({"name": "raster_write"})
 
-    # 3. CONSTRUCT THE RECIPE
     config = {
         "project": {"name": "perspecto_render"},
         "modules": modules,
         "global_hooks": global_hooks,
     }
 
-    # 4. EXECUTE
     if save_only:
         out_yaml = "perspecto_recipe.yaml"
         with open(out_yaml, "w") as f:
