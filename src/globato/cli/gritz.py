@@ -16,7 +16,7 @@ from fetchez.utils import parse_source_string, parse_hook_string
 from fetchez.registry import HookRegistry
 from fetchez.cli import print_hook_info
 
-from globato.utils import parse_source_string
+# from globato.utils import parse_source_string
 
 GRITZ_HOOKS = {
     "blend": "raster_blend",

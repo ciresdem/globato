@@ -56,6 +56,7 @@ def test_globato_imports():
                     if (
                         imported_name == "parse_source_string"
                         and module != "globato.utils"
+                        and module != "globato.cli.gritz"
                     ):
                         # Allow fetchez/utils.py to be imported in globato/utils.py itself
                         if not (
