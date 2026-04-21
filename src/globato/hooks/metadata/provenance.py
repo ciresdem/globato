@@ -121,7 +121,9 @@ class ProvenanceHook(FetchHook):
                 bit_val = self._get_module_bit(mod.name)
                 entry["stream"] = self._intercept(stream, bit_val)
 
-                entry.setdefault("artifacts", {})[self.name] = os.path.abspath(self.output)
+                entry.setdefault("artifacts", {})[self.name] = os.path.abspath(
+                    self.output
+                )
 
         return entries
 

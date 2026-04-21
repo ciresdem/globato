@@ -25,7 +25,11 @@ class BuildMultiBandHook(FetchHook):
 
         for mod, entry in entries:
             path = entry.get("dst_fn") or entry.get("src_fn")
-            if path and os.path.exists(path) and path.endswith((".tif", ".tiff", ".img", ".nc")):
+            if (
+                path
+                and os.path.exists(path)
+                and path.endswith((".tif", ".tiff", ".img", ".nc"))
+            ):
                 with rasterio.open(path) as src0:
                     _stats = src0.stats()
 
@@ -34,7 +38,7 @@ class BuildMultiBandHook(FetchHook):
 
                 tifs.append(os.path.abspath(path))
                 # Grab the module name (e.g., 'coned', 'copernicus') for the band label!
-                #band_names.append(getattr(mod, "name", f"Band_{len(tifs)+1}"))
+                # band_names.append(getattr(mod, "name", f"Band_{len(tifs)+1}"))
                 band_names.append(os.path.basename(path))
 
         if not tifs:
@@ -48,12 +52,12 @@ class BuildMultiBandHook(FetchHook):
 
         profile.update(count=len(tifs))
 
-        with rasterio.open(self.output, 'w', **profile) as dst:
+        with rasterio.open(self.output, "w", **profile) as dst:
             for i, tif in enumerate(tifs, start=1):
                 with rasterio.open(tif) as src:
                     dst.write(src.read(1), i)
 
-                dst.set_band_description(i, band_names[i-1])
+                dst.set_band_description(i, band_names[i - 1])
 
         if entries:
             entries[0][1].setdefault("artifacts", {})[self.name] = self.output

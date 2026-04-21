@@ -53,7 +53,7 @@ class RasterMetadataHook(FetchHook):
 
             try:
                 # Open in 'r+' mode to inject metadata without rewriting the data array!
-                with rasterio.open(path, 'r+') as dst:
+                with rasterio.open(path, "r+") as dst:
                     if self.tags:
                         dst.update_tags(**self.tags)
 
@@ -62,7 +62,9 @@ class RasterMetadataHook(FetchHook):
                             if i <= dst.count:
                                 dst.set_band_description(i, name)
 
-                logger.debug(f"[{self.name}] Injected metadata into {os.path.basename(path)}")
+                logger.debug(
+                    f"[{self.name}] Injected metadata into {os.path.basename(path)}"
+                )
             except Exception as e:
                 logger.error(f"[{self.name}] Failed to update metadata for {path}: {e}")
 
