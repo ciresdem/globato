@@ -71,7 +71,7 @@ def show_tool_info(ctx, param, value):
     ctx.exit()
 
 
-@click.command(name="gritz")
+@click.command(name="gritz", hidden=True)
 @click.argument("src", nargs=-1, required=True)
 @click.option(
     "--list-tools",

@@ -33,7 +33,7 @@ from transformez.spatial import TransRegion
 logger = logging.getLogger(__name__)
 
 
-@click.command(name="pointz")
+@click.command(name="pointz_new", hidden=True)
 @click.argument("src", nargs=-1, required=True)
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option(

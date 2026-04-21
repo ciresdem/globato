@@ -43,11 +43,11 @@ cli.add_command(raster_group, name="raster")
 cli.add_command(gritz_cmd, name="gritz")
 cli.add_command(region_group, name="region")
 cli.add_command(fetch_group, name="fetch")
-cli.add_command(pointz_cmd, name="pointz")
-cli.add_command(pointz_group, name="pointz_old")
+cli.add_command(pointz_cmd, name="pointz_new")
+cli.add_command(pointz_group, name="pointz")
 cli.add_command(viz_group, name="viz")
 cli.add_command(perspecto_cmd, name="perspecto")
-cli.add_command(transformez_cli, name="transform")
+cli.add_command(transformez_cli, name="transformez")
 
 
 if __name__ == "__main__":
