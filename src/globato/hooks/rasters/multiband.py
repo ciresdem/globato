@@ -27,7 +27,7 @@ class BuildMultiBandHook(FetchHook):
             path = entry.get("dst_fn") or entry.get("src_fn")
             if path and os.path.exists(path) and path.endswith((".tif", ".tiff", ".img", ".nc")):
                 with rasterio.open(path) as src0:
-                    _stats = src.stats()
+                    _stats = src0.stats()
 
                 if _stats[0].max == 0.0:
                     continue
