@@ -121,6 +121,8 @@ class ProvenanceHook(FetchHook):
                 bit_val = self._get_module_bit(mod.name)
                 entry["stream"] = self._intercept(stream, bit_val)
 
+                entry.setdefault("artifacts", {})[self.name] = os.path.abspath(self.output)
+
         return entries
 
     def _intercept(self, stream, bit_val):
@@ -183,12 +185,12 @@ class SourceMasks(FetchHook):
     meta_category = "metadata"
 
     def __init__(
-        self, res="1s", output_dir="source_masks", vrt_name="source_masks.vrt", **kwargs
+        self, res="1s", output_dir="source_masks", output="source_masks.vrt", **kwargs
     ):
         super().__init__(**kwargs)
         self.res = res
         self.output_dir = output_dir
-        self.vrt_name = vrt_name
+        self.output = output
         self._initialized = False
         self.tifs = []
         self.lock = threading.Lock()
@@ -251,6 +253,7 @@ class SourceMasks(FetchHook):
                     self.tifs.append(tif_path)
 
                 entry["stream"] = self._intercept(stream, tif_path, mod.region)
+                entry.setdefault("artifacts", {})[self.name] = tif_path
 
         return entries
 
@@ -276,78 +279,78 @@ class SourceMasks(FetchHook):
 
                 yield chunk
 
-    def teardown(self):
-        """Build the VRT linking all the individual masks together."""
+    # def teardown(self):
+    #     """Build the VRT linking all the individual masks together."""
 
-        if not self._initialized or not self.tifs:
-            return
+    #     if not self._initialized or not self.tifs:
+    #         return
 
-        vrt_path = os.path.join(self.output_dir, self.vrt_name)
-        logger.debug(f"Building master VRT mask (Pure Rasterio): {vrt_path}")
+    #     #vrt_path = os.path.join(self.output_dir, self.vrt_name)
+    #     logger.debug(f"Building master VRT mask: {output}")
 
-        try:
-            with rasterio.open(self.tifs[0]) as src:
-                width = src.width
-                height = src.height
-                transform = src.transform
-                crs = src.crs.to_wkt() if src.crs else ""
-                dtype = src.dtypes[0]
-                _stats = src.stats()
+    #     try:
+    #         with rasterio.open(self.tifs[0]) as src:
+    #             width = src.width
+    #             height = src.height
+    #             transform = src.transform
+    #             crs = src.crs.to_wkt() if src.crs else ""
+    #             dtype = src.dtypes[0]
+    #             _stats = src.stats()
 
-            dtype_map = {
-                "uint8": "Byte",
-                "uint16": "UInt16",
-                "int16": "Int16",
-                "uint32": "UInt32",
-                "int32": "Int32",
-                "float32": "Float32",
-                "float64": "Float64",
-            }
-            gdal_dtype = dtype_map.get(dtype, "Float32")
+    #         dtype_map = {
+    #             "uint8": "Byte",
+    #             "uint16": "UInt16",
+    #             "int16": "Int16",
+    #             "uint32": "UInt32",
+    #             "int32": "Int32",
+    #             "float32": "Float32",
+    #             "float64": "Float64",
+    #         }
+    #         gdal_dtype = dtype_map.get(dtype, "Float32")
 
-            gt = f"{transform.c}, {transform.a}, {transform.b}, {transform.f}, {transform.d}, {transform.e}"
+    #         gt = f"{transform.c}, {transform.a}, {transform.b}, {transform.f}, {transform.d}, {transform.e}"
 
-            xml_lines = [
-                f'<VRTDataset rasterXSize="{width}" rasterYSize="{height}">',
-                f"  <SRS>{crs}</SRS>",
-                f"  <GeoTransform>{gt}</GeoTransform>",
-            ]
+    #         xml_lines = [
+    #             f'<VRTDataset rasterXSize="{width}" rasterYSize="{height}">',
+    #             f"  <SRS>{crs}</SRS>",
+    #             f"  <GeoTransform>{gt}</GeoTransform>",
+    #         ]
 
-            for i, tif in enumerate(self.tifs, start=1):
-                # remove the mask if no valid data
-                with rasterio.open(tif) as src:
-                    tif_stats = src.stats()
+    #         for i, tif in enumerate(self.tifs, start=1):
+    #             # remove the mask if no valid data
+    #             with rasterio.open(tif) as src:
+    #                 tif_stats = src.stats()
 
-                if tif_stats[0].max == 0.0:
-                    os.remove(tif)
-                    continue
+    #             if tif_stats[0].max == 0.0:
+    #                 os.remove(tif)
+    #                 continue
 
-                rel_path = os.path.relpath(tif, os.path.dirname(vrt_path))
-                name = os.path.basename(tif).replace("_mask.tif", "")
+    #             rel_path = os.path.relpath(tif, os.path.dirname(output))
+    #             name = os.path.basename(tif).replace("_mask.tif", "")
 
-                xml_lines.extend(
-                    [
-                        f'  <VRTRasterBand dataType="{gdal_dtype}" band="{i}">',
-                        f"    <Description>{name}</Description>",
-                        "    <SimpleSource>",
-                        f'      <SourceFilename relativeToVRT="1">{rel_path}</SourceFilename>',
-                        "      <SourceBand>1</SourceBand>",
-                        f'      <SrcRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
-                        f'      <DstRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
-                        "    </SimpleSource>",
-                        "  </VRTRasterBand>",
-                    ]
-                )
+    #             xml_lines.extend(
+    #                 [
+    #                     f'  <VRTRasterBand dataType="{gdal_dtype}" band="{i}">',
+    #                     f"    <Description>{name}</Description>",
+    #                     "    <SimpleSource>",
+    #                     f'      <SourceFilename relativeToVRT="1">{rel_path}</SourceFilename>',
+    #                     "      <SourceBand>1</SourceBand>",
+    #                     f'      <SrcRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
+    #                     f'      <DstRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
+    #                     "    </SimpleSource>",
+    #                     "  </VRTRasterBand>",
+    #                 ]
+    #             )
 
-            xml_lines.append("</VRTDataset>")
+    #         xml_lines.append("</VRTDataset>")
 
-            with open(vrt_path, "w") as f:
-                f.write("\n".join(xml_lines))
+    #         with open(vrt_path, "w") as f:
+    #             f.write("\n".join(xml_lines))
 
-            logger.debug("VRT built successfully.")
+    #         logger.debug(f"VRT {output} built successfully.")
 
-        except Exception as e:
-            logger.error(f"Failed to build VRT with rasterio: {e}")
+    #     except Exception as e:
+    #         logger.error(f"Failed to build VRT with rasterio: {e}")
 
     # def teardown_(self):
     #     """Build the VRT linking all the individual masks together."""

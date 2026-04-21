@@ -26,6 +26,7 @@ except ImportError:
     HAS_FIONA = False
 
 logger = logging.getLogger(__name__)
+logging.getLogger("fiona").setLevel(logging.ERROR)
 
 
 class FionaReader:

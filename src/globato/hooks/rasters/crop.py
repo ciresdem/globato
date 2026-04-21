@@ -30,7 +30,7 @@ class RasterCrop(RasterGlobalHook):
         """Find the tightest data window and rewrite the raster."""
 
         with rasterio.open(src_path) as src:
-            logger.info(
+            logger.debug(
                 f"[{self.name}] Scanning {os.path.basename(src_path)} for valid data bounds..."
             )
 
@@ -77,7 +77,7 @@ class RasterCrop(RasterGlobalHook):
                 }
             )
 
-            logger.info(
+            logger.debug(
                 f"[{self.name}] Cropping from {src.width}x{src.height} to {crop_window.width}x{crop_window.height}..."
             )
 
