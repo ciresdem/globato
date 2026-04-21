@@ -33,7 +33,7 @@ from transformez.spatial import TransRegion
 logger = logging.getLogger(__name__)
 
 
-@click.command(name="pointz_new", hidden=True)
+@click.command(name="pipeline", hidden=False)
 @click.argument("src", nargs=-1, required=True)
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option(
@@ -399,3 +399,6 @@ def pointz_info(source):
         click.echo(f"Bounds (X)   : {region[0]:.6f} to {region[1]:.6f}")
         click.echo(f"Bounds (Y)   : {region[2]:.6f} to {region[3]:.6f}")
         click.echo(f"Elevation (Z): {region[4]:.3f} to {region[5]:.3f}")
+
+
+pointz_group.add_command(pointz_cmd)

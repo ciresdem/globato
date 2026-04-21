@@ -154,6 +154,10 @@ global_hooks:
   - name: transfer_log
   - name: drop_class
 
+  - name: stash_entries
+    args:
+      key: "clean_raw_data"
+
   - name: source_masks
     args:
       res: "1s"
@@ -201,6 +205,14 @@ global_hooks:
       algo: "interp_gmt"
       output: "crm_standard_dem.tif"
 
+  - name: focus_sink
+    args: {target: "ms_cudem"}
+
+  - name: raster_metadata
+    args:
+      tags: "Project=Coastal Relief Model,Version=6,Author=NCEI"
+      bands: "Elevation (meters)"
+
   # # Uncertainty
   # - name: dem_uncertainty
   #   args:
@@ -215,3 +227,22 @@ global_hooks:
       cmap: "etopo"
       blend_mode: "soft_light"
       output: "crm_standard_dem_hillshade.tif"
+
+  # --- PREPARE THE SOURCE MASKS DELIVERY ---
+  - name: restore_entries
+    args: {key: "clean_raw_data"}  # (Jump back in time to the source data!)
+
+  - name: source_masks
+
+  - name: focus_sink
+    args: {target: "source_masks"}
+
+  - name: build_multiband
+    args: {output: "crm_standard_provenance_bands.tif"}
+
+  - name: focus_sink
+    args: {target: "build_multiband"}
+
+  - name: raster_metadata
+    args:
+      tags: "Project=Coastal Relief Model,Description=Source Contribution Masks"

@@ -14,6 +14,8 @@ import click
 import time
 import numpy as np
 
+from .gritz import gritz_cmd
+
 
 def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
     """Calculates before/after statistics and prints a receipt."""
@@ -295,3 +297,6 @@ def raster_zscore(src, dst, strip_bands, threshold, size):
 
     hook = RasterZScore(threshold=threshold, kernel_size=size)
     run_raster_hook(hook, src, dst, strip_bands)
+
+
+raster_group.add_command(gritz_cmd)

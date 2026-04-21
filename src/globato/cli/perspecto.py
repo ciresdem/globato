@@ -13,7 +13,7 @@ from fetchez.recipe import Recipe
 from fetchez.utils import parse_source_string, parse_hook_string
 
 
-@click.command(name="perspecto", hidden=True)
+@click.command(name="perspecto", hidden=False)
 @click.argument("src", nargs=-1, required=True)
 @click.option(
     "-h", "--hook", multiple=True, help="Visualization hooks (e.g., hillshade:exag=2.0)"
