@@ -230,7 +230,7 @@ global_hooks:
 
   # --- PREPARE THE SOURCE MASKS DELIVERY ---
   - name: restore_entries
-    args: {key: "clean_raw_data"}  # (Jump back in time to the source data!)
+    args: {key: "clean_raw_data"}
 
   - name: source_masks
 

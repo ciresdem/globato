@@ -122,25 +122,39 @@ class PointPixels:
         uncertainty = float_or(uncertainty, 0.0)
         mode = mode.lower()
 
-        points_x = np.array(points["x"])
-        points_y = np.array(points["y"])
-        pixel_z = np.array(points["z"])
+        points_x = np.array(points["x"], dtype=np.float64)
+        points_y = np.array(points["y"], dtype=np.float64)
+        pixel_z = np.array(points["z"], dtype=np.float64)
+
+        pixel_w = (
+            np.array(points["w"], dtype=np.float64)
+            if "w" in points.dtype.names
+            else np.ones_like(pixel_z)
+        )
+        pixel_u = (
+            np.array(points["u"], dtype=np.float64)
+            if "u" in points.dtype.names
+            else np.zeros_like(pixel_z)
+        )
+        # points_x = np.array(points["x"])
+        # points_y = np.array(points["y"])
+        # pixel_z = np.array(points["z"])
 
         # This still gives a warning sometimes:
         #   RuntimeWarning: invalid value encountered in divide
         #   pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
         #   RuntimeWarning: invalid value encountered in cast
         # TODO: Figure this out and fix.
-        pixel_w = (
-            np.array(points["w"])
-            if "w" in points.dtype.names
-            else np.ones_like(pixel_z)
-        )
-        pixel_u = (
-            np.array(points["u"])
-            if "u" in points.dtype.names
-            else np.zeros_like(pixel_z)
-        )
+        # pixel_w = (
+        #     np.array(points["w"])
+        #     if "w" in points.dtype.names
+        #     else np.ones_like(pixel_z)
+        # )
+        # pixel_u = (
+        #     np.array(points["u"])
+        #     if "u" in points.dtype.names
+        #     else np.zeros_like(pixel_z)
+        # )
 
         pixel_w[np.isnan(pixel_w)] = 1
         pixel_u[np.isnan(pixel_u)] = 0
