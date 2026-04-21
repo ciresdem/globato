@@ -18,6 +18,7 @@ from fetchez.utils import parse_hook_string
 from transformez.spatial import TransRegion
 
 from globato.utils import add_field_to_recarray
+from .perspecto import perspecto_cmd
 
 logger = logging.getLogger(__name__)
 
@@ -269,3 +270,6 @@ def viz_points(src, filters, region, is_3d, outliers, out):
     for f in active_filters:
         if hasattr(f, "teardown"):
             f.teardown()
+
+
+viz_group.add_command(perspecto_cmd)
