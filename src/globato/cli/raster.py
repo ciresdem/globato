@@ -16,6 +16,7 @@ import numpy as np
 
 from .gritz import gritz_cmd
 
+
 def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
     """Calculates before/after statistics and prints a receipt."""
 
