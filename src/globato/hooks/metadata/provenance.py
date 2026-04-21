@@ -86,7 +86,7 @@ class ProvenanceHook(FetchHook):
             dst.set_band_description(1, "Module_Bitmask")
 
         self._initialized = True
-        logger.info(f"Initialized Provenance Mask: {self.output}")
+        logger.debug(f"Initialized Provenance Mask: {self.output}")
 
     def _get_module_bit(self, mod_name):
         """Assign a unique bit (power of 2) to this module."""
@@ -166,7 +166,7 @@ class ProvenanceHook(FetchHook):
                         for name, bit in self.module_bits.items()
                     }
                 dst.update_tags(bidx=1, **tags)
-            logger.info("Finalized Provenance Mask.")
+            logger.debug("Finalized Provenance Mask.")
 
 
 class SourceMasks(FetchHook):
@@ -226,7 +226,7 @@ class SourceMasks(FetchHook):
         }
 
         self._initialized = True
-        logger.info(f"Initialized Detailed Source Masks in ./{self.output_dir}")
+        logger.debug(f"Initialized Detailed Source Masks in ./{self.output_dir}")
 
     def run(self, entries):
         if not self._initialized and entries:
@@ -283,7 +283,7 @@ class SourceMasks(FetchHook):
             return
 
         vrt_path = os.path.join(self.output_dir, self.vrt_name)
-        logger.info(f"Building master VRT mask (Pure Rasterio): {vrt_path}")
+        logger.debug(f"Building master VRT mask (Pure Rasterio): {vrt_path}")
 
         try:
             with rasterio.open(self.tifs[0]) as src:
@@ -344,7 +344,7 @@ class SourceMasks(FetchHook):
             with open(vrt_path, "w") as f:
                 f.write("\n".join(xml_lines))
 
-            logger.info("VRT built successfully.")
+            logger.debug("VRT built successfully.")
 
         except Exception as e:
             logger.error(f"Failed to build VRT with rasterio: {e}")

@@ -27,11 +27,12 @@ class StreamReproject(FetchHook):
     meta_desc = "Reproject the stream to the desired SRS using Transformez."
     meta_category = "pipeline"
 
-    def __init__(self, dst_srs, src_srs=None, vert_grid=None, **kwargs):
+    def __init__(self, dst_srs, src_srs=None, vert_grid=None, cache_dir=".", **kwargs):
         super().__init__(**kwargs)
         self.dst_srs = dst_srs
         self.forced_src_srs = src_srs
         self.vert_grid = vert_grid
+        self.cache_dir = cache_dir
         self._cache = {}
 
         # print(dst_srs, src_srs)
@@ -49,7 +50,11 @@ class StreamReproject(FetchHook):
 
         # todo: reproject region if nec.
         parser = SRSParser(
-            actual_src, self.dst_srs, region=region, vert_grid=self.vert_grid
+            actual_src,
+            self.dst_srs,
+            region=region,
+            vert_grid=self.vert_grid,
+            cache_dir=self.cache_dir,
         )
         t_in, t_out, grid_fn = parser.get_components()
 

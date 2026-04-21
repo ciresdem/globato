@@ -12,6 +12,7 @@ Writes the stream to a raster
 """
 
 import os
+import shutil
 import logging
 import rasterio
 from fetchez.hooks import FetchHook
@@ -26,8 +27,16 @@ class RasterWrite(FetchHook):
     meta_stage = "collection"
     meta_category = "sink"
 
-    def __init__(self, suffix="_final", artifact_id=None, inline=False, **kwargs):
+    def __init__(
+        self,
+        output_path=None,
+        suffix="_final",
+        artifact_id=None,
+        inline=False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
+        self.output_path = output_path
         self.suffix = suffix
         self.artifact_id = artifact_id or self.name
         self.inline = str(inline).lower() in ["true", "1", "t", "yes"]
@@ -54,38 +63,38 @@ class RasterWrite(FetchHook):
                     ]
                     dst.write(final_chunk, 1, window=window)
 
-                # YIELD THE CHUNK ONWARD to keep the stream alive!
                 yield window, buff_win, data, ndv, transform
 
     def run(self, entries):
-        # auto-grid point streams
-        for mod, entry in entries:
-            if entry.get("stream_type") == "xyz_recarray":
-                from globato.hooks.transforms.point_pixels import Point2PixelStream
-
-                gridder = Point2PixelStream()
-                gridder.run([(mod, entry)])
-
-        # Wrap the raster streams
         for mod, entry in entries:
             stream = entry.get("raster_stream")
-            if not stream:
-                continue
 
-            src_fn = entry.get("dst_fn")
-            base = os.path.splitext(src_fn)[0]
-            dst_fn = f"{base}{self.suffix}.tif"
+            if stream:
+                # It's an active stream. Write it chunk by chunk!
+                base = os.path.splitext(entry.get("dst_fn", "out"))[0]
+                dst_fn = self.output_path or f"{base}{self.suffix}.tif"
 
-            writer_generator = self._write_stream(stream, dst_fn)
+                writer_generator = self._write_stream(stream, dst_fn)
 
-            if self.inline:
-                entry["raster_stream"] = writer_generator
+                if self.inline:
+                    entry["raster_stream"] = writer_generator
+                else:
+                    logger.info(f"Writing raster stream to disk: {dst_fn}")
+                    for _ in writer_generator:
+                        pass
+                    del entry["raster_stream"]
+                    entry["dst_fn"] = dst_fn
+
             else:
-                logger.info(f"Draining raster stream to disk: {dst_fn}")
-                for _ in writer_generator:
-                    pass
-                del entry["raster_stream"]
+                # The stream was drained by a global hook!
+                src_fn = entry.get("dst_fn")
+                base = os.path.basename(entry.get("dst_fn", "out"))
+                self.output_path = self.output_path or base
+                if self.output_path and src_fn and src_fn != self.output_path:
+                    logger.info(f"Promoting final artifact to: {self.output_path}")
+                    shutil.copy2(src_fn, self.output_path)
+                    entry["dst_fn"] = self.output_path
 
-            entry.setdefault("artifacts", {})[self.artifact_id] = dst_fn
+            entry.setdefault("artifacts", {})[self.artifact_id] = entry.get("dst_fn")
 
         return entries

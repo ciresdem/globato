@@ -132,7 +132,7 @@ class ReferenceQuality(GlobatoFilter):
             return [self.ref_source]
 
         ModuleRegistry.load_all()
-        logger.info(f"[RQ] Fetching reference data: {self.ref_source}...")
+        logger.debug(f"[RQ] Fetching reference data: {self.ref_source}...")
         mod_cls = ModuleRegistry.get_class(self.ref_source)
 
         if not mod_cls:
@@ -178,7 +178,7 @@ class ReferenceQuality(GlobatoFilter):
         nx = int(np.ceil((target_region[1] - target_region[0]) / self.res))
         ny = int(np.ceil((target_region[3] - target_region[2]) / self.res))
 
-        logger.info(
+        logger.debug(
             f"[RQ] Gridding reference surface ({nx}x{ny}) from {len(files)} files..."
         )
 
@@ -224,7 +224,7 @@ class ReferenceQuality(GlobatoFilter):
         self.total_points += len(chunk)
 
         if self.total_points > 0 and self.total_points % 1000000 < len(chunk):
-            logger.info(
+            logger.debug(
                 f"[RQ] Heartbeat: Filtered {self.dropped_points:,} outliers out of {self.total_points:,} points evaluated..."
             )
 
@@ -233,7 +233,7 @@ class ReferenceQuality(GlobatoFilter):
     def teardown(self):
         if self.total_points > 0:
             pct_dropped = (self.dropped_points / self.total_points) * 100
-            logger.info(
+            logger.debug(
                 f"[RQ] Complete: Removed {self.dropped_points:,} outliers ({pct_dropped:.2f}%) from {self.total_points:,} total points."
             )
 

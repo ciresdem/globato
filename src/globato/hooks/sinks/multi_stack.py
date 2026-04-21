@@ -284,7 +284,7 @@ class MultiStackAccumulator:
             self.dataset.close()
 
         if self.verbose:
-            logger.info(
+            logger.debug(
                 f"Finalizing Averages: {os.path.basename(self.sums_fn)} -> {os.path.basename(self.output_fn)}"
             )
 
@@ -446,7 +446,7 @@ class MultiStackHook(FetchHook):
                 self._accumulator.update(chunk)
             yield chunk
 
-        logger_str = f"Passed {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)}"
+        logger_str = f"Read {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)}"
         # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
         logger.info(logger_str)
 
@@ -458,6 +458,6 @@ class MultiStackHook(FetchHook):
         """Finalize the grid after all streams are exhausted."""
 
         if self._accumulator:
-            logger.info("Streams finished. Finalizing averages...")
+            logger.debug("Streams finished. Finalizing averages...")
             self._accumulator.finalize()
             self._accumulator = None

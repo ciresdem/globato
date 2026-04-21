@@ -10,25 +10,89 @@ Point cloud filtering and manipulation.
 :license: MIT, see LICENSE for more details.
 """
 
+import click
+import yaml
+from fetchez.recipe import Recipe
+from fetchez.utils import parse_hook_string
+
+from globato.utils import parse_source_string
+
+# --- OLD POINTZ-GROUP --
 import os
 import sys
-import click
 import logging
 import numpy as np
 
 from fetchez.registry import HookRegistry, ModuleRegistry
-from fetchez.utils import parse_hook_string
 from fetchez.core import run_fetchez
 
 from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.transforms.reproject import StreamReproject
 from transformez.spatial import TransRegion
 
-from globato.utils import parse_source_string
-
 logger = logging.getLogger(__name__)
 
 
+@click.command(name="pointz_new", hidden=True)
+@click.argument("src", nargs=-1, required=True)
+@click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
+@click.option(
+    "-I", "--inc", help="Grid increment (e.g., 1s, 0.0001). Triggers stacking!"
+)
+@click.option("-T", "--t-srs", help="Target SRS for reprojection (e.g., EPSG:4326).")
+@click.option(
+    "-h", "--hook", multiple=True, help="Processing hooks (e.g., rq:threshold=2.5)"
+)
+@click.option("-o", "--output", help="Output file (Default: stdout).")
+@click.option("--save-only", is_flag=True, help="Save the pipeline as YAML.")
+def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
+    """Build and execute a 3D point cloud processing pipeline."""
+
+    modules = []
+    for src_str in src:
+        if src_str == "-":
+            modules.append({"module": "stdin", "args": {}})
+            continue
+
+        parsed = parse_source_string(src_str)
+        mod_dict = {"module": parsed["module"], "args": parsed.get("args", {})}
+        if parsed.get("hooks"):
+            mod_dict["hooks"] = parsed["hooks"]
+        modules.append(mod_dict)
+
+    global_hooks = []
+    # global_hooks.append({"name": "stream_data", "args": {"stream_type": "xyz"}})
+
+    if t_srs:
+        global_hooks.append({"name": "stream_reproject", "args": {"dst_srs": t_srs}})
+
+    if inc and region:
+        global_hooks.append({"name": "simple_stack", "args": {"inc": inc}})
+
+    for h_str in hook:
+        parsed_hook = parse_hook_string(h_str)
+        global_hooks.append(parsed_hook)
+
+    global_hooks.append({"name": "xyz_write", "args": {"output_path": output}})
+
+    config = {
+        "project": {"name": "pointz_pipeline"},
+        "region": region,
+        "modules": modules,
+        "global_hooks": global_hooks,
+    }
+
+    if save_only:
+        out_yaml = "pointz_recipe.yaml"
+        with open(out_yaml, "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+        click.secho(f"Recipe saved to {out_yaml}", fg="green", bold=True, err=True)
+    else:
+        click.secho("Executing PointZ Pipeline...", fg="cyan", err=True)
+        Recipe.from_file(config).run()
+
+
+# --- OLD POINTZ-GROUP --
 @click.group(name="pointz")
 def pointz_group():
     """Filter, transform, and stream point cloud data (XYZ/LAS)."""

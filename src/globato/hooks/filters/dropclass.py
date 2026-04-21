@@ -41,7 +41,7 @@ class DropClass(GlobatoFilter):
             # Drop these classes
             keep_mask = ~mask
 
-        logger.info(f"Dropped {np.count_nonzero(~keep_mask)} points")
+        logger.debug(f"Dropped {np.count_nonzero(~keep_mask)} points")
         if np.count_nonzero(keep_mask) > 0:
             return chunk[keep_mask]
         else:

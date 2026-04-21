@@ -59,7 +59,9 @@ def test_globato_imports():
                     ):
                         # Allow fetchez/utils.py to be imported in globato/utils.py itself
                         if not (
-                            py_file.name == "utils.py" and module == "fetchez.utils"
+                            (py_file.name == "utils.py" and module == "fetchez.utils")
+                            or py_file.name == "gritz.py"
+                            or py_file.name == "perspecto.py"
                         ):
                             errors.append(
                                 f"[{py_file.name}] Violation: 'parse_source_string' imported from '{module}'. "

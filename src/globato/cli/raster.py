@@ -158,6 +158,21 @@ def raster_slope(src, dst, strip_bands, min_val, max_val):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
+@raster_group.command("clip")
+@raster_io
+@click.option("-B", "--barrier", required=True, help="Vector to use for clipping.")
+@click.option(
+    "-i", "--invert", is_flag=True, default=False, help="Invert the vector mask"
+)
+def raster_clip(src, dst, strip_bands, barrier, invert):
+    """Cut/Mask to Region."""
+
+    from globato.hooks.rasters.clip import RasterClipHook
+
+    hook = RasterClipHook(barrier=barrier, invert=invert)
+    run_raster_hook(hook, src, dst, strip_bands)
+
+
 @raster_group.command("cut")
 @raster_io
 @click.option("-R", "--region", required=True, help="Region W/E/S/N")

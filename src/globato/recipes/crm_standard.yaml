@@ -57,7 +57,8 @@ modules:
           dst_srs: "EPSG:4326+3855"
       - name: spatial_crop
 
-  - module: mbdb
+  # - module: mbdb
+  - module: multibeam
     args: {weight: 3.0, want_inf: False}
     hooks:
       - name: stream_data
@@ -213,3 +214,4 @@ global_hooks:
     args:
       cmap: "etopo"
       blend_mode: "soft_light"
+      output: "crm_standard_dem_hillshade.tif"

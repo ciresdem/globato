@@ -11,6 +11,7 @@ Writes the point stream to an ASCII XYZ file inline.
 """
 
 import os
+import sys
 import logging
 import numpy as np
 from fetchez.hooks import FetchHook
@@ -89,3 +90,36 @@ class WriteXYZ(FetchHook):
                 yield chunk
 
         logger.info(f"Finished writing {total_pts} points to {out_fn}")
+
+
+class XYZWrite(FetchHook):
+    name = "xyz_write"
+    meta_stage = "collection"
+    meta_category = "stream-sink"
+
+    def __init__(self, output_path=None, **kwargs):
+        super().__init__(**kwargs)
+        self.output_path = output_path
+
+    def run(self, entries):
+        out_port = open(self.output_path, "w") if self.output_path else sys.stdout
+
+        try:
+            for mod, entry in entries:
+                stream = entry.get("stream")
+                if not stream:
+                    continue
+
+                for chunk in stream:
+                    # Filter out NaN/invalid geometries if necessary
+                    np.savetxt(
+                        out_port,
+                        chunk[["x", "y", "z", "w", "u"]],
+                        fmt="%.6f",
+                        delimiter=" ",
+                    )
+        finally:
+            if self.output_path:
+                out_port.close()
+
+        return entries

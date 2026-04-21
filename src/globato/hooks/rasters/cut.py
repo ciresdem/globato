@@ -68,3 +68,5 @@ class RasterCut(RasterStreamHook):
         # valid_mask[row_start:row_stop, col_start:col_stop] = True
 
         data[~valid_mask] = ndv
+
+        return data

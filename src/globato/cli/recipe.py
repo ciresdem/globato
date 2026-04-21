@@ -109,13 +109,25 @@ def _absolutize_local_sources(config, base_dir):
 )
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
-@click.option("--outdir", default=None, help="Base output directory for the tiles.")
+@click.option(
+    "--outdir",
+    type=click.Path(resolve_path=True),
+    default=None,
+    help="Base output directory for the tiles.",
+)
 @click.option(
     "--overwrite",
     is_flag=True,
     help="Force rebuild of already completed tiles in a batch run.",
 )
-def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
+@click.option(
+    "--shared-cache",
+    type=click.Path(resolve_path=True),
+    help="Centralized directory to cache fetched data across all tiles.",
+)
+def recipe_run(
+    target, region, increment, crs, outname, outdir, overwrite, shared_cache
+):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
     import copy
@@ -163,6 +175,10 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                     hook.setdefault("args", {})["resolutions"] = increment
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
+
+            if hook_name == "viz_geoshade":
+                if outname:
+                    hook.setdefault("args", {})["output"] = f"{outname}_hillshade.tif"
 
     if outdir is None:
         base_outdir = os.path.abspath(".")
@@ -233,11 +249,28 @@ def recipe_run(target, region, increment, crs, outname, outdir, overwrite):
                     or hook_name == "raster_fill"
                 ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
+                if hook_name == "viz_geoshade":
+                    hook.setdefault("args", {})["output"] = (
+                        f"{batch_name}_hillshade.tif"
+                    )
 
             if _is_batch or not outdir:
                 tile_dir = os.path.join(base_outdir, batch_name)
                 os.makedirs(tile_dir, exist_ok=True)
                 os.chdir(tile_dir)
+
+            if shared_cache:
+                abs_cache = os.path.abspath(shared_cache)
+                os.makedirs(abs_cache, exist_ok=True)
+
+                for mod in config.get("modules", []):
+                    if mod.get("module") not in ["file", "local_fs", "stdin"]:
+                        mod.setdefault("args", {})["outdir"] = abs_cache
+                    for hook in mod.get("hooks", []):
+                        if hook.get("name") == "stream_reproject":
+                            if not hook.get("args", None):
+                                hook.setdefault("args", {})
+                            hook["args"].update({"cache_dir": abs_cache})
 
             batch_config_fn = f"{batch_name}_recipe.yaml"
             with open(batch_config_fn, "w") as f:
