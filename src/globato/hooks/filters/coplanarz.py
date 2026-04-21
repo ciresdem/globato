@@ -44,7 +44,7 @@ class CoplanarZ(GlobatoFilter):
         tree = cKDTree(coords)
 
         # Query neighbors within radius
-        logger.info(f"Querying neighbors (radius={self.radius})...")
+        logger.debug(f"Querying neighbors (radius={self.radius})...")
         indices_list = tree.query_ball_point(coords, self.radius)
 
         outliers = np.zeros(len(chunk), dtype=bool)

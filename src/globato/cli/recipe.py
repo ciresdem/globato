@@ -176,6 +176,10 @@ def recipe_run(
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
 
+            if hook_name == "viz_geoshade":
+                if outname:
+                    hook.setdefault("args", {})["output"] = f"{outname}_hillshade.tif"
+
     if outdir is None:
         base_outdir = os.path.abspath(".")
     else:
@@ -245,6 +249,8 @@ def recipe_run(
                     or hook_name == "raster_fill"
                 ):
                     hook.setdefault("args", {})["output"] = f"{batch_name}_dem.tif"
+                if hook_name == "viz_geoshade":
+                    hook.setdefault("args", {})["output"] = f"{batch_name}_hillshade.tif"
 
             if _is_batch or not outdir:
                 tile_dir = os.path.join(base_outdir, batch_name)

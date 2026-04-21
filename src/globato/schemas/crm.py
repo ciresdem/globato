@@ -65,6 +65,14 @@ class CRMSchema(BaseSchema):
                         "srs": "EPSG:4326+3855",
                     }
                 )
+            if hook.get("name") == "viz_geoshade":
+                hook.setdefault("args", {})
+                hook["args"].update(
+                    {
+                        "z_min": -2000,
+                        "z_max": 1500,
+                    }
+                )
 
         # Find where to insert the cut/crop hooks!
         # We want to put it after dem_uncertainty, but before viz_geoshade

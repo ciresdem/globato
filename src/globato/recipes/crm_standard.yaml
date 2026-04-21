@@ -214,3 +214,4 @@ global_hooks:
     args:
       cmap: "etopo"
       blend_mode: "soft_light"
+      output: "crm_standard_dem_hillshade.tif"

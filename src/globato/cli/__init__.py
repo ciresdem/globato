@@ -22,15 +22,18 @@ from .pointz import pointz_cmd, pointz_group
 from .viz import viz_group
 from .perspecto import perspecto_cmd
 from transformez.cli import transformez_cli
+from fetchez.cli import setup_logging
 
 
 @click.group()
 @click.version_option(package_name="globato")
-def cli():
+@click.option("-v", "--verbose", is_flag=True, help="Enable verbose debug logging.")
+@click.option("-q", "--quiet", is_flag=True, help="Suppress non-error output.")
+def cli(verbose, quiet):
     """Globato: The ContinUous-DEM Generation Framework."""
 
-    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-
+    # logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    setup_logging(quiet=quiet, verbose=verbose)
 
 cli.add_command(recipe_group, name="recipe")
 # cli.add_command(dem_group, name="dem")
