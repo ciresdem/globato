@@ -69,7 +69,7 @@ class CRMSchema(BaseSchema):
                 hook.setdefault("args", {})
                 hook["args"].update(
                     {
-                        "z_min": -2000,
+                        "z_min": -3500,
                         "z_max": 1500,
                     }
                 )
