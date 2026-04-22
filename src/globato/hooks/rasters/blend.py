@@ -112,8 +112,8 @@ class MultiStackBlend(RasterStreamHook):
         if data.ndim < 3 or data.shape[0] < 3:
             return data
 
-        z = data[0]
-        w = data[2]
+        z = data[0].astype("float64")
+        w = data[2].astype("float64")
 
         valid_mask = (z != ndv) & (~np.isnan(z))
         if not np.any(valid_mask):
@@ -196,10 +196,10 @@ class MultiStackBlend(RasterStreamHook):
             blended_vals = (1 - weights) * interp_vals + (weights) * original_vals
 
             z[transition_zone] = blended_vals
-            data[0] = z
+            data[0] = z.astype("float32")
 
             w[gap_mask] = self.weight_threshold
-            data[2] = w
+            data[2] = w.astype("float32")
 
         except Exception as e:
             logger.warning(f"Blend failed in chunk: {e}")

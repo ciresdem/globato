@@ -200,8 +200,9 @@ global_hooks:
   - name: ms_cudem
     args:
       steps: 2
-      resolutions: "1s/3s/9s"
-      weights: "1.0/0.5/0.1"
+      resolutions: ["1s", "3s", "9s"]
+      weights: [1.0, 0.5, 0.1]
+      blend_dist: 1
       algo: "interp_gmt"
       output: "crm_standard_dem.tif"
 
@@ -230,7 +231,7 @@ global_hooks:
 
   # --- PREPARE THE SOURCE MASKS DELIVERY ---
   - name: restore_entries
-    args: {key: "clean_raw_data"}  # (Jump back in time to the source data!)
+    args: {key: "clean_raw_data"}
 
   - name: source_masks
 

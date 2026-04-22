@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.hooks.osm_landmask
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+globato.modules.osm_landmask
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Fetches OSM Coastline data and polygonizes it into a landmask.
-
-:copyright: (c) 2016 - 2026 Regents of the University of Colorado
-:license: MIT, see LICENSE for more details.
+Super-Module that generates a high-quality Coastline Mask.
+Merges Vectors (NHD, OSM) and Rasters (Copernicus, GMRT) into a unified product using weighted voting.
 """
 
 import os
@@ -18,8 +16,10 @@ import math
 import fiona
 from shapely.geometry import box, LineString, Point, mapping
 from shapely.ops import linemerge, unary_union
-from fetchez.hooks import FetchHook
-from fetchez.core import Fetch, urlencode
+
+from fetchez.modules import FetchModule
+from fetchez.core import Fetch, urlencode, CUDEM_USER_AGENT
+from fetchez.cli import cli_opts
 
 try:
     from fetchez.modules.gmrt import gmrt_fetch_point
@@ -30,101 +30,96 @@ logger = logging.getLogger(__name__)
 
 OSM_API = "https://lz4.overpass-api.de/api/interpreter"
 
+HEADERS = {
+    "User-Agent": CUDEM_USER_AGENT,
+    "Content-Type": "application/x-www-form-urlencoded",
+}
 
-class OSMLandmask(FetchHook):
-    """Generates a Land/Water mask vector from OpenStreetMap."""
+
+@cli_opts(
+    help_text="Generates a Land/Water mask vector from OpenStreetMap.",
+    include_water="If True, carves out inland lakes and rivers from the landmask.",
+)
+class OSMLandmaskModule(FetchModule):
+    """Fetches OSM Coastline data and polygonizes it into a landmask."""
 
     name = "osm_landmask"
-    meta_stage = "pre"
-    meta_category = "generator"
+    meta_desc = "OpenStreetMap Coastline and Waterbody Generator"
+    meta_agency = "OSM"
+    meta_category = "Reference"
+    meta_tags = ["osm", "coastline", "water", "polygons", "globato"]
 
-    def __init__(self, filename="landmask.geojson", **kwargs):
-        super().__init__(**kwargs)
-        self.filename = filename
+    def __init__(self, include_water=False, **kwargs):
+        super().__init__(name="osm_landmask", **kwargs)
+        self.include_water = str(include_water).lower() in ["true", "1", "t", "yes"]
 
-    def run(self, entries):
-        regions = [getattr(mod, "region", None) for mod, _ in entries]
-        valid_regions = [r for r in regions if r]
+        self.headers = HEADERS
 
-        if not valid_regions:
-            return entries
+    def run(self):
+        if not self.region:
+            logger.error(f"[{self.name}] Requires a bounding box region to run.")
+            return
 
-        w = min(r[0] for r in valid_regions)
-        e = max(r[1] for r in valid_regions)
-        s = min(r[2] for r in valid_regions)
-        n = max(r[3] for r in valid_regions)
-        target_region = [w, e, s, n]
-
-        out_path = os.path.join(os.getcwd(), self.filename)
+        w, e, s, n = self.region
+        out_name = f"osm_landmask_{w}_{s}.geojson"
+        out_path = os.path.join(self._outdir, out_name)
 
         if os.path.exists(out_path):
             logger.info(f"[OSM] Using existing landmask: {out_path}")
-            return entries
+            self.add_entry_to_results(f"file://{out_path}", out_path, "osm_landmask")
+            return self
 
-        logger.info(f"[OSM] Fetching coastline for {target_region}...")
-        osm_xml = self._fetch_osm(target_region)
-        # osm_rivers_xml = self._fetch_osm_water(target_region)
+        logger.info(f"[OSM] Fetching coastline for {self.region}...")
+        osm_xml = self._fetch_osm(self.region)
 
         if not osm_xml or os.path.getsize(osm_xml) < 100:
-            self._handle_fallback(out_path, target_region)
-            return entries
+            self._handle_fallback(out_path, self.region)
+        else:
+            logger.info("[OSM] Polygonizing and classifying coastline...")
+            try:
+                self._polygonize(osm_xml, out_path, self.region)
+                logger.info(f"[OSM] Generated landmask: {out_path}")
+            except Exception as e:
+                logger.error(f"[OSM] Polygonization failed: {e}")
+                if not os.path.exists(out_path):
+                    self._handle_fallback(out_path, self.region)
 
-        logger.info("[OSM] Polygonizing and classifying coastline...")
-        try:
-            self._polygonize(osm_xml, out_path, target_region)
-            logger.info(f"[OSM] Generated landmask: {out_path}")
-        except Exception as e:
-            logger.error(f"[OSM] Polygonization failed: {e}")
-            if not os.path.exists(out_path):
-                self._handle_fallback(out_path, target_region)
-
-        if os.path.exists(osm_xml):
+        if osm_xml and os.path.exists(osm_xml):
             os.remove(osm_xml)
 
-        return entries
+        if os.path.exists(out_path):
+            self.add_entry_to_results(f"file://{out_path}", out_path, "osm_landmask")
 
-    def _fetch_osm_rivers(self, region):
-        w, e, s, n = region
-        bbox = f"{s},{w},{n},{e}"
-
-        query = f"""
-        [timeout:120][out:json][bbox:{bbox}];
-        (
-          way["natural"="water"];
-          relation["natural"="rivers"];
-        );
-        (._;>;);
-        out geom;
-        """
-        params = urlencode({"data": query})
-        url = f"{OSM_API}?{params}"
-        dest = f"temp_osm_water_{w}_{s}.json"
-        f = Fetch(url)
-        if f.fetch_file(dest, verbose=False) == 0:
-            return dest
-
-        return None
+        return self
 
     def _fetch_osm(self, region):
         w, e, s, n = region
         bbox = f"{s},{w},{n},{e}"
-
         query = f"""
         [timeout:120][out:json][bbox:{bbox}];
         (
           way["natural"="coastline"];
           relation["natural"="coastline"];
+        """
+        if self.include_water:
+            query += """
+          way["natural"="water"];
+          relation["natural"="water"];
+          way["waterway"="riverbank"];
+          relation["waterway"="riverbank"];
+            """
+        query += """
         );
         (._;>;);
         out geom;
         """
+
         params = urlencode({"data": query})
         url = f"{OSM_API}?{params}"
-        dest = f"temp_osm_{w}_{s}.json"
-        f = Fetch(url)
-        if f.fetch_file(dest, verbose=False) == 0:
+        dest = os.path.join(self._outdir, f"temp_osm_{w}_{s}.json")
+        f = Fetch(url, headers=HEADERS)
+        if f.fetch_file(dest, method="POST", verbose=False) == 0:
             return dest
-
         return None
 
     def _is_land_by_topology(self, poly, lines_geom, buffer_size):

@@ -18,7 +18,7 @@ import logging
 
 from fetchez.recipe import Recipe
 from fetchez.registry import RecipeRegistry
-from fetchez.utils import parse_hook_string
+from fetchez.utils import parse_hook_string, str2inc
 from globato.utils import parse_source_string, yield_parsed_regions
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ def _absolutize_local_sources(config, base_dir):
     help="Override region. Can be a bounding box, loc string, or geojson file to trigger batch mode.",
 )
 @click.option(
-    "-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10m)."
+    "-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10)."
 )
 @click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
@@ -129,7 +129,6 @@ def recipe_run(
     target, region, increment, crs, outname, outdir, overwrite, shared_cache
 ):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
-
     import copy
 
     RecipeRegistry.load_all()
@@ -145,6 +144,7 @@ def recipe_run(
         base_config.setdefault("project", {})["name"] = outname
 
     if increment or crs or outname:
+        increment = str2inc(increment)
         for module in base_config.get("modules", []):
             for hook in module.get("hooks", []):
                 if hook.get("name") == "stream_reproject":
@@ -171,10 +171,48 @@ def recipe_run(
                 or hook_name == "interp_gmt"
                 or hook_name == "raster_fill"
             ):
-                if increment and hook_name == "ms_cudem":
-                    hook.setdefault("args", {})["resolutions"] = increment
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
+
+                if increment and hook_name == "ms_cudem":
+                    args = hook.setdefault("args", {})
+                    old_res = args.get("resolutions", ["1s", "3s"])
+
+                    if isinstance(old_res, str):
+                        old_res_list = [str2inc(x) for x in old_res.split("/")]
+                    else:
+                        old_res_list = [str2inc(str(x)) for x in old_res]
+
+                    num_steps = len(old_res_list)
+                    old_base_res = old_res_list[0] if num_steps > 0 else str2inc("1s")
+                    new_base_res = increment
+
+                    args["resolutions"] = [
+                        new_base_res * (3**i) for i in range(num_steps)
+                    ]
+
+                    if "blend_dist" in args:
+                        old_blend = args["blend_dist"]
+                        if isinstance(old_blend, str):
+                            old_blend_list = [int(x) for x in old_blend.split("/")]
+                        elif isinstance(old_blend, list):
+                            old_blend_list = [int(x) for x in old_blend]
+                        else:
+                            old_blend_list = [int(old_blend)]
+
+                        ratio = old_base_res / new_base_res
+                        args["blend_dist"] = [
+                            int(round(b * ratio)) for b in old_blend_list
+                        ]
+            # if (
+            #     hook_name == "ms_cudem"
+            #     or hook_name == "interp_gmt"
+            #     or hook_name == "raster_fill"
+            # ):
+            #     if increment and hook_name == "ms_cudem":
+            #         hook.setdefault("args", {})["resolutions"] = increment
+            #     if outname:
+            #         hook.setdefault("args", {})["output"] = f"{outname}_dem.tif"
 
             if hook_name == "viz_geoshade":
                 if outname:

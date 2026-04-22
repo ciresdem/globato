@@ -47,13 +47,13 @@ class GmtSurface(RasterGlobalHook):
     default_suffix = "_gmt"
 
     def __init__(
-        self, tension=0.35, convergence=1e-4, radius=None, upper=None, **kwargs
+        self, tension=0.35, convergence=1e-4, radius=None, gmt_upper=None, **kwargs
     ):
         super().__init__(**kwargs)
         self.tension = float(tension)
         self.convergence = float(convergence)
         self.radius = radius
-        self.upper = upper
+        self.gmt_upper = gmt_upper
 
     def process_raster(self, src_path, dst_path, entry):
         if not HAS_PYGMT:
@@ -97,7 +97,7 @@ class GmtSurface(RasterGlobalHook):
                     spacing=spacing_str,
                     tension=self.tension,
                     convergence=self.convergence,
-                    upper=self.upper,
+                    upper=self.gmt_upper,
                     registration="pixel",
                     # Optional: lower/upper limits if bathy constraints known
                     # verbose=True,

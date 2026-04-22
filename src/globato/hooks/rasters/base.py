@@ -21,6 +21,7 @@ from rasterio.windows import Window
 import fiona
 from transformez.spatial import parse_region
 from fetchez.hooks import FetchHook
+from fetchez.utils import float_or
 
 logger = logging.getLogger(__name__)
 
@@ -37,75 +38,108 @@ class RasterBaseHook(FetchHook):
     meta_stage = "collection"
     default_suffix = "_processed"
 
-    def __init__(self, suffix=None, barrier=None, region=None, output=None, **kwargs):
+    def __init__(
+        self,
+        suffix=None,
+        barrier=None,
+        region=None,
+        output=None,
+        upper=None,
+        lower=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.output = output
         self.suffix = suffix or self.default_suffix
         self.barrier = barrier
         self.barrier_geoms = None
         self.region = parse_region(region)
+        self.upper = float_or(upper)
+        self.lower = float_or(lower)
 
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
 
         return profile
 
+    def _clamp_raster(self, raster_path):
+        """Clamp raster values to enforce lower/upper bounds."""
+
+        if self.upper is None and self.lower is None:
+            return
+
+        with rasterio.open(raster_path, "r+") as src:
+            data = src.read(1)
+            nodata = src.nodata if src.nodata is not None else -9999
+
+            is_float = data.dtype.kind == "f"
+            if is_float:
+                valid_mask = (data != nodata) & (~np.isnan(data))
+            else:
+                valid_mask = data != nodata
+
+            clamped = False
+            if self.upper is not None:
+                mask = (data > self.upper) & valid_mask
+                if np.any(mask):
+                    data[mask] = self.upper
+                    clamped = True
+
+            if self.lower is not None:
+                mask = (data < self.lower) & valid_mask
+                if np.any(mask):
+                    data[mask] = self.lower
+                    clamped = True
+
+            if clamped:
+                logger.info(
+                    f"[{self.name}] Clamped values to bounds (Lower: {self.lower}, Upper: {self.upper})"
+                )
+                src.write(data, 1)
+
     def _get_barrier_geometries(self):
         if not self.barrier:
             return None
 
         barrier_path = self.barrier
+        barrier_lower = os.path.basename(barrier_path).lower()
 
-        # AUTO-GENERATE COASTLINE!
-        if os.path.basename(barrier_path).lower() in ["coastline", "landmask"]:
+        if barrier_lower in ["coastline", "landmask", "osm", "glob_coast"]:
             mod = getattr(self, "current_mod", None)
             if not mod or not getattr(mod, "region", None):
                 logger.error("Region is required to auto-generate a coastline barrier.")
                 return None
 
-            w, e, s, n = mod.region
-            res = "1s"
+            outdir = getattr(mod, "outdir", os.getcwd())
 
-            # Place the mask inside the current project's output directory
-            outdir = getattr(mod, "outdir", None)
-            base_dir = os.path.join(outdir or os.getcwd(), "glob_coast")
+            target_mod_name = (
+                "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
+            )
 
-            found_poly = None
-            if os.path.exists(base_dir):
-                import glob
+            logger.info(
+                f"[{self.name}] Auto-generating barrier using {target_mod_name}..."
+            )
+            from fetchez.registry import ModuleRegistry
+            from fetchez.core import run_fetchez
 
-                search_pattern = os.path.join(
-                    base_dir, f"coastline_{w}_{s}_{res}*.gpkg"
-                )
-                matches = glob.glob(search_pattern)
-                if matches:
-                    # If both exist, prefer the filled version
-                    matches.sort(key=lambda x: "filled" in x, reverse=True)
-                    found_poly = matches[0]
+            generator_mod = ModuleRegistry.get_class(target_mod_name)
+            if not generator_mod:
+                logger.error(f"{target_mod_name} module not found!")
+                return None
 
-            if found_poly:
-                barrier_path = found_poly
-            else:
-                logger.info(
-                    f"[{self.name}] Auto-generating coastline barrier for region..."
-                )
-                from fetchez.registry import ModuleRegistry
-                from fetchez.core import run_fetchez
+            gen_instance = generator_mod(
+                src_region=mod.region,
+                outdir=os.path.join(outdir, "auto_barriers"),
+                res="1s",  # Ignored by osm_landmask, used by glob_coast
+                include_water=True,  # Ignored by glob_coast, used by osm_landmask
+            )
 
-                coast_mod = ModuleRegistry.get_class("glob_coast")
-                if coast_mod:
-                    # Spin up the module programmatically!
-                    coast_instance = coast_mod(
-                        src_region=mod.region,
-                        res=res,
-                        outdir=outdir,
-                        fill_inland_holes=True,
-                    )
-                    coast_instance.run()
-                    run_fetchez([coast_instance])
+            gen_instance.run()
+            run_fetchez([gen_instance])
 
-                    # Fish the newly generated polygon out of the artifact registry
-                    for r in coast_instance.results:
+            if gen_instance.results:
+                if target_mod_name == "glob_coast":
+                    for r in gen_instance.results:
                         artifacts = r.get("artifacts", {})
                         if "vector_fill_holes" in artifacts:
                             barrier_path = artifacts["vector_fill_holes"]
@@ -113,15 +147,13 @@ class RasterBaseHook(FetchHook):
                         elif "raster_polygonize" in artifacts:
                             barrier_path = artifacts["raster_polygonize"]
                             break
-                    else:
-                        logger.error("Failed to find polygonized coastline artifact.")
-                        return None
                 else:
-                    logger.error("glob_coast module not found!")
-                    return None
+                    barrier_path = gen_instance.results[0].get("dst_fn")
 
-        if not os.path.exists(barrier_path):
-            logger.warning(f"Barrier file not found: {barrier_path}")
+        if not barrier_path or not os.path.exists(barrier_path):
+            logger.warning(
+                f"Barrier file not found or failed to generate: {self.barrier}"
+            )
             return None
 
         try:
@@ -228,6 +260,8 @@ class RasterStreamHook(RasterBaseHook):
             try:
                 success = self._process_file_fallback(src_fn, dst_fn, entry)
                 if success:
+                    self._clamp_raster(dst_fn)
+
                     entry["src_fn"] = src_fn
                     entry["dst_fn"] = dst_fn
                     entry.setdefault("artifacts", {})[self.name] = dst_fn
@@ -334,6 +368,8 @@ class RasterGlobalHook(RasterBaseHook):
             try:
                 success = self.process_raster(src_fn, dst_fn, entry)
                 if success:
+                    self._clamp_raster(dst_fn)
+
                     entry["src_fn"] = src_fn
                     entry["dst_fn"] = dst_fn
                     entry.setdefault("artifacts", {})[self.name] = dst_fn
