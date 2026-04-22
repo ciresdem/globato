@@ -107,7 +107,7 @@ class MultiStackAccumulator:
 
         profile = {
             "driver": "GTiff",
-            "dtype": "float32",
+            "dtype": "float64",
             "nodata": -9999,
             "width": self.xcount,
             "height": self.ycount,
@@ -290,6 +290,7 @@ class MultiStackAccumulator:
 
         with rasterio.open(self.sums_fn, "r") as src:
             profile = src.profile.copy()
+            profile["dtype"] = "float32"
 
             with rasterio.open(self.output_fn, "w", **profile) as dst:
                 dst.colorinterp = [ColorInterp.undefined] * dst.count
@@ -316,7 +317,11 @@ class MultiStackAccumulator:
                             src_u[valid] = src_u[valid] / w[valid]
                             unc[valid] = np.sqrt(unc[valid]) / cnt[valid]
                             w[valid] = w[valid] / cnt[valid]
-                    dst.write(data, window=window)
+
+                    data[np.isinf(data)] = ndv
+                    data[np.isnan(data)] = ndv
+
+                    dst.write(data.astype("float32"), window=window)
 
                 # Copy the provenance registry over to the final file!
                 dst.update_tags(**src.tags())

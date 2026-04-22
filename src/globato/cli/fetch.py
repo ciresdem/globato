@@ -40,7 +40,7 @@ def fetch_list(search):
     for name, cls in sorted(registry.items()):
         meta = ModuleRegistry.get_info(name)
 
-        if meta.get("category") != "Globato":
+        if meta.get("category") != "Globato" and "globato" not in meta.get("tags"):
             continue
 
         if search and search.lower() not in name.lower():

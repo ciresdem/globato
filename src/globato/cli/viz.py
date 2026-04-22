@@ -139,6 +139,77 @@ def viz_hillshade(
         sys.exit(1)
 
 
+@viz_group.command("colorbar")
+@click.argument("src")
+@click.argument("dst")
+@click.option(
+    "--cmap",
+    default="etopo",
+    help="Matplotlib colormap or CPT file/name (default: 'etopo').",
+)
+@click.option("--z-min", type=float, help="Force minimum Z value for the colormap.")
+@click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
+@click.option(
+    "--split-cpt",
+    type=float,
+    default=0.0,
+    help="Hinge point for divergent colormaps (default: 0.0).",
+)
+def viz_colorbar(
+    src,
+    dst,
+    cmap,
+    z_min,
+    z_max,
+    split_cpt,
+):
+    """Generate a colorbar.
+
+    SRC: Input DEM
+    DST: Output colorbar (PNG)
+
+    Example: globato viz colorbar my_dem.tif my_colorbar.png
+    """
+
+    try:
+        from globato.hooks.viz.colorbar import ColorBar
+    except ImportError as e:
+        click.secho(f"Error importing ColorBar: {e}", fg="red")
+        sys.exit(1)
+
+    if not os.path.exists(src):
+        click.secho(f"Error: Input file not found: {src}", fg="red")
+        sys.exit(1)
+
+    hook = ColorBar(
+        cmap=cmap,
+        z_min=z_min,
+        z_max=z_max,
+        split_cpt=split_cpt,
+    )
+
+    click.secho(
+        f"\nGenerating Color Bar: {os.path.basename(src)}...",
+        fg="cyan",
+        bold=True,
+    )
+    click.echo(f"   Colormap: {cmap}")
+
+    start_time = time.time()
+
+    entry = {"src_fn": src, "dst_fn": dst}
+    success = hook.process_raster(src, dst, entry)
+
+    elapsed = time.time() - start_time
+
+    if success:
+        click.secho(f"\nVisualization Complete! Saved to: {dst}", fg="green", bold=True)
+        click.echo(f"   Time: {elapsed:.2f} seconds\n")
+    else:
+        click.secho("\nFailed to generate colorbar.", fg="red")
+        sys.exit(1)
+
+
 def _prepare_stream(gen):
     """Safely injects required schema fields (w, u) into raw point streams."""
     for chunk in gen:

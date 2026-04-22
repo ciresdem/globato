@@ -100,5 +100,15 @@ class CRMSchema(BaseSchema):
             },
         )
 
+        global_hooks.append(
+            {
+                "name": "copy_artifact",
+                "args": {
+                    "target_dir": "../_crm_deliverables",
+                    "match": [delivery_fn, "hillshade.tif"],
+                },
+            }
+        )
+
         config["global_hooks"] = global_hooks
         return config

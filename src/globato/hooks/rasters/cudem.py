@@ -38,30 +38,55 @@ class CudemStepDown(RasterGlobalHook):
 
     def __init__(
         self,
-        steps=2,
-        weights="1.0/0.5",
-        resolutions="1s/3s",
+        steps=None,
+        weights=[1.0, 0.5],
+        resolutions=["1s", "3s"],
         algo="raster_fill",
         barrier=None,
         blend_dist=5,
         **kwargs,
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
-        self.steps = int(steps)
-        self.weights = [float(w) for w in weights.split("/")]
-        self.resolutions = [str2inc(x) for x in resolutions.split("/")]
         self.algo = algo
-        self.barrier = barrier
-        self.blend_dist = int(blend_dist)
 
-        while len(self.weights) <= self.steps:
-            self.weights.append(self.weights[-1] / 2)
-        while len(self.resolutions) <= self.steps:
-            res_val = float(self.resolutions[-1]) * 3
-            self.resolutions.append(res_val)
+        # --- Helper to parse Lists OR Legacy Strings ---
+        def _parse_arg(val, cast_type):
+            if isinstance(val, list):
+                return [cast_type(v) for v in val]
+            if isinstance(val, str) and "/" in val:
+                return [cast_type(v) for v in val.split("/")]
+            return [cast_type(val)]
 
-        # make sure we pull all data into the first step
-        self.weights[-1] = 0.0
+        self.resolutions = _parse_arg(resolutions, str)
+        self.weights = _parse_arg(weights, float)
+        self.blend_dists = _parse_arg(blend_dist, int)
+
+        self.steps = (
+            steps
+            if steps is not None
+            else max(len(self.resolutions), len(self.weights), len(self.blend_dists))
+            - 1
+        )
+
+        def _pad_list(lst, target_len):
+            while len(lst) < target_len:
+                lst.append(lst[-1])
+            return lst
+
+        def _crop_list(lst, target_len):
+            while len(lst) > target_len:
+                lst = lst[:-1]
+            return lst
+
+        self.resolutions = _crop_list(
+            _pad_list(self.resolutions, self.steps + 1), self.steps + 1
+        )
+        self.weights = _crop_list(
+            _pad_list(self.weights, self.steps + 1), self.steps + 1
+        )
+        self.blend_dists = _crop_list(
+            _pad_list(self.blend_dists, self.steps + 1), self.steps + 1
+        )
 
     def _decimate_raster(self, src_path, dst_path, target_res):
         """Downsamples the main stack using average pooling."""
@@ -95,7 +120,9 @@ class CudemStepDown(RasterGlobalHook):
                         resampling=Resampling.average,
                     )
 
-    def _blend_background(self, foreground_path, background_path, current_weight):
+    def _blend_background(
+        self, foreground_path, background_path, current_weight, current_blend_dist
+    ):
         """Fills gaps in the foreground stack using the interpolated background."""
 
         temp_path = foreground_path + ".blend.tif"
@@ -139,10 +166,10 @@ class CudemStepDown(RasterGlobalHook):
 
                     fg_valid_mask = (fg_z != fg_ndv) & (~np.isnan(fg_z))
 
-                    if self.blend_dist > 0:
+                    if current_blend_dist > 0:
                         # Create a circular/square structural element for the buffer
                         moat_mask = scipy.ndimage.binary_dilation(
-                            fg_valid_mask, iterations=self.blend_dist
+                            fg_valid_mask, iterations=current_blend_dist
                         )
                     else:
                         moat_mask = fg_valid_mask
@@ -181,7 +208,7 @@ class CudemStepDown(RasterGlobalHook):
         previous_surface = None
 
         for i in range(self.steps, -1, -1):
-            res = self.resolutions[i]
+            res = str2inc(self.resolutions[i])
             weight = self.weights[i]
 
             logger.info(f"--- CUDEM STEP {i} | Res: {res} | Min Weight: {weight} ---")
@@ -190,9 +217,13 @@ class CudemStepDown(RasterGlobalHook):
             step_interp = f"temp_interp_step{i}.tif"
 
             self._decimate_raster(src_path, step_stack, target_res=res)
+            current_blend_dist = self.blend_dists[i]
             if previous_surface and os.path.exists(previous_surface):
                 self._blend_background(
-                    step_stack, previous_surface, current_weight=weight
+                    step_stack,
+                    previous_surface,
+                    current_weight=weight,
+                    current_blend_dist=current_blend_dist,
                 )
 
             step_barrier = self.barrier if i > 0 else None
@@ -205,7 +236,7 @@ class CudemStepDown(RasterGlobalHook):
                     interp = GmtSurface(
                         tension=0.95,
                         barrier=step_barrier,
-                        upper=-0.01 if i > 0 else None,
+                        gmt_upper=-0.01 if i > 0 else None,
                         min_weight=weight,
                         verbose=True,
                     )
@@ -220,7 +251,10 @@ class CudemStepDown(RasterGlobalHook):
 
                 if HAS_VERDE:
                     interp = VerdeSurface(
-                        damping=1e-4, barrier=step_barrier, min_weight=weight
+                        damping=1e-4,
+                        barrier=step_barrier,
+                        min_weight=weight,
+                        upper=-0.01 if i > 0 else None,
                     )
                 else:
                     logger.warning(
@@ -233,20 +267,27 @@ class CudemStepDown(RasterGlobalHook):
 
                 interp = ScipyInterp(
                     method="cubic",
-                    min_weight=weight,  # Was already here
+                    barrier=step_barrier,
+                    min_weight=weight,
+                    upper=-0.01 if i > 0 else None,
                 )
             else:
                 self.algo = "raster_fill"
 
             if self.algo == "raster_fill" or interp is None:
                 interp = RasterFill(
-                    max_dist=1000, smoothing=3, barrier=step_barrier, min_weight=weight
+                    max_dist=1000,
+                    smoothing=3,
+                    barrier=step_barrier,
+                    min_weight=weight,
+                    upper=-0.01 if i > 0 else None,
                 )
             interp.current_mod = getattr(self, "current_mod", None)
 
             success = interp.process_raster(step_stack, step_interp, entry)
 
             if success:
+                interp._clamp_raster(step_interp)
                 previous_surface = step_interp
 
         if previous_surface and os.path.exists(previous_surface):

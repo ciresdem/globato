@@ -444,9 +444,9 @@ class Point2PixelStream(FetchHook):
                             arrs["x"],
                             arrs["y"],
                         ]
-                    ).astype(np.float32)
+                    ).astype(np.float64)
                 else:
-                    data = arrs["z"].astype(np.float32)
+                    data = arrs["z"].astype(np.float64)
                     # Add a band dimension so it's (1, Rows, Cols)
                     data = data[np.newaxis, ...]
 

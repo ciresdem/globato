@@ -22,6 +22,8 @@ from .multibeam import MBSReader
 from .xyz import XYZReader
 from .gtpc import GTPCReader
 from .datalist import DatalistReader
+# from .hdf_points import HDFPointReader  # testing
+from .icesat2 import ATL03Reader
 from .schema import ensure_schema
 from transformez.spatial import TransRegion
 
@@ -80,6 +82,10 @@ class StreamFactory:
             "z_field": "Z_label",
             "z_scale": -0.3048,
             "vert_srs": "EPSG:5866",
+        },
+        "atl03": {
+            "reader": ATL03Reader,
+            "classes": 1,
         },
     }
 
@@ -155,7 +161,7 @@ class StreamFactory:
             TargetReader = profile.pop("reader")
 
             merged_kwargs = {**profile, **kwargs}
-            # logger.info(f"Applying '{data_type}' profile to {src_fn}")
+            logger.debug(f"Applying '{data_type}' profile to {src_fn}")
             return TargetReader(src_fn, **merged_kwargs)
 
         ext = os.path.splitext(src_fn)[1].lower()

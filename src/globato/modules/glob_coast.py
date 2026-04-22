@@ -25,7 +25,7 @@ from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.registry import ModuleRegistry
 from fetchez.modules import FetchModule
 
-from globato.hooks.tools.osm_landmask import OSMLandmask
+# from globato.hooks.tools.osm_landmask import OSMLandmask
 from globato.hooks.rasters.polygonize import RasterPolygonizeHook
 
 logger = logging.getLogger(__name__)
@@ -224,19 +224,19 @@ class GlobCoast(FetchModule):
             fetched_files = []
             weight = self.weights.get(mod_name, 0.1)
 
-            if mod_name == "osm_landmask":
-                landmask_fn = os.path.join(
-                    self._outdir, f"temp_landmask_{w}_{s}.geojson"
-                )
-                osm_hook = OSMLandmask(filename=landmask_fn)
+            # if mod_name == "osm_landmask":
+            #     landmask_fn = os.path.join(
+            #         self._outdir, f"temp_landmask_{w}_{s}.geojson"
+            #     )
+            #     osm_hook = OSMLandmask(filename=landmask_fn)
 
-                mock_entries = [(self, {"dst_fn": "dummy"})]
-                osm_hook.run(mock_entries)
+            #     mock_entries = [(self, {"dst_fn": "dummy"})]
+            #     osm_hook.run(mock_entries)
 
-                if os.path.exists(landmask_fn):
-                    fetched_files.append(landmask_fn)
+            #     if os.path.exists(landmask_fn):
+            #         fetched_files.append(landmask_fn)
 
-            elif mod_name == "nhd":
+            if mod_name == "nhd":
                 mod_cls = ModuleRegistry.get_class("tnm")
                 mod_instance = mod_cls(
                     src_region=fetch_region,

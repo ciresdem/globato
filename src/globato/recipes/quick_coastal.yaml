@@ -83,8 +83,8 @@ modules:
 
 global_hooks:
   # fetch OSM coastline to act as a barrier between topo and bathy
-  - name: osm_landmask
-    args: {filename: "temp_coastline.geojson"}
+  #- name: osm_landmask
+  #  args: {filename: "temp_coastline.geojson"}
   - name: audit
   - name: drop_class
   - name: provenance
@@ -120,10 +120,12 @@ global_hooks:
 
   - name: ms_cudem
     args:
-      steps: 2
-      resolutions: "1s/3s/9s"
-      weights: "1.0/0.5/0.1"
+      resolutions: "3s/9s"
+      weights: ".5/0.1"
       algo: "raster_fill"
+      # algo: "interp_gmt"
+      barrier: "osm"
+      blend_dist: 0
       output: "quick_coastal_dem.tif"
 
   # # Fast interpolation using `raster_fill`
