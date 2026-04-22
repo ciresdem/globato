@@ -16,10 +16,9 @@ from fetchez.modules import FetchModule
 from fetchez.core import run_fetchez
 from fetchez.cli import cli_opts
 
-# Import the base fetcher and our hooks
 from fetchez.modules.earthdata import IceSat2
 from globato.hooks.formats.icesat2 import ATL03Reader
-from globato.hooks.sinks.nc_writer import WriteNC
+from globato.hooks.sinks.xyz_writer import WriteXYZ
 from fetchez.hooks.copy_artifact import CopyArtifactHook
 
 logger = logging.getLogger(__name__)
@@ -55,14 +54,14 @@ class ICESat2ClassyModule(FetchModule):
         )
 
         fetcher.add_hook(
-            ATL03Reader(
+            IceSat2Stream(
                 cache_dir=self._outdir,
                 classes=self.classes,
                 use_dbscan=self.use_dbscan,
             )
         )
 
-        fetcher.add_hook(WriteNC())
+        fetcher.add_hook(WriteXYZ())
 
         fetcher.add_hook(
             CopyArtifactHook(target_dir="../_icesat2_deliverables", match=[".nc"])
