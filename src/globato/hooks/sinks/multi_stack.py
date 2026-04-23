@@ -456,7 +456,9 @@ class MultiStackHook(FetchHook):
                     self._accumulator.update(chunk)
                 yield chunk
 
-        logger_str = f"Read {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)}"
+            # elapsed_str = tqdm.format_interval(pbar.format_dict['elapsed'])
+
+        logger_str = f"Read {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)} in "
         # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
         logger.info(logger_str)
 

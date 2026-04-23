@@ -60,7 +60,7 @@ def recipe_list(search):
 
 def _load_yaml(target):
     base_config = None
-    if os.path.exists(target):
+    if os.path.exists(target) and not os.path.isdir(target):
         with open(target, "r", encoding="utf-8") as f:
             base_config = yaml.safe_load(f)
     else:
