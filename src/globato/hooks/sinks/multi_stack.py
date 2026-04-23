@@ -27,7 +27,7 @@ from rasterio.enums import ColorInterp
 
 from transformez.spatial import TransRegion as Region
 from fetchez.hooks import FetchHook
-from fetchez.utils import colorize, BLUE, BOLD, str_truncate_middle
+from fetchez.utils import colorize, CYAN, BLUE, BOLD, str_truncate_middle, format_dataset_id
 
 from ..transforms.point_pixels import PointPixels
 
@@ -445,8 +445,9 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
+        dataset_str = format_dataset_id(dataset_id)
         with tqdm(
-                desc=f"Streaming data from: {dataset_id}",
+                desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
                 leave=False,
         ) as pbar:
             for chunk in stream:
@@ -458,8 +459,7 @@ class MultiStackHook(FetchHook):
 
             # elapsed_str = tqdm.format_interval(pbar.format_dict['elapsed'])
 
-        logger_str = f"Read {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)} in "
-        # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
+        logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points from {colorize(dataset_str, BLUE)} into stack"
         logger.info(logger_str)
 
         # The stream is exhausted; permanently mark this dataset as completed

@@ -91,9 +91,7 @@ class GlobCoast(FetchModule):
         #     self.add_hook(sieve_cls(chunk="full", size=2))
 
         # Convert the cleaned raster to vector polygons
-        poly_cls = self.add_hook(RasterPolygonizeHook(target_value=1))
-        if poly_cls:
-            self.add_hook(poly_cls())
+        self.add_hook(RasterPolygonizeHook(target_value=1))
 
         if fill_inland_holes:
             try:

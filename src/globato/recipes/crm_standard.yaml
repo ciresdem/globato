@@ -206,6 +206,7 @@ global_hooks:
       weights: [1.0, 0.5, 0.1]
       blend_dist: 1
       algo: "interp_gmt"
+      barrier: "coastline"
       output: "crm_standard_dem.tif"
 
   - name: focus_sink
