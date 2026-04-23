@@ -88,6 +88,27 @@ class CudemStepDown(RasterGlobalHook):
             _pad_list(self.blend_dists, self.steps + 1), self.steps + 1
         )
 
+    def _validate_deps(self):
+        if self.algo == "interp_gmt":
+            from .gmt_surface import HAS_PYGMT
+
+            if not HAS_PYGMT:
+                return False, "PyGMT is required when using algo='interp_gmt'."
+
+        elif self.algo == "interp_verde":
+            from .verde_surface import HAS_VERDE
+
+            if not HAS_VERDE:
+                return False, "Verde is required when using algo='interp_verde'."
+
+        # elif self.algo == "interp_scipy":
+        #     try:
+        #         import scipy
+        #     except ImportError:
+        #         return False, "SciPy is required when using algo='interp_scipy'."
+
+        return True, ""
+
     def _decimate_raster(self, src_path, dst_path, target_res):
         """Downsamples the main stack using average pooling."""
 

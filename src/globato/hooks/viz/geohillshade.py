@@ -74,6 +74,11 @@ class GeoHillshade(RasterStreamHook):
         # We hold off on resolving the colormap until we know the global Z-limits!
         self.cm = None
 
+    def _validate_deps(self):
+        if not HAS_MATPLOTLIB:
+            return False, "matplotlib is required to generate hillshades."
+        return True, ""
+
     def modify_profile(self, profile):
         count = 4 if self.alpha else 3
         profile.update(dtype="uint8", count=count, nodata=None, photometric="RGB")

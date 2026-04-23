@@ -18,6 +18,7 @@ import json
 import logging
 import threading
 import numpy as np
+from tqdm import tqdm
 
 import rasterio
 from rasterio.windows import Window
@@ -26,7 +27,13 @@ from rasterio.enums import ColorInterp
 
 from transformez.spatial import TransRegion as Region
 from fetchez.hooks import FetchHook
-from fetchez.utils import colorize, BLUE, BOLD, str_truncate_middle
+from fetchez.utils import (
+    colorize,
+    CYAN,
+    BLUE,
+    BOLD,
+    format_dataset_id,
+)
 
 from ..transforms.point_pixels import PointPixels
 
@@ -431,10 +438,12 @@ class MultiStackHook(FetchHook):
             if self._accumulator and self._accumulator.is_registered(dataset_id):
                 logger.debug(f"Dataset '{dataset_id}' already inside stack. Skipping.")
                 entry.pop("stream", None)
+                entry.pop("raster_stream", None)
             else:
-                stream = entry.get("stream")
+                stream_key = "raster_stream" if "raster_stream" in entry else "stream"
+                stream = entry.get(stream_key)
                 if stream:
-                    entry["stream"] = self._intercept(stream, dataset_id)
+                    entry[stream_key] = self._intercept(stream, dataset_id)
 
             entry.setdefault("artifacts", {})[self.name] = self.output
 
@@ -444,15 +453,21 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
-        # logger.info(dataset_id)
-        for chunk in stream:
-            count += len(chunk)
-            if self._accumulator:
-                self._accumulator.update(chunk)
-            yield chunk
+        dataset_str = format_dataset_id(dataset_id)
+        with tqdm(
+            desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
+            leave=False,
+        ) as pbar:
+            for chunk in stream:
+                pbar.update()
+                count += len(chunk)
+                if self._accumulator:
+                    self._accumulator.update(chunk)
+                yield chunk
 
-        logger_str = f"Read {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)}"
-        # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
+            # elapsed_str = tqdm.format_interval(pbar.format_dict['elapsed'])
+
+        logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points from {colorize(dataset_str, BLUE)} into stack"
         logger.info(logger_str)
 
         # The stream is exhausted; permanently mark this dataset as completed

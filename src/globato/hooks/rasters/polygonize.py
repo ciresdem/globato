@@ -59,7 +59,7 @@ class RasterPolygonizeHook(FetchHook):
                 ext = ".gpkg" if self.format == "GPKG" else ".shp"
                 dst_fn = f"{base}_poly{ext}"
 
-            logger.info(
+            logger.debug(
                 f"Polygonizing {os.path.basename(src_fn)} -> {os.path.basename(dst_fn)}"
             )
 
@@ -94,7 +94,7 @@ class RasterPolygonizeHook(FetchHook):
                     mask = ~np.isnan(image)
 
             if not np.any(mask):
-                logger.warning(f"No matching pixels found to polygonize in {src_path}")
+                logger.debug(f"No matching pixels found to polygonize in {src_path}")
                 return False
 
             results = (

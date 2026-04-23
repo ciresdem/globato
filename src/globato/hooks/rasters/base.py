@@ -110,7 +110,11 @@ class RasterBaseHook(FetchHook):
                 logger.error("Region is required to auto-generate a coastline barrier.")
                 return None
 
-            outdir = getattr(mod, "outdir", os.getcwd())
+            outdir = (
+                getattr(mod, "_outdir", None)
+                or getattr(mod, "outdir", None)
+                or os.getcwd()
+            )
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
@@ -151,8 +155,8 @@ class RasterBaseHook(FetchHook):
                     barrier_path = gen_instance.results[0].get("dst_fn")
 
         if not barrier_path or not os.path.exists(barrier_path):
-            logger.warning(
-                f"Barrier file not found or failed to generate: {self.barrier}"
+            logger.debug(
+                f"Barrier file not found or failed to generate: {barrier_path}"
             )
             return None
 
@@ -256,7 +260,7 @@ class RasterStreamHook(RasterBaseHook):
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
                 dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
 
-            logger.info(f"Running local {self.name} on {os.path.basename(src_fn)}")
+            logger.debug(f"Running local {self.name} on {os.path.basename(src_fn)}")
             try:
                 success = self._process_file_fallback(src_fn, dst_fn, entry)
                 if success:
@@ -337,7 +341,7 @@ class RasterGlobalHook(RasterBaseHook):
             src_fn = entry.get("dst_fn")
 
             if stream:
-                logger.info(
+                logger.debug(
                     f"[{self.name}] Global hook detected active stream. Draining to disk..."
                 )
                 from globato.hooks.sinks.raster_writer import RasterWrite
@@ -364,7 +368,7 @@ class RasterGlobalHook(RasterBaseHook):
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
                 dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
 
-            logger.info(f"Running global {self.name} on {os.path.basename(src_fn)}")
+            logger.debug(f"Running global {self.name} on {os.path.basename(src_fn)}")
             try:
                 success = self.process_raster(src_fn, dst_fn, entry)
                 if success:

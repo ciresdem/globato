@@ -55,6 +55,14 @@ class GmtSurface(RasterGlobalHook):
         self.radius = radius
         self.gmt_upper = gmt_upper
 
+    def _validate_deps(self):
+        if not HAS_PYGMT:
+            return (
+                False,
+                "PyGMT is not installed. Please run: conda install -c conda-forge pygmt",
+            )
+        return True, ""
+
     def process_raster(self, src_path, dst_path, entry):
         if not HAS_PYGMT:
             logger.error("[GmtSurface] PyGMT not installed. Cannot run surface.")

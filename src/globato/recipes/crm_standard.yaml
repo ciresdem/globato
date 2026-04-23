@@ -38,6 +38,8 @@ modules:
       - name: filename_filter
         args: {match: ".tif"}
       - name: stream_data
+        args:
+          chunk_size: 100000
       - name: range_z
         args: {min_z: 0.01}
 
@@ -204,6 +206,7 @@ global_hooks:
       weights: [1.0, 0.5, 0.1]
       blend_dist: 1
       algo: "interp_gmt"
+      barrier: "coastline"
       output: "crm_standard_dem.tif"
 
   - name: focus_sink
