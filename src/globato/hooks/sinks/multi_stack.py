@@ -445,9 +445,8 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
-        # logger.info(dataset_id)
         with tqdm(
-                desc=f"streaming {dataset_id}",
+                desc=f"Streaming data from: {dataset_id}",
                 leave=False,
         ) as pbar:
             for chunk in stream:
