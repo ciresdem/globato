@@ -27,7 +27,13 @@ from rasterio.enums import ColorInterp
 
 from transformez.spatial import TransRegion as Region
 from fetchez.hooks import FetchHook
-from fetchez.utils import colorize, CYAN, BLUE, BOLD, str_truncate_middle, format_dataset_id
+from fetchez.utils import (
+    colorize,
+    CYAN,
+    BLUE,
+    BOLD,
+    format_dataset_id,
+)
 
 from ..transforms.point_pixels import PointPixels
 
@@ -449,8 +455,8 @@ class MultiStackHook(FetchHook):
         count = 0
         dataset_str = format_dataset_id(dataset_id)
         with tqdm(
-                desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
-                leave=False,
+            desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
+            leave=False,
         ) as pbar:
             for chunk in stream:
                 pbar.update()

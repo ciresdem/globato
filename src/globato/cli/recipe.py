@@ -46,10 +46,14 @@ def validate_dependencies(recipe_obj):
 
     if errors:
         click.secho("\n[ DEPENDENCY VALIDATION CHECK FAILED ]", fg="red", bold=True)
-        click.secho("The following dependencies are missing for this recipe:", fg="yellow")
+        click.secho(
+            "The following dependencies are missing for this recipe:", fg="yellow"
+        )
         for error in errors:
             click.echo(f"   {error}")
-        click.echo("\nPlease install the required packages or modify the recipe and try again.\n")
+        click.echo(
+            "\nPlease install the required packages or modify the recipe and try again.\n"
+        )
         sys.exit(1)
 
 

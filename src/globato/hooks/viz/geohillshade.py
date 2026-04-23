@@ -75,10 +75,7 @@ class GeoHillshade(RasterStreamHook):
         self.cm = None
 
     def _validate_deps(self):
-        try:
-            import matplotlib.pyplot as plt
-            import earthpy.spatial as es
-        except ImportError:
+        if not HAS_MATPLOTLIB:
             return False, "matplotlib is required to generate hillshades."
         return True, ""
 

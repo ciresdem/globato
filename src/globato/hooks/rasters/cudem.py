@@ -90,22 +90,22 @@ class CudemStepDown(RasterGlobalHook):
 
     def _validate_deps(self):
         if self.algo == "interp_gmt":
-            try:
-                import pygmt
-            except ImportError:
+            from .gmt_surface import HAS_PYGMT
+
+            if not HAS_PYGMT:
                 return False, "PyGMT is required when using algo='interp_gmt'."
 
         elif self.algo == "interp_verde":
-            try:
-                import verde
-            except ImportError:
+            from .verde_surface import HAS_VERDE
+
+            if not HAS_VERDE:
                 return False, "Verde is required when using algo='interp_verde'."
 
-        elif self.algo == "interp_scipy":
-            try:
-                import scipy
-            except ImportError:
-                return False, "SciPy is required when using algo='interp_scipy'."
+        # elif self.algo == "interp_scipy":
+        #     try:
+        #         import scipy
+        #     except ImportError:
+        #         return False, "SciPy is required when using algo='interp_scipy'."
 
         return True, ""
 

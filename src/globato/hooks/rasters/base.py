@@ -110,7 +110,11 @@ class RasterBaseHook(FetchHook):
                 logger.error("Region is required to auto-generate a coastline barrier.")
                 return None
 
-            outdir = getattr(mod, "_outdir", None) or getattr(mod, "outdir", None) or os.getcwd()
+            outdir = (
+                getattr(mod, "_outdir", None)
+                or getattr(mod, "outdir", None)
+                or os.getcwd()
+            )
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"

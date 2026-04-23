@@ -64,14 +64,20 @@ class BAGReader(RasterioReader):
                 try:
                     w, s, e, n = transform_bounds("EPSG:4326", src.crs, w, s, e, n)
                 except Exception as e:
-                    logger.warning(f"Failed to transform bounds for BAG {self.src_fn}: {e}")
+                    logger.warning(
+                        f"Failed to transform bounds for BAG {self.src_fn}: {e}"
+                    )
 
             req_window = from_bounds(w, s, e, n, transform=src.transform)
 
             try:
-                master_window = req_window.intersection(Window(0, 0, src.width, src.height))
+                master_window = req_window.intersection(
+                    Window(0, 0, src.width, src.height)
+                )
             except WindowError:
-                logger.debug(f"BAG {self.src_fn} is entirely outside the requested region.")
+                logger.debug(
+                    f"BAG {self.src_fn} is entirely outside the requested region."
+                )
                 return
         else:
             master_window = Window(0, 0, src.width, src.height)
@@ -94,7 +100,7 @@ class BAGReader(RasterioReader):
 
                 mask = ~np.isnan(z)
                 if src.nodata is not None:
-                    mask &= (z != src.nodata)
+                    mask &= z != src.nodata
 
                 if not np.any(mask):
                     continue
@@ -119,7 +125,13 @@ class BAGReader(RasterioReader):
                 count = len(z_valid)
                 chunk = np.zeros(
                     count,
-                    dtype=[("x", "f8"), ("y", "f8"), ("z", "f8"), ("w", "f4"), ("u", "f4")],
+                    dtype=[
+                        ("x", "f8"),
+                        ("y", "f8"),
+                        ("z", "f8"),
+                        ("w", "f4"),
+                        ("u", "f4"),
+                    ],
                 )
 
                 chunk["x"] = xs
@@ -139,7 +151,7 @@ class BAGReader(RasterioReader):
 
         is_vr = False
 
-        #try:
+        # try:
         with rasterio.Env(**env_opts):
             with rasterio.open(self.src_fn) as src:
                 tags = src.tags(ns="IMAGE_STRUCTURE")
