@@ -17,8 +17,6 @@ modules:
     args: {weight: 5.0}
     hooks:
       - name: stream_data
-        args:
-          chunk_size: 1000000
       - name: stream_reproject
         args: {dst_srs: "EPSG:4326+3855"}
       - name: spatial_crop
@@ -29,8 +27,6 @@ modules:
       - name: raster_flats
         args: {stage: "file"}
       - name: stream_data
-        args:
-          chunk_size: 1000000
       - name: stream_reproject
         args: {dst_srs: "EPSG:4326+3855"}
       - name: spatial_crop

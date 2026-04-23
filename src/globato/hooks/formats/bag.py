@@ -14,7 +14,12 @@ Handles VR-BAGs, standard BAGs, uncertainty bands, and corrupt XML metadata.
 
 import logging
 import numpy as np
+
 import rasterio
+from rasterio.windows import Window, from_bounds
+from rasterio.warp import transform_bounds
+from rasterio.errors import WindowError
+
 from fetchez.utils import float_or
 
 from .rio import RasterioReader
@@ -53,47 +58,77 @@ class BAGReader(RasterioReader):
         bag_weight = self._calculate_bag_weight(src.transform)
         has_unc = src.count >= 2
 
-        for ji, window in src.block_windows(1):
-            z = src.read(1, window=window)
+        if self.region:
+            w, e, s, n = self.region
+            if src.crs and src.crs != "EPSG:4326":
+                try:
+                    w, s, e, n = transform_bounds("EPSG:4326", src.crs, w, s, e, n)
+                except Exception as e:
+                    logger.warning(f"Failed to transform bounds for BAG {self.src_fn}: {e}")
 
-            if src.nodata is not None:
-                mask = z != src.nodata
-            else:
+            req_window = from_bounds(w, s, e, n, transform=src.transform)
+
+            try:
+                master_window = req_window.intersection(Window(0, 0, src.width, src.height))
+            except WindowError:
+                logger.debug(f"BAG {self.src_fn} is entirely outside the requested region.")
+                return
+        else:
+            master_window = Window(0, 0, src.width, src.height)
+
+        block_h, block_w = src.block_shapes[0]
+        y_start = int(master_window.row_off)
+        y_end = int(master_window.row_off + master_window.height)
+        x_start = int(master_window.col_off)
+        x_end = int(master_window.col_off + master_window.width)
+
+        for y in range(y_start, y_end, block_h):
+            h_chunk = self.chunk_size or block_h
+            rows = min(h_chunk, y_end - y)
+
+            for x in range(x_start, x_end, block_w):
+                w_chunk = self.chunk_size or block_w
+                cols = min(w_chunk, x_end - x)
+                window = Window(x, y, cols, rows)
+                z = src.read(1, window=window)
+
                 mask = ~np.isnan(z)
+                if src.nodata is not None:
+                    mask &= (z != src.nodata)
 
-            if not np.any(mask):
-                continue
+                if not np.any(mask):
+                    continue
 
-            if has_unc:
-                u = src.read(2, window=window)
-            else:
-                u = np.zeros_like(z)
+                if has_unc:
+                    u = src.read(2, window=window)
+                else:
+                    u = np.zeros_like(z)
 
-            z_valid = z[mask]
-            u_valid = u[mask]
+                z_valid = z[mask]
+                u_valid = u[mask]
 
-            rows, cols = np.where(mask)
-            global_rows = rows + window.row_off
-            global_cols = cols + window.col_off
+                local_rows, local_cols = np.where(mask)
 
-            # with rasterio.Env(CPL_MIN_LOG_LEVEL=rasterio.logging.ERROR):
-            xs, ys = rasterio.transform.xy(
-                src.transform, global_rows, global_cols, offset="center"
-            )
+                global_rows = local_rows + window.row_off
+                global_cols = local_cols + window.col_off
 
-            count = len(z_valid)
-            chunk = np.zeros(
-                count,
-                dtype=[("x", "f8"), ("y", "f8"), ("z", "f4"), ("w", "f4"), ("u", "f4")],
-            )
+                xs, ys = rasterio.transform.xy(
+                    src.transform, global_rows, global_cols, offset="center"
+                )
 
-            chunk["x"] = xs
-            chunk["y"] = ys
-            chunk["z"] = z_valid
-            chunk["u"] = u_valid
-            chunk["w"] = np.full(count, bag_weight, dtype="float32")
+                count = len(z_valid)
+                chunk = np.zeros(
+                    count,
+                    dtype=[("x", "f8"), ("y", "f8"), ("z", "f8"), ("w", "f4"), ("u", "f4")],
+                )
 
-            yield chunk
+                chunk["x"] = xs
+                chunk["y"] = ys
+                chunk["z"] = z_valid
+                chunk["u"] = u_valid
+                chunk["w"] = np.full(count, bag_weight, dtype="float32")
+
+                yield chunk
 
     def yield_chunks(self):
         env_opts = {
@@ -104,20 +139,20 @@ class BAGReader(RasterioReader):
 
         is_vr = False
 
-        try:
-            with rasterio.Env(**env_opts):
-                with rasterio.open(self.src_fn) as src:
-                    tags = src.tags(ns="IMAGE_STRUCTURE")
-                    if tags.get("HAS_SUPERGRIDS") == "TRUE":
-                        is_vr = True
+        #try:
+        with rasterio.Env(**env_opts):
+            with rasterio.open(self.src_fn) as src:
+                tags = src.tags(ns="IMAGE_STRUCTURE")
+                if tags.get("HAS_SUPERGRIDS") == "TRUE":
+                    is_vr = True
 
-                    if not is_vr:
-                        yield from self._process_bag_dataset(src)
-                        return
+                if not is_vr:
+                    yield from self._process_bag_dataset(src)
+                    return
 
-        except Exception as e:
-            logger.error(f"Failed to probe BAG {self.src_fn}: {e}")
-            return
+        # except Exception as e:
+        #     logger.error(f"Failed to probe BAG {self.src_fn}: {e}")
+        #     return
 
         if is_vr:
             logger.debug(

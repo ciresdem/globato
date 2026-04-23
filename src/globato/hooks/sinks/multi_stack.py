@@ -18,6 +18,7 @@ import json
 import logging
 import threading
 import numpy as np
+from tqdm import tqdm
 
 import rasterio
 from rasterio.windows import Window
@@ -445,11 +446,16 @@ class MultiStackHook(FetchHook):
 
         count = 0
         # logger.info(dataset_id)
-        for chunk in stream:
-            count += len(chunk)
-            if self._accumulator:
-                self._accumulator.update(chunk)
-            yield chunk
+        with tqdm(
+                desc=f"streaming {dataset_id}",
+                leave=False,
+        ) as pbar:
+            for chunk in stream:
+                pbar.update()
+                count += len(chunk)
+                if self._accumulator:
+                    self._accumulator.update(chunk)
+                yield chunk
 
         logger_str = f"Read {colorize(count, BOLD)} data points from {colorize(str_truncate_middle(dataset_id), BLUE)}"
         # logger.info(f"{utils.colorize(logger_str, utils.BOLD):<15}")
