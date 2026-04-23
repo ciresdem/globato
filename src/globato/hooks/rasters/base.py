@@ -151,7 +151,7 @@ class RasterBaseHook(FetchHook):
                     barrier_path = gen_instance.results[0].get("dst_fn")
 
         if not barrier_path or not os.path.exists(barrier_path):
-            logger.warning(
+            logger.debug(
                 f"Barrier file not found or failed to generate: {barrier_path}"
             )
             return None
