@@ -93,7 +93,7 @@ class RasterioReader:
                             window = Window(x, y, cols, rows)
                             z = src.read(self.band_no, window=window)
                             u = np.zeros_like(z)
-                            w = np.zeros_like(z)
+                            w = np.ones_like(z)
 
                             if not np.issubdtype(z.dtype, np.floating):
                                 z = z.astype(np.float32)
@@ -121,7 +121,7 @@ class RasterioReader:
                             count = len(z_valid)
                             chunk = np.zeros(
                                 count,
-                                dtype=[("x", "f8"), ("y", "f8"), ("z", "f8"), ("w", "f4"), ("u", "f4")],
+                                dtype=[("x", "f8"), ("y", "f8"), ("z", "f4"), ("w", "f4"), ("u", "f4")],
                             )
 
                             chunk["x"] = xs

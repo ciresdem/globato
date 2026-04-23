@@ -24,6 +24,35 @@ from globato.utils import parse_source_string, yield_parsed_regions
 logger = logging.getLogger(__name__)
 
 
+def validate_dependencies(recipe_obj):
+    """Interrogates all modules and hooks to ensure heavy dependencies exist."""
+
+    errors = []
+
+    # Check all global hooks
+    for hook in getattr(recipe_obj, "global_hooks", []):
+        if hasattr(hook, "_validate_deps"):
+            passed, msg = hook._validate_deps()
+            if not passed:
+                errors.append(f"[{hook.name}] {msg}")
+
+    # Check all streaming hooks inside the modules
+    for mod in getattr(recipe_obj, "modules", []):
+        for hook in getattr(mod, "hooks", []):
+            if hasattr(hook, "_validate_deps"):
+                passed, msg = hook._validate_deps()
+                if not passed:
+                    errors.append(f"[{mod.name} -> {hook.name}] {msg}")
+
+    if errors:
+        click.secho("\n[ DEPENDENCY VALIDATION CHECK FAILED ]", fg="red", bold=True)
+        click.secho("The following dependencies are missing for this recipe:", fg="yellow")
+        for error in errors:
+            click.echo(f"   {error}")
+        click.echo("\nPlease install the required packages or modify the recipe and try again.\n")
+        sys.exit(1)
+
+
 @click.group(name="recipe")
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
@@ -422,6 +451,8 @@ def recipe_validate(target):
     errors = 0
     click.secho(f"Validating {target}...", fg="blue")
 
+    validate_dependencies(base_config)
+
     for mod in base_config.get("modules", []):
         mod_name = mod.get("module")
         if not ModuleRegistry.get_class(mod_name) and mod_name not in [
@@ -461,8 +492,6 @@ def recipe_validate(target):
 
 
 # --- Build command ---
-
-
 def _parse_source(src_str):
     """Parses 'module:key=val+hook:k=v' or local paths into a dictionary for the recipe."""
 

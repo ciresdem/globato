@@ -284,7 +284,7 @@ class GlobCoast(FetchModule):
                 if not f_path or not os.path.exists(f_path):
                     continue
 
-                logger.info(
+                logger.debug(
                     f"Voting: {os.path.basename(f_path)} as '{mod_name}' (Weight: {weight})"
                 )
                 ext = os.path.splitext(f_path)[1].lower()
