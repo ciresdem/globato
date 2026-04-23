@@ -118,7 +118,7 @@ class OSMLandmaskModule(FetchModule):
         url = f"{OSM_API}?{params}"
         dest = os.path.join(self._outdir, f"temp_osm_{w}_{s}.json")
         f = Fetch(url, headers=HEADERS)
-        if f.fetch_file(dest, method="POST", verbose=False) == 0:
+        if f.fetch_file(dest, method="GET", verbose=False) == 0:
             return dest
         return None
 
