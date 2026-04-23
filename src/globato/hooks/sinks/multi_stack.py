@@ -432,10 +432,12 @@ class MultiStackHook(FetchHook):
             if self._accumulator and self._accumulator.is_registered(dataset_id):
                 logger.debug(f"Dataset '{dataset_id}' already inside stack. Skipping.")
                 entry.pop("stream", None)
+                entry.pop("raster_stream", None)
             else:
-                stream = entry.get("stream")
+                stream_key = "raster_stream" if "raster_stream" in entry else "stream"
+                stream = entry.get(stream_key)
                 if stream:
-                    entry["stream"] = self._intercept(stream, dataset_id)
+                    entry[stream_key] = self._intercept(stream, dataset_id)
 
             entry.setdefault("artifacts", {})[self.name] = self.output
 

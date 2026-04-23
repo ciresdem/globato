@@ -152,7 +152,7 @@ class RasterBaseHook(FetchHook):
 
         if not barrier_path or not os.path.exists(barrier_path):
             logger.warning(
-                f"Barrier file not found or failed to generate: {self.barrier_path}"
+                f"Barrier file not found or failed to generate: {barrier_path}"
             )
             return None
 
