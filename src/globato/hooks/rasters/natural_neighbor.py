@@ -15,7 +15,6 @@ import logging
 import numpy as np
 import rasterio
 from rasterio.transform import xy
-from rasterio.features import rasterize
 
 from .base import RasterGlobalHook
 
@@ -43,8 +42,6 @@ class NaturalNeighborSurface(RasterGlobalHook):
         if not HAS_NATURALNEIGHBOR:
             logger.error("'naturalneighbor' package not installed.")
             return False
-
-        barrier_geoms = self._get_barrier_geometries()
 
         with rasterio.open(src_path) as src:
             data = src.read(1)
@@ -79,17 +76,6 @@ class NaturalNeighborSurface(RasterGlobalHook):
                     z_chunk = z_chunk[: src.height, : src.width]
 
                 z_chunk = np.nan_to_num(z_chunk, nan=nodata)
-
-                if barrier_geoms:
-                    barrier_mask = rasterize(
-                        barrier_geoms,
-                        out_shape=data.shape,
-                        transform=src.transform,
-                        fill=0,
-                        default_value=1,
-                        dtype="uint8",
-                    ).astype(bool)
-                    z_chunk = np.where(~barrier_mask, z_chunk, nodata)
 
                 profile = src.profile.copy()
                 profile.update(dtype=rasterio.float32, nodata=nodata, count=1)

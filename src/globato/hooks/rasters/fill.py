@@ -15,7 +15,6 @@ import logging
 import numpy as np
 import rasterio
 from rasterio.fill import fillnodata
-from rasterio.features import rasterize
 
 from .base import RasterGlobalHook
 
@@ -37,8 +36,6 @@ class RasterFill(RasterGlobalHook):
         self.smoothing = int(smoothing)
 
     def process_raster(self, src_path, dst_path, entry):
-        barrier_geoms = self._get_barrier_geometries()
-
         with rasterio.open(src_path) as src:
             data = src.read(1)
             nodata = src.nodata
@@ -67,17 +64,6 @@ class RasterFill(RasterGlobalHook):
                     max_search_distance=self.max_dist,
                     smoothing_iterations=self.smoothing,
                 )
-
-                if barrier_geoms:
-                    barrier_mask = rasterize(
-                        barrier_geoms,
-                        out_shape=data.shape,
-                        transform=src.transform,
-                        fill=0,
-                        default_value=1,
-                        dtype="uint8",
-                    ).astype(bool)
-                    filled_arr = np.where(~barrier_mask, filled_arr, nodata)
 
                 profile = src.profile.copy()
                 profile.update(dtype=rasterio.float32, nodata=nodata, count=1)

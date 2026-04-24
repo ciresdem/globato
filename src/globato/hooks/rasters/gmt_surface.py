@@ -15,7 +15,6 @@ via PyGMT to interpolate sparse grids. Essential for deep water/large gaps.
 import logging
 import numpy as np
 import rasterio
-from rasterio.features import rasterize
 from rasterio.transform import xy
 
 from ..rasters.base import RasterGlobalHook
@@ -41,19 +40,27 @@ class GmtSurface(RasterGlobalHook):
         convergence (float): Convergence limit. Default 1e-4.
         radius (str/float): Search radius for valid data.
         upper (str/float): Upper limit of ouput solution.
+        verbose (bool): Add verbosity to pygmt
     """
 
     name = "interp_gmt"
     default_suffix = "_gmt"
 
     def __init__(
-        self, tension=0.35, convergence=1e-4, radius=None, gmt_upper=None, **kwargs
+        self,
+        tension=0.35,
+        convergence=1e-4,
+        radius=None,
+        gmt_upper=None,
+        verbose=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.tension = float(tension)
         self.convergence = float(convergence)
         self.radius = radius
         self.gmt_upper = gmt_upper
+        self.verbose = verbose
 
     def _validate_deps(self):
         if not HAS_PYGMT:
@@ -67,8 +74,6 @@ class GmtSurface(RasterGlobalHook):
         if not HAS_PYGMT:
             logger.error("[GmtSurface] PyGMT not installed. Cannot run surface.")
             return False
-
-        barrier_geoms = self._get_barrier_geometries()
 
         with rasterio.open(src_path) as src:
             data = src.read(1)
@@ -105,28 +110,16 @@ class GmtSurface(RasterGlobalHook):
                     spacing=spacing_str,
                     tension=self.tension,
                     convergence=self.convergence,
+                    # Optional: lower/upper limits if bathy constraints known
                     upper=self.gmt_upper,
                     registration="pixel",
-                    # Optional: lower/upper limits if bathy constraints known
-                    # verbose=True,
+                    verbose=self.verbose,
                 )
                 result_arr = grid.values
                 result_arr = np.flipud(result_arr)
 
                 profile = src.profile.copy()
                 profile.update(dtype=rasterio.float32, nodata=nodata, count=1)
-
-                if barrier_geoms:
-                    barrier_mask = rasterize(
-                        barrier_geoms,
-                        out_shape=data.shape,
-                        transform=src.transform,
-                        fill=0,
-                        default_value=1,
-                        dtype="uint8",
-                    ).astype(bool)
-                    # data_b = np.where(~barrier_mask, data, ndv)
-                    result_arr = np.where(~barrier_mask, result_arr, nodata)
 
                 with rasterio.open(dst_path, "w", **profile) as dst:
                     dst.write(result_arr.astype(rasterio.float32), 1)

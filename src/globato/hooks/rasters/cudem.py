@@ -256,14 +256,12 @@ class CudemStepDown(RasterGlobalHook):
                 if HAS_PYGMT:
                     interp = GmtSurface(
                         tension=0.95,
-                        barrier=step_barrier,
-                        gmt_upper=-0.01 if i > 0 else None,
                         min_weight=weight,
                         verbose=True,
                     )
                 else:
                     logger.warning(
-                        "PyGMT is missing or failed to load. Falling back to Scipy interpolation."
+                        "PyGMT is missing or failed to load. Falling back to raster_fill interpolation."
                     )
                     self.algo = "raster_fill"
 
@@ -273,9 +271,7 @@ class CudemStepDown(RasterGlobalHook):
                 if HAS_VERDE:
                     interp = VerdeSurface(
                         damping=1e-4,
-                        barrier=step_barrier,
                         min_weight=weight,
-                        upper=-0.01 if i > 0 else None,
                     )
                 else:
                     logger.warning(
@@ -288,9 +284,7 @@ class CudemStepDown(RasterGlobalHook):
 
                 interp = ScipyInterp(
                     method="cubic",
-                    barrier=step_barrier,
                     min_weight=weight,
-                    upper=-0.01 if i > 0 else None,
                 )
             else:
                 self.algo = "raster_fill"
@@ -299,17 +293,57 @@ class CudemStepDown(RasterGlobalHook):
                 interp = RasterFill(
                     max_dist=1000,
                     smoothing=3,
-                    barrier=step_barrier,
                     min_weight=weight,
-                    upper=-0.01 if i > 0 else None,
                 )
             interp.current_mod = getattr(self, "current_mod", None)
 
-            success = interp.process_raster(step_stack, step_interp, entry)
+            # success = interp.process_raster(step_stack, step_interp, entry)
+
+            # If previous_surface is None, this is the coarsest step and has voids. We interpolate.
+            if previous_surface is None:
+                logger.info(
+                    f"--- Interpolating Base Surface (Step {i}) via {self.algo} ---"
+                )
+                success = interp.process_raster(step_stack, step_interp, entry)
+
+            # If previous_surface exists, _blend_background already filled the voids.
+            # We skip the interpolation and just pass the blended stack forward.
+            else:
+                logger.info(
+                    f"--- Bypassing Interpolation for Step {i} (Grid already filled) ---"
+                )
+                shutil.copy(step_stack, step_interp)
+                success = True
 
             if success:
+                # Only apply if this step requires a barrier (i > 0)
+                if step_barrier:
+                    logger.info(f"--- Applying Anti-Topo-Creep to Step {i} ---")
+
+                    with rasterio.open(step_interp, "r+") as dst:
+                        data = dst.read(1)
+                        nodata = dst.nodata if dst.nodata is not None else -9999
+
+                        barrier_mask = self._create_barrier_mask(
+                            data.shape, dst.transform
+                        )
+                        if barrier_mask is not None:
+                            # Water is where barrier_mask is False AND data is valid
+                            water_mask = (
+                                ~barrier_mask & (data != nodata) & (~np.isnan(data))
+                            )
+
+                            # Clamp the ocean pixels to stay underwater!
+                            data[water_mask] = np.minimum(data[water_mask], -0.01)
+
+                            dst.write(data, 1)
+
                 interp._clamp_raster(step_interp)
                 previous_surface = step_interp
+
+            # if success:
+            #     interp._clamp_raster(step_interp)
+            #     previous_surface = step_interp
 
         if previous_surface and os.path.exists(previous_surface):
             shutil.move(previous_surface, dst_path)

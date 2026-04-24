@@ -453,6 +453,9 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
+        z_min = float("inf")
+        z_max = float("-inf")
+
         dataset_str = format_dataset_id(dataset_id)
         with tqdm(
             desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
@@ -460,14 +463,41 @@ class MultiStackHook(FetchHook):
         ) as pbar:
             for chunk in stream:
                 pbar.update()
-                count += len(chunk)
+
+                if isinstance(chunk, tuple) and len(chunk) >= 3:
+                    # Raster stream chunk: (window, buff_win, data, ndv, transform)
+                    data = chunk[2]
+                    ndv = chunk[3] if len(chunk) > 3 else -9999
+                    z_data = data[0] if data.ndim == 3 else data
+                    valid_mask = (z_data != ndv) & ~np.isnan(z_data)
+                    valid_z = z_data[valid_mask]
+                    count += valid_z.size
+
+                elif isinstance(chunk, np.ndarray) and "z" in chunk.dtype.names:
+                    # Point rec-array stream chunk
+                    valid_z = chunk["z"][~np.isnan(chunk["z"])]
+                    count += len(chunk)
+                else:
+                    valid_z = np.array([])
+                    count += len(chunk)
+
+                if valid_z.size > 0:
+                    z_min = min(z_min, float(np.min(valid_z)))
+                    z_max = max(z_max, float(np.max(valid_z)))
+
                 if self._accumulator:
                     self._accumulator.update(chunk)
                 yield chunk
 
-            # elapsed_str = tqdm.format_interval(pbar.format_dict['elapsed'])
+        if z_min == float("inf") or z_max == float("-inf"):
+            z_str = "No valid Z data"
+        else:
+            if abs(z_min) > 1e10 or abs(z_max) > 1e10:
+                z_str = f"Z: [{z_min:.2e} to {z_max:.2e}]"
+            else:
+                z_str = f"Z: [{z_min:,.2f} to {z_max:,.2f}]"
 
-        logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points from {colorize(dataset_str, BLUE)} into stack"
+        logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
         logger.info(logger_str)
 
         # The stream is exhausted; permanently mark this dataset as completed

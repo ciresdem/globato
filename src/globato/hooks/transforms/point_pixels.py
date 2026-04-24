@@ -140,11 +140,11 @@ class PointPixels:
         # points_y = np.array(points["y"])
         # pixel_z = np.array(points["z"])
 
-        # This still gives a warning sometimes:
-        #   RuntimeWarning: invalid value encountered in divide
-        #   pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
-        #   RuntimeWarning: invalid value encountered in cast
-        # TODO: Figure this out and fix.
+        # # This still gives a warning sometimes:
+        # #  RuntimeWarning: invalid value encountered in divide
+        # #  pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
+        # #  RuntimeWarning: invalid value encountered in cast
+        # # TODO: Figure this out and fix.
         # pixel_w = (
         #     np.array(points["w"])
         #     if "w" in points.dtype.names
