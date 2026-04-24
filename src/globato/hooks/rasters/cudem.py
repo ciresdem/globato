@@ -20,6 +20,7 @@ import rasterio
 import scipy.ndimage
 from fetchez.utils import remove_glob2, str2inc
 from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.fill import fillnodata
 
 from .fill import RasterFill
 from .base import RasterGlobalHook
@@ -256,8 +257,7 @@ class CudemStepDown(RasterGlobalHook):
                 if HAS_PYGMT:
                     interp = GmtSurface(
                         tension=0.95,
-                        min_weight=weight,
-                        verbose=True,
+                        verbose=False,
                     )
                 else:
                     logger.warning(
@@ -271,7 +271,6 @@ class CudemStepDown(RasterGlobalHook):
                 if HAS_VERDE:
                     interp = VerdeSurface(
                         damping=1e-4,
-                        min_weight=weight,
                     )
                 else:
                     logger.warning(
@@ -284,7 +283,6 @@ class CudemStepDown(RasterGlobalHook):
 
                 interp = ScipyInterp(
                     method="cubic",
-                    min_weight=weight,
                 )
             else:
                 self.algo = "raster_fill"
@@ -293,7 +291,6 @@ class CudemStepDown(RasterGlobalHook):
                 interp = RasterFill(
                     max_dist=1000,
                     smoothing=3,
-                    min_weight=weight,
                 )
             interp.current_mod = getattr(self, "current_mod", None)
 
@@ -310,9 +307,33 @@ class CudemStepDown(RasterGlobalHook):
             # We skip the interpolation and just pass the blended stack forward.
             else:
                 logger.info(
-                    f"--- Bypassing Interpolation for Step {i} (Grid already filled) ---"
+                    f"--- Bypassing Interpolation for Step {i} (Filling moats via GDAL) ---"
                 )
                 shutil.copy(step_stack, step_interp)
+
+                with rasterio.open(step_interp, "r+") as dst:
+                    data = dst.read(1)
+                    nodata = dst.nodata if dst.nodata is not None else -9999
+
+                    valid_mask = (data != nodata) & (~np.isnan(data))
+
+                    # If moats or small gaps exist, fill them instantly!
+                    if not np.all(valid_mask):
+                        logger.info(
+                            f"Stitching {current_blend_dist}-pixel blend moats..."
+                        )
+
+                        # Max search distance in pixels. Double the moat size to be safe.
+                        search_dist = max(10.0, float(current_blend_dist * 2))
+
+                        data = fillnodata(
+                            data,
+                            mask=valid_mask,
+                            max_search_distance=search_dist,
+                            smoothing_iterations=3,
+                        )
+                        dst.write(data, 1)
+
                 success = True
 
             if success:
