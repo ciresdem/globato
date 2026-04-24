@@ -48,11 +48,27 @@ class CRMSchema(BaseSchema):
 
         # Update Module reprojections
         for module in modules:
-            for hook in module.get("hooks", []):
+            hooks = module.get("hooks", [])
+
+            for hook in hooks:
                 if hook.get("name") == "stream_reproject":
                     if not hook.get("args", None):
                         hook.setdefault("args", {})
                     hook["args"].update({"dst_srs": "EPSG:4326+3855"})
+
+            insert_idx = len(hooks)
+            for i, hook in enumerate(hooks):
+                if hook.get("name") == "stream_data":
+                    insert_idx = i
+                    break
+
+            # Add range_z between Marians Trench and Mt. Everest for safety
+            # right after stream_data starts. This is in meters.
+            hooks.insert(
+                insert_idx,
+                {"name": "range_z", "args": {"min_z": -11000, "max_z": 9000}},
+            )
+            module["hooks"] = hooks
 
         # Update Stack parameters
         for hook in global_hooks:

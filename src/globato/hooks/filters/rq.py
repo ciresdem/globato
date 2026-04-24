@@ -119,6 +119,8 @@ class ReferenceQuality(GlobatoFilter):
                 self.ref_fn = self._build_vrt(files, region)
 
         self.src = rasterio.open(self.ref_fn)
+        self.ref_data = self.src.read(1)
+
         if self.target_srs:
             if self._transformer is None:
                 self._transformer = SRSParser(self.target_srs, self.src_crs).tc
@@ -196,10 +198,11 @@ class ReferenceQuality(GlobatoFilter):
         if self.target_srs:
             rx, ry, rz = self._transformer.transform(rx, ry, rz)
 
-        coords = list(zip(rx, ry))
-        ref_vals = np.fromiter(
-            (val[0] for val in self.src.sample(coords)), dtype=np.float32
-        )
+        rows, cols = rasterio.transform.rowcol(self.src.transform, rx, ry)
+        rows = np.clip(rows, 0, self.src.height - 1)
+        cols = np.clip(cols, 0, self.src.width - 1)
+
+        ref_vals = self.ref_data[rows, cols]
         valid_ref = (ref_vals != nodata) & (~np.isnan(ref_vals))
 
         diff = np.abs(rz - ref_vals)

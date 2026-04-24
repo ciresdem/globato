@@ -12,7 +12,6 @@ Clip a raster to a vector
 
 import logging
 import numpy as np
-from rasterio.features import rasterize
 
 from .base import RasterStreamHook
 
@@ -30,34 +29,20 @@ class RasterClipHook(RasterStreamHook):
         super().__init__(**kwargs)
 
         self.invert = str(invert).lower() == "true"
-        # self.clip_geoms = None
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         """Process individual windows/chunks passed by RasterHook."""
 
-        if not self.barrier_geoms:
-            return data
-
         out_shape = data.shape[-2:] if data.ndim >= 2 else data.shape
+        geom_mask = self._create_barrier_mask(out_shape, transform)
 
-        geom_mask = rasterize(
-            self.barrier_geoms,
-            # out_shape=data.shape,
-            out_shape=out_shape,
-            transform=transform,
-            fill=0,
-            default_value=1,
-            dtype="uint8",
-        ).astype(bool)
+        if geom_mask is None:
+            return data
 
         if data.ndim == 3:
             geom_mask = np.broadcast_to(geom_mask, data.shape)
 
         if self.invert:
-            # Set pixels INSIDE the polygons to nodata
-            clipped_data = np.where(~geom_mask, data, ndv)
+            return np.where(~geom_mask, data, ndv)
         else:
-            # Set pixels OUTSIDE the polygons to nodata
-            clipped_data = np.where(geom_mask, data, ndv)
-
-        return clipped_data
+            return np.where(geom_mask, data, ndv)

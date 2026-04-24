@@ -100,7 +100,10 @@ class BAGReader(RasterioReader):
 
                 mask = ~np.isnan(z)
                 if src.nodata is not None:
-                    mask &= z != src.nodata
+                    if np.issubdtype(z.dtype, np.floating):
+                        mask &= ~np.isclose(z, src.nodata, rtol=1e-5, equal_nan=True)
+                    else:
+                        mask &= z != src.nodata
 
                 if not np.any(mask):
                     continue

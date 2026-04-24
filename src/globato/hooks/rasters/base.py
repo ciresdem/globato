@@ -110,11 +110,17 @@ class RasterBaseHook(FetchHook):
                 logger.error("Region is required to auto-generate a coastline barrier.")
                 return None
 
-            outdir = (
-                getattr(mod, "_outdir", None)
-                or getattr(mod, "outdir", None)
-                or os.getcwd()
-            )
+            if self.output:
+                outdir = os.path.dirname(self.output)
+            else:
+                outdir = os.getcwd()
+            # (
+            #     getattr(mod, "_outdir", None)
+            #     or getattr(mod, "outdir", None)
+            #     or os.getcwd()
+            # )
+
+            logger.info(f"Generating coastline for {mod} with outdir of {outdir}")
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
@@ -166,6 +172,36 @@ class RasterBaseHook(FetchHook):
         except Exception as e:
             logger.error(f"Could not parse geometries from {barrier_path}: {e}")
             return None
+
+    def _create_barrier_mask(self, shape, transform):
+        """Generates a boolean numpy mask from the barrier.
+        Automatically fetches or generates the geometries on-demand.
+        Returns True inside the polygons, False outside.
+        """
+
+        if not self.barrier:
+            return None
+
+        # _get_barrier_geometries fetches the data if not provided
+        if not self.barrier_geoms:
+            self.barrier_geoms = self._get_barrier_geometries()
+
+        # If fetching failed or returned nothing, abort
+        if not self.barrier_geoms:
+            return None
+
+        from rasterio.features import rasterize
+
+        mask = rasterize(
+            self.barrier_geoms,
+            out_shape=shape,
+            transform=transform,
+            fill=0,
+            default_value=1,
+            dtype="uint8",
+        ).astype(bool)
+
+        return mask
 
     def get_outliers(self, in_array, percentile=75, k=1.5):
         if np.all(np.isnan(in_array)):

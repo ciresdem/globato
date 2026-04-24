@@ -70,7 +70,11 @@ class GlobSDB(FetchModule):
             "global_hooks": [
                 {
                     "name": "multi_stack",
-                    "args": {"res": "10m", "output": train_dem_path, "nodata": -9999},
+                    "args": {
+                        "res": ".111111111s",
+                        "output": train_dem_path,
+                        "nodata": -9999,
+                    },
                 }
             ],
         }

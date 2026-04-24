@@ -19,7 +19,6 @@ import numpy as np
 import rasterio
 from rasterio.transform import xy
 from scipy import spatial
-from rasterio.features import rasterize
 
 from .base import RasterGlobalHook
 
@@ -100,8 +99,6 @@ class IDWSurface(RasterGlobalHook):
         self.radius = np.inf if radius is None else float(radius)
 
     def process_raster(self, src_path, dst_path, entry):
-        barrier_geoms = self._get_barrier_geometries()
-
         with rasterio.open(src_path) as src:
             is_stack = src.count >= 4
             if not is_stack:
@@ -175,18 +172,6 @@ class IDWSurface(RasterGlobalHook):
 
                 # Replace NaNs with nodata
                 result_arr[np.isnan(result_arr)] = nodata
-
-                # Handle Barriers (e.g., Coastlines)
-                if barrier_geoms:
-                    barrier_mask = rasterize(
-                        barrier_geoms,
-                        out_shape=data_z.shape,
-                        transform=src.transform,
-                        fill=0,
-                        default_value=1,
-                        dtype="uint8",
-                    ).astype(bool)
-                    result_arr = np.where(~barrier_mask, result_arr, nodata)
 
                 # Write to disk
                 profile = src.profile.copy()

@@ -16,7 +16,6 @@ import logging
 import numpy as np
 import rasterio
 from rasterio.transform import xy
-from rasterio.features import rasterize
 
 from ..rasters.base import RasterGlobalHook
 
@@ -57,8 +56,6 @@ class VerdeSurface(RasterGlobalHook):
                 "[VerdeSurface] 'verde' package not installed. Cannot interpolate."
             )
             return False
-
-        barrier_geoms = self._get_barrier_geometries()
 
         with rasterio.open(src_path) as src:
             data = src.read(1)
@@ -103,19 +100,7 @@ class VerdeSurface(RasterGlobalHook):
                 )
 
                 result_arr = grid.scalars.values[: src.height, : src.width]
-
                 result_arr = np.flipud(result_arr)
-
-                if barrier_geoms:
-                    barrier_mask = rasterize(
-                        barrier_geoms,
-                        out_shape=data.shape,
-                        transform=src.transform,
-                        fill=0,
-                        default_value=1,
-                        dtype="uint8",
-                    ).astype(bool)
-                    result_arr = np.where(~barrier_mask, result_arr, nodata)
 
                 profile = src.profile.copy()
                 profile.update(dtype=rasterio.float32, nodata=nodata)
