@@ -37,9 +37,7 @@ class GlobSDB(FetchModule):
     meta_category = "Globato"
     meta_agency = "Globato"
 
-    def __init__(
-        self, train_source="icesat2", cloud_cover=10, max_depth=-0.5, **kwargs
-    ):
+    def __init__(self, train_source="icesat2", cloud_cover=10, max_depth=-25, **kwargs):
         super().__init__(**kwargs)
         self.train_source = train_source
         self.cloud_cover = cloud_cover
@@ -57,7 +55,7 @@ class GlobSDB(FetchModule):
         )
 
         # Generate a 'micro-recipe' to train the data
-        train_dem_path = "temp_sdb_train_stack.tif"
+        train_dem_path = os.path.join(self._outdir, "temp_sdb_train_stack.tif")
         micro_config = {
             "project": {"name": "sdb_trainer"},
             "region": [
@@ -74,6 +72,7 @@ class GlobSDB(FetchModule):
                         "res": ".111111111s",
                         "output": train_dem_path,
                         "nodata": -9999,
+                        "crs": "EPSG:4326",
                     },
                 }
             ],
