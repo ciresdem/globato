@@ -112,7 +112,9 @@ class SDBInterpolation(RasterGlobalHook):
                 n_bands = src_sat.count
 
                 # Reproject the Sat Data to match the DEM
-                sat_data = np.zeros((n_bands, src_dem.height, src_dem.width), dtype=np.float32)
+                sat_data = np.zeros(
+                    (n_bands, src_dem.height, src_dem.width), dtype=np.float32
+                )
 
                 logger.info("Aligning Sentinel-2 bands to DEM grid...")
                 reproject(
@@ -122,7 +124,7 @@ class SDBInterpolation(RasterGlobalHook):
                     src_crs=src_sat.crs,
                     dst_transform=src_dem.transform,
                     dst_crs=src_dem.crs,
-                    resampling=Resampling.bilinear
+                    resampling=Resampling.bilinear,
                 )
 
                 dem_flat = dem_data.flatten()
@@ -147,8 +149,12 @@ class SDBInterpolation(RasterGlobalHook):
                 # Subsample the training data
                 MAX_TRAIN_POINTS = 100000
                 if len(X_train) > MAX_TRAIN_POINTS:
-                    logger.info(f"Subsampling SDB training data from {len(X_train):,} down to {MAX_TRAIN_POINTS:,} points...")
-                    idx = np.random.choice(len(X_train), MAX_TRAIN_POINTS, replace=False)
+                    logger.info(
+                        f"Subsampling SDB training data from {len(X_train):,} down to {MAX_TRAIN_POINTS:,} points..."
+                    )
+                    idx = np.random.choice(
+                        len(X_train), MAX_TRAIN_POINTS, replace=False
+                    )
                     X_train = X_train[idx]
                     y_train = y_train[idx]
 

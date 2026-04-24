@@ -37,9 +37,7 @@ class GlobSDB(FetchModule):
     meta_category = "Globato"
     meta_agency = "Globato"
 
-    def __init__(
-        self, train_source="icesat2", cloud_cover=10, max_depth=-25, **kwargs
-    ):
+    def __init__(self, train_source="icesat2", cloud_cover=10, max_depth=-25, **kwargs):
         super().__init__(**kwargs)
         self.train_source = train_source
         self.cloud_cover = cloud_cover
