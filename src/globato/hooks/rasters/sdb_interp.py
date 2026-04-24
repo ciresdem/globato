@@ -12,6 +12,7 @@ import os
 import logging
 import numpy as np
 import rasterio
+from rasterio.warp import reproject, Resampling
 
 from .base import RasterGlobalHook
 from fetchez.core import run_fetchez
@@ -108,10 +109,21 @@ class SDBInterpolation(RasterGlobalHook):
                     return False
 
             with rasterio.open(sat_path) as src_sat:
-                sat_data = src_sat.read()
-                n_bands, height, width = sat_data.shape
+                n_bands = src_sat.count
 
-                # todo: Resample sat_data to match DEM resolution if they differ using rasterio.warp.reproject
+                # Reproject the Sat Data to match the DEM
+                sat_data = np.zeros((n_bands, src_dem.height, src_dem.width), dtype=np.float32)
+
+                logger.info("Aligning Sentinel-2 bands to DEM grid...")
+                reproject(
+                    source=rasterio.band(src_sat, [1, 2, 3, 4]),
+                    destination=sat_data,
+                    src_transform=src_sat.transform,
+                    src_crs=src_sat.crs,
+                    dst_transform=src_dem.transform,
+                    dst_crs=src_dem.crs,
+                    resampling=Resampling.bilinear
+                )
 
                 dem_flat = dem_data.flatten()
                 sat_flat = sat_data.reshape(n_bands, -1).T
@@ -132,17 +144,28 @@ class SDBInterpolation(RasterGlobalHook):
                 X_train = sat_flat[train_mask]
                 y_train = dem_flat[train_mask]
 
-                logger.info(f"Training SDB Random Forest on {len(X_train)} points...")
+                # Subsample the training data
+                MAX_TRAIN_POINTS = 100000
+                if len(X_train) > MAX_TRAIN_POINTS:
+                    logger.info(f"Subsampling SDB training data from {len(X_train):,} down to {MAX_TRAIN_POINTS:,} points...")
+                    idx = np.random.choice(len(X_train), MAX_TRAIN_POINTS, replace=False)
+                    X_train = X_train[idx]
+                    y_train = y_train[idx]
+
+                logger.info(f"Training SDB Random Forest ({self.n_trees} trees)...")
                 rf = RandomForestRegressor(
                     n_estimators=self.n_trees, n_jobs=-1, random_state=42
                 )
                 rf.fit(X_train, y_train)
 
+                # The gap mask: Where we have satellite data, but no DEM data
                 gap_mask = (~valid_dem) & valid_sat
 
                 logger.info(
-                    f"Predicting bathymetry for {np.sum(gap_mask)} shallow water pixels..."
+                    f"Predicting bathymetry for {np.sum(gap_mask):,} shallow water pixels..."
                 )
+
+                # Predict only on the gaps to save time
                 dem_flat[gap_mask] = rf.predict(sat_flat[gap_mask])
                 result_arr = dem_flat.reshape(src_dem.height, src_dem.width)
 
