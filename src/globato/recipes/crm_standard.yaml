@@ -83,6 +83,9 @@ modules:
   - module: ehydro
     args: {weight: 2.0}
     hooks:
+      - name: set_datatype
+        args:
+          data_type: "ehydro_gdb"
       - name: stream_data
       - name: stream_reproject
         args:
@@ -147,6 +150,7 @@ modules:
     args:
       min_year: "2024"
       max_year: "2025"
+      weight: 0.2
     hooks:
       - name: stream_data
         args:
