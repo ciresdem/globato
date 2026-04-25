@@ -64,8 +64,6 @@ globato recipe build -R loc:"San Diego" tnm:datasets=3/4 mbdb:want_inf=false -E 
 
 Globato will output a custom San_Diego_recipe.yaml file into your directory and immediately execute it.
 
-![Quick Coastal SD Example](/_static/quick_coastal_sd.png)
-
 *(Above: The just generated DEM of San Diego, California)*
 
 ## Step 4: Adding Data Filters (Hooks)
@@ -76,8 +74,6 @@ Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam d
 ```bash
 globato recipe build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s
 ```
-
-![Quick Coastal SD hook Example](/_static/quick_coastal_sd_hooks.png)
 
 *(Above: The just generated DEM of San Diego, California)*
 
