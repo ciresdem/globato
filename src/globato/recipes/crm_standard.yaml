@@ -152,6 +152,9 @@ modules:
       max_year: "2025"
       weight: 0.2
     hooks:
+      - name: set_datatype
+        args:
+          data_type: "csb_csv"
       - name: stream_data
         args:
           chunk_size: 100000

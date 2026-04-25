@@ -49,7 +49,8 @@ globato recipe run quick_coastal -R loc:"portland, me -E 1s"
 
 Check your current directory; you should see your brand new `quick_coastal` directory with the output DEM ready to load into QGIS or ArcGIS!
 
-![Quick Coastal Example](/_static/quick_coastal_portland.png)
+![Quick Coastal ME Example](/_static/quick_coastal_portland.png)
+
 *(Above: The just generated DEM of Portland, Maine)*
 
 ## Step 3: Building a Custom Recipe On-the-Fly
@@ -58,10 +59,14 @@ What if you want to build a DEM using completely different data, but don't want 
 Let's build a DEM using USGS 3DEP topography and NOAA MBDB (Multibeam) bathymetry.
 
 ```bash
-globato recipe build -R loc:"San Diego" tnm:datasets=3/4 mbdb:want_inf=false
+globato recipe build -R loc:"San Diego" tnm:datasets=3/4 mbdb:want_inf=false -E 1s
 ```
 
 Globato will output a custom San_Diego_recipe.yaml file into your directory and immediately execute it.
+
+![Quick Coastal SD Example](/_static/quick_coastal_sd.png)
+
+*(Above: The just generated DEM of San Diego, California)*
 
 ## Step 4: Adding Data Filters (Hooks)
 Raw data is rarely perfect. Globato allows you to attach processing "hooks" directly to your data sources using a plus (`+`) sign.
@@ -69,8 +74,12 @@ Raw data is rarely perfect. Globato allows you to attach processing "hooks" dire
 Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded and lets also remove hydro-flattened regions from the national map DEMs using the `raster_flats` hook.
 
 ```bash
-globato recipe build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent
+globato recipe build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s
 ```
+
+![Quick Coastal SD hook Example](/_static/quick_coastal_sd_hooks.png)
+
+*(Above: The just generated DEM of San Diego, California)*
 
 ## Next Steps
 Congratulations! You have successfully executed a curated recipe, generated a custom YAML on the fly, and applied an inline data filter.
