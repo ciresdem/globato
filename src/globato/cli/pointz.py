@@ -157,11 +157,10 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
     SOURCES can be local files (data.las), Fetchez modules (mbdb), or '-' for stdin.
     Use the '+' syntax to attach specific arguments and filters directly to a source!
 
-    Examples:\n
+    \b
+    Examples:
       globato pointz run data.xyz+rq:threshold=10 -O clean.xyz
-
       cat raw.xyz | globato pointz run - -F outlierz > clean.xyz
-
       globato pointz run mbdb:want_inf=False+rq:threshold=10 -R loc:"Miami" -T EPSG:3857 > miami.xyz
     """
 

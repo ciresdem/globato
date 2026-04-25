@@ -211,7 +211,7 @@ def viz_colorbar(
 
 
 def _prepare_stream(gen):
-    """Safely injects required schema fields (w, u) into raw point streams."""
+    """Injects required schema fields (w, u) into raw point streams."""
     for chunk in gen:
         chunk = add_field_to_recarray(chunk, "w", float, 1.0)
         chunk = add_field_to_recarray(chunk, "u", float, 0.0)

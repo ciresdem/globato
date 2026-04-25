@@ -830,6 +830,7 @@ def recipe_build(
                 "region": r_str,
                 "modules": [parse_source_string(s) for s in sources],
                 "global_hooks": global_hooks,
+                "execution": {"threads": 4},
             }
 
             yaml_str = yaml.dump(config, sort_keys=False)
@@ -839,11 +840,11 @@ def recipe_build(
                 f.write(yaml_str)
             click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
 
-            if not save_only:
-                click.secho(
-                    f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True
-                )
-                Recipe.from_file(config).run()
+            # if not save_only:
+            #     click.secho(
+            #         f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True
+            #     )
+            #     Recipe.from_file(config).run()
 
     except ValueError as e:
         click.secho(str(e), fg="red")
