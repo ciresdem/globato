@@ -65,8 +65,8 @@ modules:
           dst_srs: "EPSG:4326+3855"
       - name: spatial_crop
 
-  # - module: mbdb
-  - module: multibeam
+  # - module: multibeam
+  - module: mbdb
     args: {weight: 3.0, want_inf: False}
     hooks:
       - name: stream_data
