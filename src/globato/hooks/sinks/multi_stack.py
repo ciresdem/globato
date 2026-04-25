@@ -18,7 +18,7 @@ import json
 import logging
 import threading
 import numpy as np
-from tqdm import tqdm
+# from tqdm import tqdm
 
 import rasterio
 from rasterio.windows import Window
