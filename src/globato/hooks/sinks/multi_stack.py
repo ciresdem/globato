@@ -457,37 +457,37 @@ class MultiStackHook(FetchHook):
         z_max = float("-inf")
 
         dataset_str = format_dataset_id(dataset_id)
-        with tqdm(
-            desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
-            leave=False,
-        ) as pbar:
-            for chunk in stream:
-                pbar.update()
+        # with tqdm(
+        #     desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
+        #     leave=False,
+        # ) as pbar:
+        for chunk in stream:
+            # pbar.update()
 
-                if isinstance(chunk, tuple) and len(chunk) >= 3:
-                    # Raster stream chunk: (window, buff_win, data, ndv, transform)
-                    data = chunk[2]
-                    ndv = chunk[3] if len(chunk) > 3 else -9999
-                    z_data = data[0] if data.ndim == 3 else data
-                    valid_mask = (z_data != ndv) & ~np.isnan(z_data)
-                    valid_z = z_data[valid_mask]
-                    count += valid_z.size
+            if isinstance(chunk, tuple) and len(chunk) >= 3:
+                # Raster stream chunk: (window, buff_win, data, ndv, transform)
+                data = chunk[2]
+                ndv = chunk[3] if len(chunk) > 3 else -9999
+                z_data = data[0] if data.ndim == 3 else data
+                valid_mask = (z_data != ndv) & ~np.isnan(z_data)
+                valid_z = z_data[valid_mask]
+                count += valid_z.size
 
-                elif isinstance(chunk, np.ndarray) and "z" in chunk.dtype.names:
-                    # Point rec-array stream chunk
-                    valid_z = chunk["z"][~np.isnan(chunk["z"])]
-                    count += len(chunk)
-                else:
-                    valid_z = np.array([])
-                    count += len(chunk)
+            elif isinstance(chunk, np.ndarray) and "z" in chunk.dtype.names:
+                # Point rec-array stream chunk
+                valid_z = chunk["z"][~np.isnan(chunk["z"])]
+                count += len(chunk)
+            else:
+                valid_z = np.array([])
+                count += len(chunk)
 
-                if valid_z.size > 0:
-                    z_min = min(z_min, float(np.min(valid_z)))
-                    z_max = max(z_max, float(np.max(valid_z)))
+            if valid_z.size > 0:
+                z_min = min(z_min, float(np.min(valid_z)))
+                z_max = max(z_max, float(np.max(valid_z)))
 
-                if self._accumulator:
-                    self._accumulator.update(chunk)
-                yield chunk
+            if self._accumulator:
+                self._accumulator.update(chunk)
+            yield chunk
 
         if z_min == float("inf") or z_max == float("-inf"):
             z_str = "No valid Z data"
