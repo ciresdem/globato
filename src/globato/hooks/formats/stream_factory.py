@@ -54,6 +54,7 @@ class StreamFactory:
             "reader": XYZReader,
             "delimiter": ",",
             "skiprows": 1,
+            "z_scale": -1,
             "usecols": [2, 3, 4],
         },
         "margrav_xyz": {
