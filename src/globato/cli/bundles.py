@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.cli.hook
+globato.cli.bundles
 ~~~~~~~~~~~~~~~~
-Discoverability and documentation for processing hooks.
+Discoverability and documentation for module bundles.
 """
 
-import click
-import inspect
+import os
 import sys
+import click
+import yaml
 from fetchez.registry import BundleRegistry
 
 
@@ -50,8 +51,13 @@ def bundle_list():
 
 @bundle_group.command("copy")
 @click.argument("target")
-@click.option("-O", "--outdir", default="~/.fetchez/bundles", help="Where to save the bundle yaml.")
-def macro_copy(name, outdir):
+@click.option(
+    "-O",
+    "--outdir",
+    default="~/.fetchez/bundles",
+    help="Where to save the bundle yaml.",
+)
+def macro_copy(target, outdir):
     """Copy a macro to your local environment for editing."""
 
     BundleRegistry.load_all()
