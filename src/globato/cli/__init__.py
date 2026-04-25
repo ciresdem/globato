@@ -12,6 +12,7 @@ import click
 
 from .recipe import recipe_group
 from .hook import hook_group
+from .bundles import bundle_group
 
 # from .dem import dem_group
 from .raster import raster_group
@@ -38,6 +39,7 @@ def cli(verbose, quiet):
 cli.add_command(recipe_group, name="recipe")
 # cli.add_command(dem_group, name="dem")
 cli.add_command(hook_group, name="hook")
+cli.add_command(bundle_group, name="bundles")
 cli.add_command(raster_group, name="raster")
 # cli.add_command(gritz_cmd, name="gritz")
 cli.add_command(region_group, name="region")

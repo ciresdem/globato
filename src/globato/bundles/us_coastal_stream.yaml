@@ -1,18 +1,11 @@
-project:
-  name: "crm_standard"
-  description: >
-    Production-grade 1-arc-second Coastal Relief Model.
-    Blends high-res local topo (CoNED, 3DEP) with dense bathymetry
-    (MBDB, NOS, eHydro) and fills deep water with GEBCO.
-    Includes an embedded Spatial Uncertainty Band (Band 2).
-
-execution:
-  threads: 4
-
-schema: crm
-
+name: us_coastal_stream
+description: >
+  The definitive collection for US coastal topobathy.
+  Prioritizes high-resolution local LiDAR (CoNED) and USGS topo (TNM),
+  backed by dense US bathymetry (NOS Hydro, eHydro). Sets data up for
+  global streaming hooks.
 modules:
-  # --- HIGH RES TOPOGRAPHY ---
+    # --- HIGH RES TOPOGRAPHY ---
   - module: coned
     args: {weight: 5.0}
     hooks:
@@ -36,18 +29,6 @@ modules:
       - name: stream_reproject
         args: {dst_srs: "EPSG:4326+3855"}
       - name: spatial_crop
-
-  - module: copernicus
-    args: {weight: 1.0, datatype: 3}
-    hooks:
-      - name: unzip
-      - name: filename_filter
-        args: {match: ".tif"}
-      - name: stream_data
-        args:
-          chunk_size: 100000
-      - name: range_z
-        args: {min_z: 0.01}
 
   # --- HIGH RES BATHYMETRY ---
   - module: nos_hydro
@@ -162,113 +143,11 @@ modules:
       - name: spatial_crop
       - name: outlierz
 
-  - module: gebco_cog
-    args: {weight: 0.1}
-    hooks:
-      - name: stream_data
-      - name: stream_reproject
-        args: {src_srs: "EPSG:4326+9003", dst_srs: "EPSG:4326+3855"}
-      - name: range_z
-        args: {max_z: -0.1}
-
-global_hooks:
-  - name: audit
-  - name: enrich
-  - name: transfer_log
-  - name: drop_class
-
-  - name: stash_entries
-    args:
-      key: "clean_raw_data"
-
-  - name: source_masks
-    args:
-      res: "1s"
-      output: "crm_standard_provenance.tif"
-
-  - name: provenance
-    args:
-      res: "1s"
-
-  - name: multi_stack
-    args:
-      res: "1s"
-      mode: "mixed"
-      crs: "EPSG:4326"
-      output: "crm_standard_stack.tif"
-
-  - name: focus_sink
-    args: {target: "multi_stack"}
-
-  - name: raster_stream
-    args: {stream_type: "raster", chunk_size: 2048, stage: "collection"}
-
-  - name: ms_blend
-    args: {weight_threshold: 1.0, blend_dist: 20}
-
-  - name: ms_blend
-    args: {weight_threshold: 0.3, blend_dist: 50}
-
-  # Writes the blended data to disk without breaking the stream
-  - name: raster_write
-    args:
-      suffix: "_final_blend"
-      artifact_id: "blended_checkpoint"
-
-  - name: focus_sink
-    args:
-      target: "blended_checkpoint"
-
-  # The CUDEM Multi-Resolution Step-Down Interpolator
-  - name: ms_cudem
-    args:
-      steps: 2
-      resolutions: ["1s", "3s", "9s"]
-      weights: [1.0, 0.5, 0.1]
-      blend_dist: 1
-      algo: "interp_gmt"
-      #algo: raster_fill
-      # barrier: "coastline"
-      output: "crm_standard_dem.tif"
-
-  - name: focus_sink
-    args: {target: "ms_cudem"}
-
-  - name: raster_metadata
-    args:
-      tags: "Project=Coastal Relief Model,Version=6,Author=NCEI"
-      bands: "Elevation (meters)"
-
-  # # Uncertainty
-  # - name: dem_uncertainty
-  #   args:
-  #     mode: "split_sample"
-  #     algo: "interp_gmt"
-  #     fit_method: "curve"
-  #     append_band: true
-
-  # Generate a hillshade.
-  - name: viz_geoshade
-    args:
-      cmap: "etopo"
-      blend_mode: "soft_light"
-      output: "crm_standard_dem_hillshade.tif"
-
-  # --- PREPARE THE SOURCE MASKS DELIVERY ---
-  - name: restore_entries
-    args: {key: "clean_raw_data"}
-
-  - name: source_masks
-
-  - name: focus_sink
-    args: {target: "source_masks"}
-
-  - name: build_multiband
-    args: {output: "crm_standard_provenance_bands.tif"}
-
-  - name: focus_sink
-    args: {target: "build_multiband"}
-
-  - name: raster_metadata
-    args:
-      tags: "Project=Coastal Relief Model,Description=Source Contribution Masks"
+  # - module: gebco_cog
+  #   args: {weight: 0.1}
+  #   hooks:
+  #     - name: stream_data
+  #     - name: stream_reproject
+  #       args: {src_srs: "EPSG:4326+9003", dst_srs: "EPSG:4326+3855"}
+  #     - name: range_z
+  #       args: {max_z: -0.1}
