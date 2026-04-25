@@ -27,7 +27,9 @@ class StreamReproject(FetchHook):
     meta_desc = "Reproject the stream to the desired SRS using Transformez."
     meta_category = "pipeline"
 
-    def __init__(self, dst_srs=None, src_srs=None, vert_grid=None, cache_dir=".", **kwargs):
+    def __init__(
+        self, dst_srs=None, src_srs=None, vert_grid=None, cache_dir=".", **kwargs
+    ):
         super().__init__(**kwargs)
         self.dst_srs = dst_srs
         self.forced_src_srs = src_srs
