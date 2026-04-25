@@ -49,7 +49,7 @@ globato recipe run quick_coastal -R loc:"portland, me -E 1s"
 
 Check your current directory; you should see your brand new `quick_coastal` directory with the output DEM ready to load into QGIS or ArcGIS!
 
-![Quick Coastal Example](_static/quick_coastal_portland.png)
+![Quick Coastal Example](/_static/quick_coastal_portland.png)
 *(Above: The just generated DEM of Portland, Maine)*
 
 ## Step 3: Building a Custom Recipe On-the-Fly
