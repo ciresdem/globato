@@ -26,18 +26,18 @@ If you want to know exactly what a recipe does before you run it, you can inspec
 globato recipe info quick_coastal
 ```
 
-**Note**: quick_coastal is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.k
+**Note**: quick_coastal is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.
 
 ## Step 2: Running a Curated Recipe
-Let's run the quick_coastal recipe. Globato's geographic engine is smart enough to understand place names, so we don't even need to look up bounding box coordinates. We just use the -R (Region) flag and prefix our search with loc:.
+Let's run the quick_coastal recipe. Globato's geographic engine is smart enough to understand place names, so we don't even need to look up bounding box coordinates. We just use the -R (Region) flag and prefix our search with `loc:`. Since by default the quick_coastal recipe will generate a DEM at 3 arc-seconds, lets increase the output resolution to 1 arc-second.
 
 ```bash
-globato recipe run quick_coastal -R loc:Miami
+globato recipe run quick_coastal -R loc:"portland, me -E 1s"
 ```
 
 **What just happened?**
 
-* Globato queried the loc:Miami geocoder and grabbed the bounding box.
+* Globato queried the loc:"portland, me" geocoder and grabbed the bounding box.
 
 * It dispatched the fetchez engine to download elvation and bathymetry data for exactly that area.
 
@@ -47,7 +47,10 @@ globato recipe run quick_coastal -R loc:Miami
 
 * It generated a colorized hillshade (_hillshade.tif) for immediate viewing.
 
-Check your current directory; you should see your brand new quick_coastal_Miami.tif ready to load into QGIS or ArcGIS!
+Check your current directory; you should see your brand new `quick_coastal` directory with the output DEM ready to load into QGIS or ArcGIS!
+
+![Quick Coastal Example](_static/quick_coastal_portland.png)
+*(Above: The just generated DEM of Portland, Maine)*
 
 ## Step 3: Building a Custom Recipe On-the-Fly
 What if you want to build a DEM using completely different data, but don't want to hand-write a YAML file? You can use the build command to string sources together instantly.
@@ -63,10 +66,10 @@ Globato will output a custom San_Diego_recipe.yaml file into your directory and 
 ## Step 4: Adding Data Filters (Hooks)
 Raw data is rarely perfect. Globato allows you to attach processing "hooks" directly to your data sources using a plus (`+`) sign.
 
-Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded:
+Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded and lets also remove hydro-flattened regions from the national map DEMs using the `raster_flats` hook.
 
 ```bash
-globato recipe build -R loc:"San Diego" tnm mbdb+rq:threshold=10,mode=percent
+globato recipe build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent
 ```
 
 ## Next Steps
