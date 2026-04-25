@@ -86,6 +86,9 @@ globato_recipes = "globato.recipes"
 [project.entry-points."fetchez.presets"]
 globato_presets = "globato.presets"
 
+[project.entry-points."fetchez.bundles"]
+globato_bundles = "globato.bundles"
+
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
 
