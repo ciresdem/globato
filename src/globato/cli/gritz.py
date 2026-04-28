@@ -14,7 +14,7 @@ import yaml
 from fetchez.recipe import Recipe
 from fetchez.utils import parse_source_string, parse_hook_string
 from fetchez.registry import HookRegistry
-from fetchez.cli import print_hook_info
+from fetchez._cli import print_hook_info  # fix me!
 
 # from globato.utils import parse_source_string
 

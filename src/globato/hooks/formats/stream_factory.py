@@ -26,9 +26,9 @@ from .datalist import DatalistReader
 # from .hdf_points import HDFPointReader  # testing
 from .icesat2 import ATL03Reader
 from .schema import ensure_schema
-from transformez.spatial import TransRegion
+from fetchez.spatial import Region
 
-# gdal is required to use these
+# --- gdal is required to use these ---
 # from .gdal_proc import GDALReader
 # from .ogr_proc import OGRReader
 
@@ -272,7 +272,7 @@ class DataStream(FetchHook):
             w = float(getattr(mod, "weight", 1.0))
             u = float(getattr(mod, "uncertainty", 0.0))
             raw_stream = reader.yield_chunks()
-            mod.region = TransRegion.from_list(mod.region)
+            mod.region = Region.from_list(mod.region)
 
             if raw_stream:
                 base_srs = "EPSG:4326"

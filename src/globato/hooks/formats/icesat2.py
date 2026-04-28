@@ -890,14 +890,14 @@ class ATL03Reader(IceSat2Reader):
         if not self.use_external_masks or not self.region:
             return df
 
+        from fetchez.spatial import Region
         from fetchez.modules.bing import Bing
         from fetchez.modules.wsf import WSF
         from fetchez.modules.gba import GBA
         from globato.hooks.hooks.osm_landmask import OSMLandmask
-        from transformez.spatial import TransRegion
 
         if isinstance(self.region, list):
-            region_obj = TransRegion.from_list(self.region)
+            region_obj = Region.from_list(self.region)
         else:
             region_obj = self.region
 

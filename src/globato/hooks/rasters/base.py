@@ -19,7 +19,7 @@ import tempfile
 import rasterio
 from rasterio.windows import Window
 import fiona
-from transformez.spatial import parse_region
+from fetchez.spatial import parse_region
 from fetchez.hooks import FetchHook
 from fetchez.utils import float_or
 

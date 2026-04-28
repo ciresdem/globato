@@ -16,11 +16,10 @@ import numpy as np
 
 from fetchez.hooks import FetchHook
 from fetchez.utils import int_or, float_or
+from fetchez.spatial import Region
 
 import rasterio
 from rasterio.windows import Window
-
-from transformez.spatial import TransRegion as Region
 
 logger = logging.getLogger(__name__)
 

@@ -28,6 +28,8 @@ class CRMSchema(BaseSchema):
     """
 
     name = "crm"
+    meta_desc = "Coastal Relief Model Schema"
+    meta_category = "NCEI"
 
     @classmethod
     def apply(cls, config):

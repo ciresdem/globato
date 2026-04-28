@@ -16,7 +16,7 @@ from rasterio.warp import reproject, Resampling
 
 from .base import RasterGlobalHook
 from fetchez.core import run_fetchez
-from transformez.spatial import TransRegion
+from fetchez.spatial import Region
 
 try:
     from sklearn.ensemble import RandomForestRegressor
@@ -52,7 +52,7 @@ class SDBInterpolation(RasterGlobalHook):
         from fetchez.modules.cdse import Sentinel2_CDSE
 
         w, s, e, n = bounds
-        region = TransRegion.from_list([w, e, s, n])
+        region = Region.from_list([w, e, s, n])
 
         logger.info(
             "No local sat_image provided. Auto-fetching Sentinel-2 data from CDSE..."
