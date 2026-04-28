@@ -118,12 +118,12 @@ class GlobatoStream:
             return np.array([], dtype=[("x", "f8"), ("y", "f8"), ("z", "f4")])
         return np.concatenate(chunks)
 
-
-def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
+def read(source: Union[str, FetchModule], data_type: str = None, **kwargs) -> GlobatoStream:
     """The entry point for the Globato API.
 
     Args:
         source: A file path (str) OR a generic Fetchez Module instance.
+        data_type: Explicitly set the format profile (e.g., 'nos_xyz', 'csb_csv').
         **kwargs: Arguments passed to the Reader (e.g. chunk_size, delimiter).
 
     Returns:
@@ -134,12 +134,12 @@ def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
         if not os.path.exists(source):
             raise FileNotFoundError(f"Source not found: {source}")
 
-        reader = StreamFactory.get_reader(source, **kwargs)
+        reader = StreamFactory.get_reader(source, data_type=data_type, **kwargs)
+
         if not reader:
             raise ValueError(f"No valid reader found for {source}")
 
         raw_gen = reader.yield_chunks()
-
         src_srs = getattr(reader, "get_srs", lambda: "EPSG:4326")()
 
         w = kwargs.get("weight", 1.0)
@@ -156,9 +156,12 @@ def read(source: Union[str, FetchModule], **kwargs) -> GlobatoStream:
         def _module_chain_gen():
             for entry in source.results:
                 fn = entry.get("dst_fn")
+
+                entry_data_type = data_type or entry.get("data_type")
+
                 if fn and os.path.exists(fn):
                     try:
-                        sub_stream = read(fn, **kwargs)
+                        sub_stream = read(fn, data_type=entry_data_type, **kwargs)
                         yield from sub_stream
                     except Exception as e:
                         logger.warning(f"Failed to stream {fn}: {e}")
