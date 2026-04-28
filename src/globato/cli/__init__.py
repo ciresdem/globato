@@ -28,8 +28,8 @@ from fetchez.cli.hooks import hooks_group
 
 @click.group()
 @click.version_option(package_name="globato")
-@click.option("-v", "--verbose", is_flag=True, help="Enable verbose debug logging.")
-@click.option("-q", "--quiet", is_flag=True, help="Suppress non-error output.")
+@click.option("--verbose", is_flag=True, help="Enable verbose debug logging.")
+@click.option("--quiet", is_flag=True, help="Suppress non-error output.")
 def cli(verbose, quiet):
     """Globato: The ContinUous-DEM Generation Framework."""
 
@@ -37,7 +37,7 @@ def cli(verbose, quiet):
     setup_logging(quiet=quiet, verbose=verbose)
 
 
-cli.add_command(recipe_group, name="waffles")
+cli.add_command(recipe_group, name="recipe")
 # cli.add_command(hook_group, name="hook")
 # cli.add_command(bundle_group, name="bundles")
 cli.add_command(raster_group, name="grits")
