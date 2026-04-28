@@ -25,10 +25,10 @@ import numpy as np
 
 from fetchez.registry import HookRegistry, ModuleRegistry
 from fetchez.core import run_fetchez
+from fetchez.spatial import Region
 
 from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.transforms.reproject import StreamReproject
-from transformez.spatial import TransRegion
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             sys.exit(1)
         active_global_filters.append(mod_cls(**hook_dict.get("args", {})))
 
-    parsed_region = TransRegion.from_string(region) if region else None
+    parsed_region = Region.from_string(region) if region else None
 
     dummy_mod = type("Dummy", (), {"region": parsed_region})()
 

@@ -15,7 +15,7 @@ import click
 import logging
 from fetchez.registry import HookRegistry
 from fetchez.utils import parse_hook_string
-from transformez.spatial import TransRegion
+from fetchez.spatial import Region
 
 from globato.utils import add_field_to_recarray
 from .perspecto import perspecto_cmd
@@ -259,7 +259,7 @@ def viz_points(src, filters, region, is_3d, outliers, out):
 
     HookRegistry.load_all()
     active_filters = []
-    parsed_region = TransRegion.from_string(region) if region else None
+    parsed_region = Region.from_string(region) if region else None
 
     dummy_mod = type("Dummy", (), {"region": parsed_region, "name": "cli_viz"})()
 

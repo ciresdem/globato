@@ -142,11 +142,10 @@ def parse_source_string(source_str):
 def yield_parsed_regions(region_str):
     """Universally parses a region string, location, or geojson file.
 
-    Yields (TransRegion, feature_name) for every region found.
+    Yields (Region, feature_name) for every region found.
     """
 
-    from fetchez.spatial import parse_region
-    from transformez.spatial import TransRegion
+    from fetchez.spatial import parse_region, Region
 
     if not region_str:
         yield None, None
@@ -159,7 +158,7 @@ def yield_parsed_regions(region_str):
 
     is_batch = len(raw_regions) > 1
     for i, r in enumerate(raw_regions):
-        t_reg = TransRegion(*r)
+        t_reg = Region(*r)
         # feat_name = f"tile_{i:03d}" if is_batch else None
         feat_name = t_reg.format("fn") if is_batch else None
         yield t_reg, feat_name

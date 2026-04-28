@@ -25,7 +25,7 @@ from rasterio.windows import Window
 from rasterio.crs import CRS
 from rasterio.enums import ColorInterp
 
-from transformez.spatial import TransRegion as Region
+from fetchez.spatial import Region
 from fetchez.hooks import FetchHook
 from fetchez.utils import (
     colorize,

@@ -69,10 +69,15 @@ def test_globato_imports():
                             )
 
                     # Never import the SRS-unaware Region from Fetchez
-                    if imported_name == "Region" and "fetchez" in module:
+                    if imported_name == "TransRegion" and "transformez" in module:
                         errors.append(
                             f"[{py_file.name}] Violation: Imported 'Region' from '{module}'. "
-                            f"Globato must exclusively use 'transformez.spatial.TransRegion'."
+                            f"Globato must exclusively use 'fetchez.spatial.Region'."
+                        )
+                    if imported_name == "spatial" and "transformez" in module:
+                        errors.append(
+                            f"[{py_file.name}] Violation: Imported 'spatial' from '{module}'. "
+                            f"Globato must exclusively use 'fetchez.spatial'."
                         )
 
             # Check `import module.X` statements (e.g., `import fetchez.spatial`)
