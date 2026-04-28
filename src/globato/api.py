@@ -118,7 +118,10 @@ class GlobatoStream:
             return np.array([], dtype=[("x", "f8"), ("y", "f8"), ("z", "f4")])
         return np.concatenate(chunks)
 
-def read(source: Union[str, FetchModule], data_type: str = None, **kwargs) -> GlobatoStream:
+
+def read(
+    source: Union[str, FetchModule], data_type: str = None, **kwargs
+) -> GlobatoStream:
     """The entry point for the Globato API.
 
     Args:
