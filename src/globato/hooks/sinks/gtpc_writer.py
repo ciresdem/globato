@@ -34,7 +34,9 @@ class WriteGTPC(FetchHook):
 
     name = "write_gtpc"
     meta_stage = "file"
-    meta_category = "stream-sink"
+    meta_category = "point-stream"
+    meta_desc = "Write a point-stream to GTPC (globato point-cloud)"
+    meta_requires = "point-stream"
 
     def __init__(self, res=None, mode="mean", compression="gzip", **kwargs):
         super().__init__(**kwargs)

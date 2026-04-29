@@ -26,6 +26,9 @@ class RasterWrite(FetchHook):
     name = "raster_write"
     meta_stage = "collection"
     meta_category = "sink"
+    meta_desc = "Write a raster-stream to raster"
+    meta_requires = "raster-stream"
+    meta_aliases = ["raster-stream-write-raster"]
 
     def __init__(
         self,
