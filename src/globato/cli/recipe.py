@@ -18,10 +18,20 @@ import logging
 
 from fetchez.recipe import Recipe
 from fetchez.registry import RecipeRegistry
-from fetchez.utils import parse_hook_string, str2inc
+from fetchez.utils import (
+    parse_hook_string,
+    str2inc,
+    FetchezMainGroup,
+    FetchezMainCommand,
+)
 from globato.utils import parse_source_string, yield_parsed_regions
+from fetchez.cli.recipes import recipes_group
 
 logger = logging.getLogger(__name__)
+
+RECIPE_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["recipes"]}
+
+# RECIPE_COMMANDS = ["run", "build", "recipes"]
 
 
 def validate_dependencies(recipe_obj):
@@ -57,38 +67,44 @@ def validate_dependencies(recipe_obj):
         sys.exit(1)
 
 
-@click.group(name="recipe")
+@click.version_option(package_name="globato")
+@click.group(
+    cls=FetchezMainGroup,
+    name="recipe",
+    fetchez_commands=RECIPE_COMMANDS,
+)
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
+
     pass
 
 
-@recipe_group.command("list")
-@click.option("--search", "-s", help="Filter recipes by name or keyword.")
-def recipe_list(search):
-    """List all available curated DEM recipes."""
+# @recipe_group.command("list")
+# @click.option("--search", "-s", help="Filter recipes by name or keyword.")
+# def recipe_list(search):
+#     """List all available curated DEM recipes."""
 
-    RecipeRegistry.load_all()
-    registry = RecipeRegistry.get_registry()
+#     RecipeRegistry.load_all()
+#     registry = RecipeRegistry.get_registry()
 
-    click.secho("\nAvailable Curated Recipes:", fg="cyan", bold=True)
-    click.echo("=" * 60)
+#     click.secho("\nAvailable Curated Recipes:", fg="cyan", bold=True)
+#     click.echo("=" * 60)
 
-    count = 0
-    for name, meta in sorted(registry.items()):
-        if (
-            search
-            and search.lower() not in name.lower()
-            and search.lower() not in meta["desc"].lower()
-        ):
-            continue
+#     count = 0
+#     for name, meta in sorted(registry.items()):
+#         if (
+#             search
+#             and search.lower() not in name.lower()
+#             and search.lower() not in meta["desc"].lower()
+#         ):
+#             continue
 
-        click.secho(f"  {name:<25}", fg="green", bold=True, nl=False)
-        click.echo(f" - {meta['desc']}")
-        count += 1
+#         click.secho(f"  {name:<25}", fg="green", bold=True, nl=False)
+#         click.echo(f" - {meta['desc']}")
+#         count += 1
 
-    click.echo("=" * 60)
-    click.echo(f"Total recipes found: {count}\n")
+#     click.echo("=" * 60)
+#     click.echo(f"Total recipes found: {count}\n")
 
 
 def _load_yaml(target):
@@ -130,7 +146,7 @@ def _absolutize_local_sources(config, base_dir):
     return config
 
 
-@recipe_group.command("run")
+@recipe_group.command("run", cls=FetchezMainCommand)
 @click.argument("target")
 @click.option(
     "-R",
@@ -368,131 +384,131 @@ def recipe_run(
             os.chdir(original_cwd)
 
 
-@recipe_group.command("info")
-@click.argument("target")
-def recipe_info(target):
-    """Inspect a recipe's description and sources without running it."""
+# @recipe_group.command("info")
+# @click.argument("target")
+# def recipe_info(target):
+#     """Inspect a recipe's description and sources without running it."""
 
-    RecipeRegistry.load_all()
+#     RecipeRegistry.load_all()
 
-    base_config = _load_yaml(target)
+#     base_config = _load_yaml(target)
 
-    proj = base_config.get("project", {})
-    region = base_config.get("region", "Global")
+#     proj = base_config.get("project", {})
+#     region = base_config.get("region", "Global")
 
-    modules = base_config.get("modules", [])
-    mod_names = []
-    for m in modules:
-        if isinstance(m, dict):
-            mod_names.append(m.get("module", "Unknown"))
-        else:
-            mod_names.append(str(m))
+#     modules = base_config.get("modules", [])
+#     mod_names = []
+#     for m in modules:
+#         if isinstance(m, dict):
+#             mod_names.append(m.get("module", "Unknown"))
+#         else:
+#             mod_names.append(str(m))
 
-    unique_mods = list(set(mod_names))
+#     unique_mods = list(set(mod_names))
 
-    click.secho(f"\n Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
-    click.echo(f"Description: {proj.get('description', 'No description provided.')}")
-    click.echo(f"Region:      {region}")
-    click.echo(f"Sources:     {', '.join(unique_mods)}\n")
-
-
-@recipe_group.command("dump")
-@click.argument("name")
-def recipe_dump(name):
-    """Dump the contents of a registered recipe to the terminal."""
-
-    RecipeRegistry.load_all()
-    recipe_meta = RecipeRegistry.get_recipe(name)
-
-    if not recipe_meta:
-        click.secho(f"Error: Recipe '{name}' not found in registry.", fg="red")
-        sys.exit(1)
-
-    click.secho(f"--- Recipe: {name} ---", fg="cyan", bold=True)
-    click.echo(yaml.dump(recipe_meta["config"], sort_keys=False))
+#     click.secho(f"\n Recipe: {proj.get('name', target)}", fg="cyan", bold=True)
+#     click.echo(f"Description: {proj.get('description', 'No description provided.')}")
+#     click.echo(f"Region:      {region}")
+#     click.echo(f"Sources:     {', '.join(unique_mods)}\n")
 
 
-@recipe_group.command("copy")
-@click.argument("name")
-@click.option("-O", "--outdir", default=".", help="Where to save the recipe.")
-def recipe_copy(name, outdir):
-    """Copy a registered recipe to your local directory for editing."""
+# @recipe_group.command("dump")
+# @click.argument("name")
+# def recipe_dump(name):
+#     """Dump the contents of a registered recipe to the terminal."""
 
-    RecipeRegistry.load_all()
-    recipe_meta = RecipeRegistry.get_recipe(name)
+#     RecipeRegistry.load_all()
+#     recipe_meta = RecipeRegistry.get_recipe(name)
 
-    if not recipe_meta:
-        click.secho(f"Error: Recipe '{name}' not found in registry.", fg="red")
-        sys.exit(1)
+#     if not recipe_meta:
+#         click.secho(f"Error: Recipe '{name}' not found in registry.", fg="red")
+#         sys.exit(1)
 
-    out_path = os.path.join(outdir, f"{name}_custom.yaml")
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(yaml.dump(recipe_meta["config"], sort_keys=False))
-
-    click.secho(f"Copied '{name}' to {out_path}", fg="green", bold=True)
-    click.echo(
-        "You can now edit this file and run it with: globato recipe run " + out_path
-    )
+#     click.secho(f"--- Recipe: {name} ---", fg="cyan", bold=True)
+#     click.echo(yaml.dump(recipe_meta["config"], sort_keys=False))
 
 
-@recipe_group.command("validate")
-@click.argument("target")
-def recipe_validate(target):
-    """Check a YAML recipe for syntax errors and missing modules/hooks."""
+# @recipe_group.command("copy")
+# @click.argument("name")
+# @click.option("-O", "--outdir", default=".", help="Where to save the recipe.")
+# def recipe_copy(name, outdir):
+#     """Copy a registered recipe to your local directory for editing."""
 
-    from fetchez.registry import ModuleRegistry, HookRegistry
+#     RecipeRegistry.load_all()
+#     recipe_meta = RecipeRegistry.get_recipe(name)
 
-    ModuleRegistry.load_all()
-    HookRegistry.load_all()
+#     if not recipe_meta:
+#         click.secho(f"Error: Recipe '{name}' not found in registry.", fg="red")
+#         sys.exit(1)
 
-    base_config = _load_yaml(target)
-    if not base_config:
-        click.secho(
-            f"Error: Recipe '{target}' not found locally or in the registry.", fg="red"
-        )
-        sys.exit(1)
+#     out_path = os.path.join(outdir, f"{name}_custom.yaml")
+#     with open(out_path, "w", encoding="utf-8") as f:
+#         f.write(yaml.dump(recipe_meta["config"], sort_keys=False))
 
-    errors = 0
-    click.secho(f"Validating {target}...", fg="blue")
+#     click.secho(f"Copied '{name}' to {out_path}", fg="green", bold=True)
+#     click.echo(
+#         "You can now edit this file and run it with: globato recipe run " + out_path
+#     )
 
-    validate_dependencies(base_config)
 
-    for mod in base_config.get("modules", []):
-        mod_name = mod.get("module")
-        if not ModuleRegistry.get_class(mod_name) and mod_name not in [
-            "file",
-            "local_fs",
-        ]:
-            click.secho(f"  Missing Module: '{mod_name}'", fg="red")
-            errors += 1
-        else:
-            click.secho(f"  Valid Module: '{mod_name}'", fg="green")
+# @recipe_group.command("validate")
+# @click.argument("target")
+# def recipe_validate(target):
+#     """Check a YAML recipe for syntax errors and missing modules/hooks."""
 
-        for hook in mod.get("hooks", []):
-            if not HookRegistry.get_class(hook.get("name")):
-                click.secho(
-                    f"  Missing Hook: '{hook.get('name')}' (in module {mod_name})",
-                    fg="red",
-                )
-                errors += 1
-            else:
-                click.secho(
-                    f"  Valid Hook: '{hook.get('name')}' (in module {mod_name})",
-                    fg="green",
-                )
+#     from fetchez.registry import ModuleRegistry, HookRegistry
 
-    for hook in base_config.get("global_hooks", []):
-        if not HookRegistry.get_class(hook.get("name")):
-            click.secho(f"  Missing Global Hook: '{hook.get('name')}'", fg="red")
-            errors += 1
-        else:
-            click.secho(f"  Valid Hook: '{hook.get('name')}'", fg="green")
+#     ModuleRegistry.load_all()
+#     HookRegistry.load_all()
 
-    if errors == 0:
-        click.secho("Recipe appears valid!", fg="green", bold=True)
-    else:
-        click.secho(f"Failed validation with {errors} errors.", fg="red", bold=True)
-        sys.exit(1)
+#     base_config = _load_yaml(target)
+#     if not base_config:
+#         click.secho(
+#             f"Error: Recipe '{target}' not found locally or in the registry.", fg="red"
+#         )
+#         sys.exit(1)
+
+#     errors = 0
+#     click.secho(f"Validating {target}...", fg="blue")
+
+#     validate_dependencies(base_config)
+
+#     for mod in base_config.get("modules", []):
+#         mod_name = mod.get("module")
+#         if not ModuleRegistry.get_class(mod_name) and mod_name not in [
+#             "file",
+#             "local_fs",
+#         ]:
+#             click.secho(f"  Missing Module: '{mod_name}'", fg="red")
+#             errors += 1
+#         else:
+#             click.secho(f"  Valid Module: '{mod_name}'", fg="green")
+
+#         for hook in mod.get("hooks", []):
+#             if not HookRegistry.get_class(hook.get("name")):
+#                 click.secho(
+#                     f"  Missing Hook: '{hook.get('name')}' (in module {mod_name})",
+#                     fg="red",
+#                 )
+#                 errors += 1
+#             else:
+#                 click.secho(
+#                     f"  Valid Hook: '{hook.get('name')}' (in module {mod_name})",
+#                     fg="green",
+#                 )
+
+#     for hook in base_config.get("global_hooks", []):
+#         if not HookRegistry.get_class(hook.get("name")):
+#             click.secho(f"  Missing Global Hook: '{hook.get('name')}'", fg="red")
+#             errors += 1
+#         else:
+#             click.secho(f"  Valid Hook: '{hook.get('name')}'", fg="green")
+
+#     if errors == 0:
+#         click.secho("Recipe appears valid!", fg="green", bold=True)
+#     else:
+#         click.secho(f"Failed validation with {errors} errors.", fg="red", bold=True)
+#         sys.exit(1)
 
 
 # --- Build command ---
@@ -666,7 +682,7 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
-@recipe_group.command("build")
+@recipe_group.command("build", cls=FetchezMainCommand)
 @click.option(
     "--list-sources",
     is_flag=True,
@@ -849,3 +865,6 @@ def recipe_build(
     except ValueError as e:
         click.secho(str(e), fg="red")
         sys.exit(1)
+
+
+recipe_group.add_command(recipes_group, name="recipes")

@@ -15,6 +15,7 @@ import time
 import numpy as np
 
 from .gritz import gritz_cmd
+from fetchez.utils import FetchezMainGroup, FetchezMainCommand
 
 
 def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
@@ -121,17 +122,37 @@ def raster_io(f):
     return f
 
 
+RASTER_COMMANDS = [
+    "diff",
+    "slope",
+    "clip",
+    "crop",
+    "cut",
+    "flats",
+    "fill",
+    "morph",
+    "interp",
+    "blend",
+    "zscore",
+]
+
+
 # =============================================================================
 # GRITS (RASTER TOOLS)
 # =============================================================================
-@click.group(name="raster")
+@click.version_option(package_name="globato")
+@click.group(
+    cls=FetchezMainGroup,
+    name="raster",
+    fetchez_commands=RASTER_COMMANDS,
+)
 def raster_group():
     """Raster manipulation tools."""
 
     pass
 
 
-@raster_group.command("diff")
+@raster_group.command("diff", cls=FetchezMainCommand)
 @raster_io
 @click.option("--aux", required=True, help="Auxiliary/Reference Raster")
 @click.option(
@@ -147,7 +168,7 @@ def raster_diff(src, dst, strip_bands, aux, mode, threshold):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("slope")
+@raster_group.command("slope", cls=FetchezMainCommand)
 @raster_io
 @click.option("--min", "min_val", type=float, help="Min Slope")
 @click.option("--max", "max_val", type=float, help="Max Slope")
@@ -160,7 +181,7 @@ def raster_slope(src, dst, strip_bands, min_val, max_val):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("clip")
+@raster_group.command("clip", cls=FetchezMainCommand)
 @raster_io
 @click.option("-B", "--barrier", required=True, help="Vector to use for clipping.")
 @click.option(
@@ -175,7 +196,7 @@ def raster_clip(src, dst, strip_bands, barrier, invert):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("cut")
+@raster_group.command("cut", cls=FetchezMainCommand)
 @raster_io
 @click.option("-R", "--region", required=True, help="Region W/E/S/N")
 def raster_cut(src, dst, strip_bands, region):
@@ -187,7 +208,7 @@ def raster_cut(src, dst, strip_bands, region):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("crop")
+@raster_group.command("crop", cls=FetchezMainCommand)
 @raster_io
 def raster_crop(src, dst, strip_bands):
     """Crop a raster to its valid data bounds (removes NoData moat)."""
@@ -198,7 +219,7 @@ def raster_crop(src, dst, strip_bands):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("flats")
+@raster_group.command("flats", cls=FetchezMainCommand)
 @raster_io
 @click.option(
     "--threshold", type=float, default=1.0, help="Minimum size of a flat-zone"
@@ -212,7 +233,7 @@ def raster_flats(src, dst, strip_bands, threshold):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("fill")
+@raster_group.command("fill", cls=FetchezMainCommand)
 @raster_io
 @click.option("--dist", type=float, default=100.0, help="Max search distance")
 @click.option("--smooth", type=int, default=0, help="Smoothing iterations")
@@ -225,7 +246,7 @@ def raster_fill(src, dst, strip_bands, dist, smooth):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("morph")
+@raster_group.command("morph", cls=FetchezMainCommand)
 @raster_io
 @click.option(
     "--op",
@@ -242,7 +263,7 @@ def raster_morph(src, dst, strip_bands, op, kernel):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("interp")
+@raster_group.command("interp", cls=FetchezMainCommand)
 @raster_io
 @click.option(
     "--method", type=click.Choice(["linear", "cubic", "nearest"]), default="linear"
@@ -256,7 +277,7 @@ def raster_interp(src, dst, strip_bands, method):
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("blend")
+@raster_group.command("blend", cls=FetchezMainCommand)
 @raster_io
 @click.option("--aux", required=True, help="Auxiliary/Reference Raster")
 @click.option("--blend-dist", type=float, default=20.0, help="Max blend distance")
@@ -282,7 +303,7 @@ def raster_blend(
     run_raster_hook(hook, src, dst, strip_bands)
 
 
-@raster_group.command("zscore")
+@raster_group.command("zscore", cls=FetchezMainCommand)
 @raster_io
 @click.option(
     "--threshold", type=float, default=3.0, help="Mask zscore over this threshold"

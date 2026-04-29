@@ -12,17 +12,25 @@ import json
 import math
 import sys
 
+from fetchez.utils import FetchezMainGroup, FetchezMainCommand
 from globato.utils import yield_parsed_regions
 
+REGION_COMMANDS = ["echo", "buffer", "split", "transform"]
 
-@click.group(name="region")
+
+@click.version_option(package_name="globato")
+@click.group(
+    cls=FetchezMainGroup,
+    name="region",
+    fetchez_commands=REGION_COMMANDS,
+)
 def region_group():
     """Generate and manipulate spatial bounding boxes and tilesets."""
 
     pass
 
 
-@region_group.command("echo")
+@region_group.command("echo", cls=FetchezMainCommand)
 @click.option(
     "-R",
     "--region",
@@ -54,7 +62,7 @@ def region_echo(region_str, format):
         sys.exit(1)
 
 
-@region_group.command("buffer")
+@region_group.command("buffer", cls=FetchezMainCommand)
 @click.option(
     "-R",
     "--region",
@@ -91,7 +99,7 @@ def region_buffer(region_str, pct, format):
         sys.exit(1)
 
 
-@region_group.command("split")
+@region_group.command("split", cls=FetchezMainCommand)
 @click.option(
     "-R",
     "--region",
@@ -114,7 +122,7 @@ def region_buffer(region_str, pct, format):
     help="Prefix for the generated tile names (default: 'tile').",
 )
 def region_split(region_str, size, out, prefix):
-    """Split a massive region into a GeoJSON tileset for batch processing.
+    """Split a region into a GeoJSON tileset for batch processing.
 
     Example: globato region split loc:"California" --size 0.5 -O cali_tiles.geojson
     """
@@ -186,7 +194,7 @@ def region_split(region_str, size, out, prefix):
         sys.exit(1)
 
 
-@region_group.command("transform")
+@region_group.command("transform", cls=FetchezMainCommand)
 @click.option(
     "-R",
     "--region",
