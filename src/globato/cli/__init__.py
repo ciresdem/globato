@@ -17,13 +17,17 @@ from .recipe import recipe_group
 # from .dem import dem_group
 from .raster import raster_group
 from .region import region_group
-from .fetch import fetch_group
+
+# from .fetch import fetch_group
 from .pointz import pointz_group
 from .viz import viz_group
 
 from transformez.cli import transformez_cli
-from fetchez.cli import cli as fetchez_cli, setup_logging
+
+# from fetchez.cli import cli as fetchez_cli, setup_logging
+from fetchez.cli import cli as setup_logging
 from fetchez.utils import FetchezMainGroup
+
 # from fetchez.cli.bundles import bundles_group
 from fetchez.cli.hooks import hooks_group
 from fetchez.cli.modules import modules_group
@@ -36,7 +40,15 @@ from fetchez.cli.pipeline import pipeline_group
     cls=FetchezMainGroup,
     help="Continuous Digital Elevation Models",
     fetchez_commands={
-        "Commands": ["cudem", "fetchez", "gritz", "regions", "pointz", "transformez", "perspecto"],
+        "Commands": [
+            "cudem",
+            "fetchez",
+            "gritz",
+            "regions",
+            "pointz",
+            "transformez",
+            "perspecto",
+        ],
         "Discovery and Management": [
             "modules",
             "hooks",

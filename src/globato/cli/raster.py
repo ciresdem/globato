@@ -17,6 +17,7 @@ import numpy as np
 from .gritz import gritz_cmd
 from fetchez.utils import FetchezMainGroup, FetchezMainCommand
 
+
 def generate_raster_receipt(src_path, dst_path, op_name, elapsed):
     """Calculates before/after statistics and prints a receipt."""
 
@@ -121,7 +122,20 @@ def raster_io(f):
     return f
 
 
-RASTER_COMMANDS = ["diff", "slope", "clip", "crop", "cut", "flats", "fill", "morph", "interp", "blend", "zscore"]
+RASTER_COMMANDS = [
+    "diff",
+    "slope",
+    "clip",
+    "crop",
+    "cut",
+    "flats",
+    "fill",
+    "morph",
+    "interp",
+    "blend",
+    "zscore",
+]
+
 
 # =============================================================================
 # GRITS (RASTER TOOLS)

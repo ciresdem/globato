@@ -18,16 +18,18 @@ import logging
 
 from fetchez.recipe import Recipe
 from fetchez.registry import RecipeRegistry
-from fetchez.utils import parse_hook_string, str2inc, FetchezMainGroup, FetchezMainCommand
+from fetchez.utils import (
+    parse_hook_string,
+    str2inc,
+    FetchezMainGroup,
+    FetchezMainCommand,
+)
 from globato.utils import parse_source_string, yield_parsed_regions
 from fetchez.cli.recipes import recipes_group
 
 logger = logging.getLogger(__name__)
 
-RECIPE_COMMANDS = {
-    "Commmands": ["run", "build"],
-    "Discovery & Management": ["recipes"]
-}
+RECIPE_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["recipes"]}
 
 # RECIPE_COMMANDS = ["run", "build", "recipes"]
 
@@ -70,7 +72,6 @@ def validate_dependencies(recipe_obj):
     cls=FetchezMainGroup,
     name="recipe",
     fetchez_commands=RECIPE_COMMANDS,
-
 )
 def recipe_group():
     """Execute and manage YAML DEM recipes."""
