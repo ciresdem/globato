@@ -74,6 +74,9 @@ Repository = "https://github.com/continuous-dems/globato"
 [project.entry-points."fetchez.modules"]
 globato_modules = "globato.modules"
 
+[project.entry-points."fetchez.modules.bundles"]
+globato_module_bundles = "globato.modules.bundles"
+
 [project.entry-points."fetchez.hooks"]
 globato_hooks = "globato.hooks"
 
@@ -85,9 +88,6 @@ globato_recipe_schemas = "globato.recipes.schemas"
 
 [project.entry-points."fetchez.presets"]
 globato_presets = "globato.presets"
-
-[project.entry-points."fetchez.bundles"]
-globato_bundles = "globato.bundles"
 
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
