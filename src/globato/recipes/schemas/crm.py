@@ -11,7 +11,7 @@ Registers CRM DEM-specific schema into the Fetchez engine.
 :license: MIT, see LICENSE for more details.
 """
 
-from fetchez.schemas import BaseSchema  # , SchemaRegistry
+from fetchez.recipes.schemas import BaseSchema  # , SchemaRegistry
 from fetchez.spatial import parse_region
 
 
