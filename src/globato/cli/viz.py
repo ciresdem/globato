@@ -14,7 +14,7 @@ import time
 import click
 import logging
 from fetchez.registry import HookRegistry
-from fetchez.utils import parse_hook_string
+from fetchez.utils import parse_hook_string, FetchezMainGroup, FetchezMainCommand
 from fetchez.spatial import Region
 
 from globato.utils import add_field_to_recarray
@@ -22,15 +22,22 @@ from .perspecto import perspecto_cmd
 
 logger = logging.getLogger(__name__)
 
+VIZ_COMMANDS = ["colorbar", "hillshade", "points"]
 
-@click.group(name="viz")
+
+@click.version_option(package_name="globato")
+@click.group(
+    cls=FetchezMainGroup,
+    name="viz",
+    fetchez_commands=VIZ_COMMANDS,
+)
 def viz_group():
     """Visualize DEMs and Point Clouds."""
 
     pass
 
 
-@viz_group.command("hillshade")
+@viz_group.command("hillshade", cls=FetchezMainCommand)
 @click.argument("src")
 @click.argument("dst")
 @click.option(
@@ -139,7 +146,7 @@ def viz_hillshade(
         sys.exit(1)
 
 
-@viz_group.command("colorbar")
+@viz_group.command("colorbar", cls=FetchezMainCommand)
 @click.argument("src")
 @click.argument("dst")
 @click.option(
@@ -218,7 +225,7 @@ def _prepare_stream(gen):
         yield chunk
 
 
-@viz_group.command("points")
+@viz_group.command("points", cls=FetchezMainCommand)
 @click.argument("src")
 @click.option(
     "-F",

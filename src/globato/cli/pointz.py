@@ -13,7 +13,7 @@ Point cloud filtering and manipulation.
 import click
 import yaml
 from fetchez.recipe import Recipe
-from fetchez.utils import parse_hook_string
+from fetchez.utils import parse_hook_string, FetchezMainGroup, FetchezMainCommand
 
 from globato.utils import parse_source_string
 
@@ -33,7 +33,7 @@ from globato.hooks.transforms.reproject import StreamReproject
 logger = logging.getLogger(__name__)
 
 
-@click.command(name="pipeline", hidden=False)
+@click.command(name="pipeline", hidden=False, cls=FetchezMainCommand)
 @click.argument("src", nargs=-1, required=True)
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option(
@@ -93,7 +93,16 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
 
 
 # --- OLD POINTZ-GROUP --
-@click.group(name="pointz")
+
+POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
+
+
+@click.version_option(package_name="globato")
+@click.group(
+    cls=FetchezMainGroup,
+    name="pointz",
+    fetchez_commands=POINTZ_COMMANDS,
+)
 def pointz_group():
     """Filter, transform, and stream point cloud data (XYZ/LAS)."""
 
@@ -120,7 +129,7 @@ def _yield_stdin_chunks(chunk_size=100000):
         logger.error(f"Error reading from stdin: {e}")
 
 
-@pointz_group.command("list-filters")
+@pointz_group.command("list-filters", cls=FetchezMainCommand)
 def pointz_list_filters():
     """List all available point cloud filters."""
 
@@ -136,7 +145,7 @@ def pointz_list_filters():
     click.echo("=" * 50 + "\n")
 
 
-@pointz_group.command("run")
+@pointz_group.command("run", cls=FetchezMainCommand)
 @click.argument("sources", nargs=-1)
 @click.option(
     "-F",
@@ -375,7 +384,7 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
         )
 
 
-@pointz_group.command("info")
+@pointz_group.command("info", cls=FetchezMainCommand)
 @click.argument("source")
 def pointz_info(source):
     """Scan a point cloud and return its spatial statistics."""
