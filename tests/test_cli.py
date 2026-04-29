@@ -26,16 +26,25 @@ def test_cli_base_help(runner):
     result = runner.invoke(cli, ["--help"])
 
     assert result.exit_code == 0
-    assert "Globato: The ContinUous-DEM Generation Framework" in result.output
+    assert "Continuous Digital Elevation Models" in result.output
 
+    # expected_commands = [
+    #     "recipe",
+    #     "raster",
+    #     "region",
+    #     "fetch",
+    #     "pointz",
+    #     "viz",
+    #     "transform",
+    # ]
     expected_commands = [
-        "recipe",
-        "raster",
-        "region",
-        "fetch",
+        "cudem",
+        "gritz",
+        "regions",
+        "fetchez",
         "pointz",
-        "viz",
-        "transform",
+        "perspecto",
+        "transformez",
     ]
     for cmd in expected_commands:
         assert cmd in result.output, f"Missing '{cmd}' command in CLI help!"
@@ -45,7 +54,7 @@ def test_region_echo_bbox(runner):
     """Test the spatial parsing engine (No network required)."""
 
     result = runner.invoke(
-        cli, ["region", "echo", "-R", "-120/-119/34/35", "-F", "gmt"]
+        cli, ["regions", "echo", "-R", "-120/-119/34/35", "-F", "gmt"]
     )
 
     assert result.exit_code == 0
@@ -59,7 +68,7 @@ def test_recipe_build_save_only(runner):
         result = runner.invoke(
             cli,
             [
-                "recipe",
+                "cudem",
                 "build",
                 "-R",
                 "-120/-119/34/35",
@@ -91,7 +100,7 @@ def test_recipe_build_save_only(runner):
 def test_recipe_info_source_eager(runner):
     """Test that the eager callback intercepts the command and exits cleanly."""
 
-    result = runner.invoke(cli, ["recipe", "build", "--info-source", "file"])
+    result = runner.invoke(cli, ["cudem", "build", "--info-source", "file"])
 
     assert result.exit_code == 0
     assert "SOURCE: FILE" in result.output

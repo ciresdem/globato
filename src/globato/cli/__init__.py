@@ -25,7 +25,7 @@ from .viz import viz_group
 from transformez.cli import transformez_cli
 
 # from fetchez.cli import cli as fetchez_cli, setup_logging
-from fetchez.cli import cli as setup_logging
+from fetchez.cli import setup_logging
 from fetchez.utils import FetchezMainGroup
 
 # from fetchez.cli.bundles import bundles_group
