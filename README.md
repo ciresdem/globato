@@ -1,13 +1,13 @@
 <p align="center">
 	<a href="https://github.com/continuous-dems">
-		<img src="https://raw.githubusercontent.com/continuous-dems/globato/refs/heads/main/docs/source/_static/continuous_dems_logo_mini.svg" height="80" alt="Continuous DEMs Logo">
+		<img src="https://raw.githubusercontent.com/continuous-dems/globato/refs/heads/main/docs/source/_static/continuous_dems_logo_mini_inf.svg" height="80" alt="Continuous DEMs Logo">
 	</a>
 </p>
 <h1 align="center">GloBaTo</h1>
 <p align="center"><em>Domo Arigato, Multi-Resolution Globato.</em></p>
 
 <p align="center">
-  <a href="https://github.com/continuous-dems/globato"><img src="https://img.shields.io/badge/version-0.2.7-blue.svg" alt="Version"></a>
+  <a href="https://github.com/continuous-dems/globato"><img src="https://img.shields.io/badge/version-0.2.8-blue.svg" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.12+-yellow.svg" alt="Python"></a>
   <a href="https://badge.fury.io/py/globato"><img src="https://badge.fury.io/py/globato.svg" alt="PyPI version"></a>

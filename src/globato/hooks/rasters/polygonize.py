@@ -22,6 +22,7 @@ from fetchez.hooks import FetchHook
 logger = logging.getLogger(__name__)
 
 
+# Should this convert a 'stream' from 'raster-stream' to 'vector-stream'?
 class RasterPolygonizeHook(FetchHook):
     """Converts a raster (like a binary mask or classified grid) into vector polygons."""
 

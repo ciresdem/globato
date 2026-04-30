@@ -35,7 +35,7 @@ class GeoHillshade(RasterStreamHook):
 
     name = "viz_geoshade"
     default_suffix = "_hillshade"
-    meta_category = "visualization"
+    meta_category = "Raster-Stream"
 
     def __init__(
         self,

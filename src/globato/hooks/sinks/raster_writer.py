@@ -23,12 +23,12 @@ logger = logging.getLogger(__name__)
 class RasterWrite(FetchHook):
     """Universal sink that writes a TIFF. Can act as a terminal sink or an inline tap."""
 
-    name = "raster_write"
+    name = "raster-write"
     meta_stage = "collection"
-    meta_category = "sink"
+    meta_category = "raster-stream"
     meta_desc = "Write a raster-stream to raster"
     meta_requires = "raster-stream"
-    meta_aliases = ["raster-stream-write-raster"]
+    meta_aliases = ["raster-stream-write-raster", "raster_write"]
 
     def __init__(
         self,
