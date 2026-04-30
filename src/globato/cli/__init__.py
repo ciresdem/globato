@@ -32,6 +32,7 @@ from fetchez.utils import FetchezMainGroup
 from fetchez.cli.hooks import hooks_group
 from fetchez.cli.modules import modules_group
 from fetchez.cli.recipes import recipes_group
+
 # from fetchez.cli.streams import streams_group
 from fetchez.cli.pipeline import pipeline_group
 
