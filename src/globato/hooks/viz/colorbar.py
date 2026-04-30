@@ -26,7 +26,7 @@ class ColorBar(GeoHillshade):
 
     name = "viz_colorbar"
     default_suffix = "_colorbar"
-    meta_category = "visualization"
+    meta_category = "Raster-Stream"
 
     def __init__(
         self,

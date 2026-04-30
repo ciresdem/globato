@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.hooks.osm_landmask
+globato.hooks.osm_landmask
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Fetches OSM Coastline data and polygonizes it into a landmask.
@@ -36,7 +36,7 @@ class OSMLandmask(FetchHook):
 
     name = "osm_landmask"
     meta_stage = "pre"
-    meta_category = "generator"
+    meta_category = "metadata"
 
     def __init__(self, filename="landmask.geojson", **kwargs):
         super().__init__(**kwargs)

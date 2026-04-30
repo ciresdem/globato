@@ -319,9 +319,10 @@ class PointPixels:
 class PixelsToPoints(FetchHook):
     """Converts an in-memory raster_stream back into an xyz_recarray point stream."""
 
-    name = "pixels_to_points"
+    name = "pixels2points"
     meta_stage = "file"
     meta_category = "stream-transform"
+    meta_aliases = ["pixels_to_points"]
 
     def _raster_to_xyz(self, raster_stream):
         _profile = next(raster_stream)
@@ -364,9 +365,10 @@ class PixelsToPoints(FetchHook):
 class Point2PixelStream(FetchHook):
     """Base class for streaming point filters."""
 
-    name = "point2pixel"
+    name = "points2pixel"
     meta_stage = "file"
-    meta_category = "pipeline"
+    meta_category = "stream-transform"
+    meta_aliases = ["point2pixel", "points_to_pixel"]
 
     def __init__(self, x_inc=None, y_inc=None, want_sums=True, **kwargs):
         super().__init__(**kwargs)
@@ -449,8 +451,6 @@ class Point2PixelStream(FetchHook):
                     # Add a band dimension so it's (1, Rows, Cols)
                     data = data[np.newaxis, ...]
 
-                # Yield the exact tuple RasterHook expects!
-                # Note: window and buff_win are the same here since points don't have native buffers
                 yield window, window, data, -9999, chunk_transform
 
         logger.info(f"Parsed {count} data records from {entry['dst_fn']}")
