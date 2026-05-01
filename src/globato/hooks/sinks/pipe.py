@@ -32,11 +32,12 @@ class XYZPrinter(FetchHook):
       --hook pipe_xyz:fmt=%.4f:delimiter=,
     """
 
-    name = "stream_pipe_xyz"
+    name = "stream-dump-xyz"
     meta_stage = "file"
     meta_desc = "Send the point-stream xyz data to stdout"
     meta_category = "point-stream"
     meta_requires = "point-stream"
+    meta_aliases = ["stream_pipe_xyz"]
 
     def __init__(self, fmt="%.6f", delimiter=" ", **kwargs):
         super().__init__(**kwargs)
@@ -51,7 +52,7 @@ class XYZPrinter(FetchHook):
                 continue
 
             try:
-                if stream_type == "xyz_recarray":
+                if stream_type == "xyz_recarray" or stream_type == "point-stream":
                     for chunk in stream:
                         columns = [chunk["x"], chunk["y"], chunk["z"]]
 

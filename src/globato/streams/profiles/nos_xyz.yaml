@@ -1,4 +1,4 @@
-name: nos_xyz
+name: nos-xyz
 description: NOS Hydro data to stream elevation points
 stream-type: "point-stream"
 reader:
