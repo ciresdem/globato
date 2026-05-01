@@ -136,7 +136,8 @@ def add_field_to_recarray(rec, name, dtype, default_val):
 def parse_source_string(source_str):
     """Globato-specific wrapper that guarantees stream_data is injected."""
 
-    return fetchez_parse_source(source_str, default_hooks=[{"name": "stream_data"}])
+    #return fetchez_parse_source(source_str, default_hooks=[{"name": "stream_data"}])
+    return fetchez_parse_source(source_str, default_hooks=[{"name": "stream-init"}])
 
 
 def yield_parsed_regions(region_str):

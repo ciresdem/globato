@@ -23,7 +23,7 @@ import sys
 import logging
 import numpy as np
 
-from fetchez.registry import HookRegistry, ModuleRegistry
+from fetchez.registry import HookRegistry, ModuleRegistry, ReaderRegistry
 from fetchez.core import run_fetchez
 from fetchez.spatial import Region
 
@@ -182,6 +182,7 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
 
     HookRegistry.load_all()
     ModuleRegistry.load_all()
+    ReaderRegistry.load_all()
 
     active_global_filters = []
     for f_str in global_filters:
@@ -231,7 +232,7 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
         mod_args = parsed_src.get("args", {})
         source_filters = []
         for hook_dict in parsed_src.get("hooks", []):
-            if hook_dict["name"] == "stream_data":
+            if hook_dict["name"] == "stream_data" or hook_dict["name"] == "stream-init":
                 continue
             mod_cls = HookRegistry.get_class(hook_dict["name"])
             if mod_cls:
@@ -248,7 +249,8 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
 
         if mod_name in ["file", "local_fs"]:
             target_path = mod_args.get("paths", mod_args.get("path"))
-            reader = StreamFactory.get_reader(target_path, chunk_size=chunk_size)
+            #reader = StreamFactory.get_reader(target_path, chunk_size=chunk_size)
+            reader = ReaderRegistry.get_reader(target_path, data_type)#, **kwargs_copy)
             if reader:
                 streams.append(
                     {

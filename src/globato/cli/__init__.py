@@ -67,6 +67,9 @@ def cli(verbose, quiet):
     """Globato: The ContinUous-DEM Generation Framework."""
 
     # logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+
+    setup_logging(name="fetchez", quiet=quiet, verbose=verbose)
+    setup_logging(name="transformez", quiet=quiet, verbose=verbose)
     setup_logging(name="globato", quiet=quiet, verbose=verbose)
 
 
