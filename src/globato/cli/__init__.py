@@ -8,7 +8,7 @@ The main command-line interface for the Globato framework.
 """
 
 import click
-# import logging
+import logging
 
 from .recipe import recipe_group
 # from .hook import hook_group
@@ -36,6 +36,8 @@ from fetchez.cli.recipes import recipes_group
 from fetchez.cli.streams import streams_group
 from fetchez.cli.pipeline import pipeline_group
 
+logger = logging.getLogger(__name__)
+
 
 @click.group(
     cls=FetchezMainGroup,
@@ -46,7 +48,7 @@ from fetchez.cli.pipeline import pipeline_group
             "fetchez",
             "gritz",
             "regions",
-            "pointz",
+            "dlim",
             "transformez",
             "perspecto",
         ],
@@ -65,7 +67,7 @@ def cli(verbose, quiet):
     """Globato: The ContinUous-DEM Generation Framework."""
 
     # logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-    setup_logging(quiet=quiet, verbose=verbose)
+    setup_logging(name="globato", quiet=quiet, verbose=verbose)
 
 
 cli.add_command(recipe_group, name="cudem")
@@ -75,7 +77,7 @@ cli.add_command(pipeline_group, name="fetchez")
 cli.add_command(raster_group, name="gritz")
 cli.add_command(region_group, name="regions")
 # cli.add_command(fetch_group, name="fetch")
-cli.add_command(pointz_group, name="pointz")
+cli.add_command(pointz_group, name="dlim")
 cli.add_command(viz_group, name="perspecto")
 cli.add_command(transformez_cli, name="transformez")
 cli.add_command(hooks_group, name="hooks")

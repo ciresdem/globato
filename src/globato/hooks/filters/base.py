@@ -52,7 +52,8 @@ class GlobatoFilter(FetchHook):
 
         for mod, entry in entries:
             stream = entry.get("stream")
-            if not stream:
+            stream_type = entry.get("stream_type")
+            if not stream or (stream_type != "xyz_recarray" or stream_type != "point-stream"):
                 continue
 
             # `setup` allows subclass to prepare resources based on region/module

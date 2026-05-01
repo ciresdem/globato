@@ -32,6 +32,8 @@ from globato.hooks.transforms.reproject import StreamReproject
 
 logger = logging.getLogger(__name__)
 
+POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
+
 
 @click.command(name="pipeline", hidden=False, cls=FetchezMainCommand)
 @click.argument("src", nargs=-1, required=True)
@@ -94,8 +96,6 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
 
 # --- OLD POINTZ-GROUP --
 
-POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
-
 
 @click.version_option(package_name="globato")
 @click.group(
@@ -136,10 +136,12 @@ def pointz_list_filters():
     HookRegistry.load_all()
     registry = HookRegistry.get_registry()
 
-    click.secho("\n Available PointZ Filters:", fg="cyan", bold=True)
+    click.secho("\n🌪️  Available `point-stream` Filters:\n", fg="cyan", bold=True)
     click.echo("=" * 50)
     for name, meta in sorted(registry.items()):
-        if meta.get("category") == "stream-filter":
+        if meta.get("category") == "stream-filter" or meta.get("category") == "point-stream":
+            if name in meta.get("aliases", ""):
+                continue
             desc = meta.get("desc", "No description provided.")
             click.echo(f"  {click.style(name, bold=True, fg='yellow'):<15} : {desc}")
     click.echo("=" * 50 + "\n")
@@ -157,10 +159,11 @@ def pointz_list_filters():
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option("-T", "--t-srs", help="Target SRS for on-the-fly reprojection.")
 @click.option("-O", "--out", help="Output file (default: stdout).")
+@click.option("-D", "--data-type", default=None, help="Set the data type of the input.")
 @click.option(
     "--chunk-size", type=int, default=500000, help="Number of points per memory chunk."
 )
-def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
+def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_size):
     """Stream, filter, and format point cloud data.
 
     SOURCES can be local files (data.las), Fetchez modules (mbdb), or '-' for stdin.
@@ -221,6 +224,9 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             continue
 
         parsed_src = parse_source_string(src_str)
+        if data_type:
+            parsed_src["data_type"] = data_type
+
         mod_name = parsed_src["module"]
         mod_args = parsed_src.get("args", {})
         source_filters = []
