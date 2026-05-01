@@ -89,6 +89,12 @@ globato_recipes = "globato.recipes"
 [project.entry-points."fetchez.recipes.schemas"]
 globato_recipe_schemas = "globato.recipes.schemas"
 
+[project.entry-points."fetchez.streams.readers"]
+globato_stream_readers = "globato.streams.readers"
+
+[project.entry-points."fetchez.streams.profiles"]
+globato_stream_profiles = "globato.streams.profiles"
+
 # [project.entry-points."fetchez.plugins"]
 # globato = "globato"
 

@@ -1,0 +1,10 @@
+name: csb_xyz
+description: NOAA Community Supported Bathymetry to stream elevation data.
+stream-type: "point-stream"
+reader:
+  name: "xyz-point-reader"
+  args:
+    delimiter: ","
+    skiprows: 1
+    z_scale: -1
+    usecols: [2, 3, 4]

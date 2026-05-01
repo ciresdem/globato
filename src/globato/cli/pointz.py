@@ -223,7 +223,6 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
         parsed_src = parse_source_string(src_str)
         mod_name = parsed_src["module"]
         mod_args = parsed_src.get("args", {})
-
         source_filters = []
         for hook_dict in parsed_src.get("hooks", []):
             if hook_dict["name"] == "stream_data":

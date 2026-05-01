@@ -33,7 +33,7 @@ from fetchez.cli.hooks import hooks_group
 from fetchez.cli.modules import modules_group
 from fetchez.cli.recipes import recipes_group
 
-# from fetchez.cli.streams import streams_group
+from fetchez.cli.streams import streams_group
 from fetchez.cli.pipeline import pipeline_group
 
 
@@ -81,7 +81,7 @@ cli.add_command(transformez_cli, name="transformez")
 cli.add_command(hooks_group, name="hooks")
 cli.add_command(modules_group, name="modules")
 cli.add_command(recipes_group, name="recipes")
-# cli.add_command(streams_group, name="streams")
+cli.add_command(streams_group, name="streams")
 
 
 if __name__ == "__main__":

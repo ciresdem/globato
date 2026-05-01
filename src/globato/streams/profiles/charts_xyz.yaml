@@ -1,0 +1,8 @@
+name: charts-xyz
+description: NOS ENC Charts
+stream-type: "point-stream"
+reader:
+  name: "fiona-point-reader"
+  args:
+    layer: "SOUNDG"
+    z_scale: -1

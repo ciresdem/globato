@@ -23,11 +23,13 @@ logger = logging.getLogger(__name__)
 class RangeZ(GlobatoFilter):
     """Classify points outside a Z range as Noise (or specified class).
 
-    Usage: --hook range_z:min_z=-50:max_z=0:set_class=7
+    Usage: --hook range_z:min_z=-50,max_z=0,set_class=7
     """
 
-    name = "range_z"
+    name = "range-z"
     meta_desc = "Classify points by Z range"
+    meta_category = "point-stream"
+    meta_aliases = ["range_z"]
 
     def __init__(self, min_z=None, max_z=None, **kwargs):
         super().__init__(**kwargs)
