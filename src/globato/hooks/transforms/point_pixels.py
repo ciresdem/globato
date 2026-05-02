@@ -459,12 +459,14 @@ class Point2PixelStream(FetchHook):
         for mod, entry in entries:
             stream = entry.get("stream", "")
             stream_type = entry.get("stream_type", "")
-            if stream and stream_type == "xyz_recarray":
+            if stream and (stream_type == "xyz_recarray" or stream_type == "point-stream"):
                 # Swap the stream keys to indicate it is now a raster stream!
                 entry["raster_stream"] = self._stream_wrapper(
                     stream, entry=entry, region=getattr(mod, "region", None)
                 )
-                entry["stream_type"] = "raster"
+                entry["stream_type"] = "raster-stream"
+                # maybe we shouldn't delete the original point-stream,
+                # or just replace it instead of making `raster-stream`
                 del entry["stream"]
 
         return entries

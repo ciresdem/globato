@@ -92,6 +92,7 @@ class MultiStackAccumulator:
         self._init_raster()
 
         self.dataset = rasterio.open(self.sums_fn, "r+")
+        # Convert the point-stream to a raster-stream.
         self.pixel_binner = PointPixels(
             src_region=self.region, x_size=self.xcount, y_size=self.ycount
         )
@@ -457,13 +458,8 @@ class MultiStackHook(FetchHook):
         z_max = float("-inf")
 
         dataset_str = format_dataset_id(dataset_id)
-        # with tqdm(
-        #     desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
-        #     leave=False,
-        # ) as pbar:
+        logger.debug(f"Streaming data from: {dataset_str}")
         for chunk in stream:
-            # pbar.update()
-
             if isinstance(chunk, tuple) and len(chunk) >= 3:
                 # Raster stream chunk: (window, buff_win, data, ndv, transform)
                 data = chunk[2]
