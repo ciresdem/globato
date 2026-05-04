@@ -35,7 +35,7 @@ class MBSReader(BaseReader):
 
     name = "multibeam-point-reader"
     meta_category = "point-stream"
-    meta_dtype = "multibeam"
+    meta_dtype = "multibeam (mbs)"
     meta_desc = "Read multibeam data into a point stream"
     meta_extensions = ["fbt"]
 
