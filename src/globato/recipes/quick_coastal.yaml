@@ -83,20 +83,20 @@ modules:
   #     - name: range-z
   #       args: {max_z: -0.1}
 
-  # - module: margrav
-  #   args:
-  #     weight: .1
-  #   hooks:
-  #     - name: set-datatype
-  #       args:
-  #         data_type: margrav-xyz
-  #     - name: stream-init
-  #     - name: stream-reproject
-  #       args:
-  #         src_srs: "EPSG:4326+9003"
-  #     - name: range_z
-  #       args:
-  #         max_z: -0.1
+  - module: margrav
+    args:
+      weight: .1
+    hooks:
+      - name: set-datatype
+        args:
+          data_type: margrav-xyz
+      - name: stream-init
+      - name: stream-reproject
+        args:
+          src_srs: "EPSG:4326+9003"
+      - name: range_z
+        args:
+          max_z: -0.1
 
   # - module: gmrt
   #   args:

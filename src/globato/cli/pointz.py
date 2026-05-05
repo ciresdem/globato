@@ -249,17 +249,20 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
 
         if mod_name in ["file", "local_fs"]:
             target_path = mod_args.get("paths", mod_args.get("path"))
-            reader = ReaderRegistry.get_reader(target_path, data_type)#, **kwargs_copy)
+            term = data_type or target_path.split(".")[-1]
+            reader = ReaderRegistry.get_reader(target_path, term, chunk_size=chunk_size)
             if reader:
+                detected_srs = getattr(reader, "get_srs", lambda: "EPSG:4326")()
                 streams.append(
                     {
                         "generator": reader.yield_chunks(),
-                        "src_srs": reader.get_srs()
-                        if hasattr(reader, "get_srs") and reader.get_srs()
-                        else "EPSG:4326",
+                        "src_srs": detected_srs,
                         "filters": source_filters,
                     }
                 )
+            else:
+                click.secho(f"Warning: Could not detect reader for {target_path}", fg="yellow", err=True)
+
             click.secho(f"Reading local source: {target_path}", fg="cyan", err=True)
         else:
             mod_cls = ModuleRegistry.get_class(mod_name)
@@ -287,20 +290,18 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
             for entry in fetcher.results:
                 dst_fn = entry.get("dst_fn")
                 if dst_fn and os.path.exists(dst_fn):
-                    reader = StreamFactory.get_reader(
-                        dst_fn,
-                        data_type=entry.get("data_type", None),
-                        chunk_size=chunk_size,
-                    )
+                    entry_type = entry.get("data_type")
+                    term = data_type or entry_type or dst_fn.split(".")[-1]
+
+                    reader = ReaderRegistry.get_reader(dst_fn, term, chunk_size=chunk_size)
+
                     if reader:
-                        detected_srs = entry.get("src_srs")
-                        if not detected_srs and hasattr(reader, "get_srs"):
-                            detected_srs = reader.get_srs()
+                        detected_srs = entry.get("src_srs") or getattr(reader, "get_srs", lambda: "EPSG:4326")()
 
                         streams.append(
                             {
                                 "generator": reader.yield_chunks(),
-                                "src_srs": detected_srs or "EPSG:4326",
+                                "src_srs": detected_srs,
                                 "filters": source_filters,
                             }
                         )
@@ -394,13 +395,20 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
 @click.argument("source")
 def pointz_info(source):
     """Scan a point cloud and return its spatial statistics."""
-
     from globato.hooks.metadata.globato_inf import generate_stream_inf
 
-    # parsed_src = parse_source_string(source)
-    reader = StreamFactory.get_reader(source)  # , chunk_size=chunk_size)
+    ReaderRegistry.load_all()
+    ProfileRegistry.load_all()
 
-    inf = generate_stream_inf(reader.yield_chunks())  # , "test.inf")
+    term = source.split(".")[-1]
+    reader = ReaderRegistry.get_reader(source, term)
+
+    if not reader:
+        click.secho(f"Error: Could not determine format for {source}", fg="red", err=True)
+        sys.exit(1)
+
+    inf = generate_stream_inf(reader.yield_chunks())
+
     while True:
         try:
             next(inf)
@@ -410,11 +418,12 @@ def pointz_info(source):
 
     region = meta.get("minmax", None)
     click.secho(f"\n--- Point Cloud Info: {source} ---", fg="cyan", bold=True)
+    click.echo(f"Format Reader: {reader.name}")
     click.echo(f"Total Points : {meta.get('numpts', 0):,}")
+
     if region is not None:
         click.echo(f"Bounds (X)   : {region[0]:.6f} to {region[1]:.6f}")
         click.echo(f"Bounds (Y)   : {region[2]:.6f} to {region[3]:.6f}")
         click.echo(f"Elevation (Z): {region[4]:.3f} to {region[5]:.3f}")
-
 
 pointz_group.add_command(pointz_cmd)
