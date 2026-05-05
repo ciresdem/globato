@@ -51,11 +51,11 @@ class GlobatoFilter(FetchHook):
         """Standard function to hook into the stream pipeline."""
 
         for mod, entry in entries:
-            stream = entry.get("stream")
-            stream_type = entry.get("stream_type")
-            if not stream or (stream_type != "xyz_recarray" or stream_type != "point-stream"):
+            if not self.is_point_stream(entry):
+                logger.warning(f"{entry} data has no stream!")
                 continue
 
+            stream = entry.get("stream")
             # `setup` allows subclass to prepare resources based on region/module
             if hasattr(self, "setup"):
                 if self.setup(mod, entry) is False:

@@ -41,16 +41,16 @@ class WriteXYZ(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            if entry.get("stream_type") == "raster":
+            if self.is_raster_stream(entry):
                 from globato.hooks.transforms.point_pixels import PixelsToPoints
 
                 p2p = PixelsToPoints()
                 p2p.run([(mod, entry)])
 
-            stream = entry.get("stream")
-            if not stream:
+            if not self.has_stream(entry):
                 continue
 
+            stream = entry.get("stream")
             src_fn = entry.get("dst_fn", "unknown")
             base = os.path.splitext(os.path.basename(src_fn))[0]
             out_fn = self.output.format(base=base, name=mod.name)
@@ -108,10 +108,10 @@ class XYZWrite(FetchHook):
 
         try:
             for mod, entry in entries:
-                stream = entry.get("stream")
-                if not stream:
+                if not self.has_stream(entry):
                     continue
 
+                stream = entry["stream"]
                 for chunk in stream:
                     # Filter out NaN/invalid geometries if necessary
                     np.savetxt(

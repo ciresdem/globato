@@ -23,12 +23,12 @@ except ImportError:
     HAS_OGR = False
 
 from fetchez.utils import float_or
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class OGRReader(BaseReader):
+class OGRReader(BaseGlobatoReader):
     """Providing an OGR 3D point dataset parser.
 
     Useful for data such as S-57, ENC, E-Hydro, Shapefiles, etc.
@@ -122,7 +122,7 @@ class OGRReader(BaseReader):
         # Weight (No auto-detect)
         # Uncertainty (No auto-detect)
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield points from the OGR datasource."""
 
         if self.src_fn is None:

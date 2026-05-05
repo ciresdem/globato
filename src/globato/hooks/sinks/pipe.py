@@ -46,13 +46,11 @@ class XYZPrinter(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get("stream")
-            stream_type = entry.get("stream_type")
-            if not stream:
+            if not self.has_stream(entry):
                 continue
 
             try:
-                if stream_type == "xyz_recarray" or stream_type == "point-stream":
+                if self.is_point_stream(entry):
                     for chunk in stream:
                         columns = [chunk["x"], chunk["y"], chunk["z"]]
 
@@ -66,7 +64,7 @@ class XYZPrinter(FetchHook):
                             sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter
                         )
 
-                elif stream_type == "raster":
+                elif self.is_raster_stream(entry):
                     stream = entry.get("stream")
 
                     # Pop the profile off the top of the generator

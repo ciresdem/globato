@@ -19,7 +19,7 @@ import shlex
 import logging
 import numpy as npr
 
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 from globato.utils import add_field_to_recarray
 
@@ -33,7 +33,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class DatalistReader(BaseReader):
+class DatalistReader(BaseGlobatoReader):
 
     name = "datalist-point-reader"
     meta_category = "point-stream"
@@ -129,7 +129,7 @@ class DatalistReader(BaseReader):
 
         return None
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         from globato.hooks.formats.stream_factory import StreamFactory
 
         entries = self._get_entries()

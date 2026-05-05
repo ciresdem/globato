@@ -15,12 +15,12 @@ import logging
 import h5py
 import numpy as np
 
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class GTPCReader(BaseReader):
+class GTPCReader(BaseGlobatoReader):
     """Reads .gtpc (Globato Point Cloud) files."""
 
     name = "gtpc-point-reader"
@@ -34,7 +34,7 @@ class GTPCReader(BaseReader):
         self.fn = path
         self.chunk_size = chunk_size
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         try:
             with h5py.File(self.fn, "r") as f:
                 if "points" not in f:

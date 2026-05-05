@@ -23,12 +23,12 @@ except ImportError:
     HAS_GDAL = False
 
 from fetchez.utils import int_or
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class GDALReader(BaseReader):
+class GDALReader(BaseGlobatoReader):
     """Streaming GDAL Raster Parser.
 
     Reads a raster in chunks and yields structured numpy arrays.
@@ -107,7 +107,7 @@ class GDALReader(BaseReader):
         except Exception:
             return "EPSG:4326"
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield numpy recarrays (x,y,z,w,u) from raster chunks."""
 
         ds = gdal.Open(self.src_fn, gdal.GA_ReadOnly)

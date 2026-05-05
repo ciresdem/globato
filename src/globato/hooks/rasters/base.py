@@ -275,10 +275,9 @@ class RasterStreamHook(RasterBaseHook):
         for mod, entry in entries:
             # SET CURRENT MOD FOR COASTLINE GENERATION
             self.current_mod = mod
-            stream = entry.get("raster_stream")
-
-            if stream:
-                entry["raster_stream"] = self._stream_wrapper(stream, entry)
+            if self.has_stream(entry):
+                entry["stream"] = self._stream_wrapper(stream, entry)
+                entry["steam_type"] = "raster-stream"
                 new_entries.append((mod, entry))
                 continue
 

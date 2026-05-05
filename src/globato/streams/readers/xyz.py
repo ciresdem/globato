@@ -17,12 +17,13 @@ import warnings
 import numpy as np
 
 from fetchez.utils import int_or, float_or
-from fetchez.streams import BaseReader
+
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class XYZReader(BaseReader):
+class XYZReader(BaseGlobatoReader):
     """Chunked reader for ASCII XYZ data.
 
     Adapted from cudem.xyzfile to use numpy for speed.
@@ -141,7 +142,7 @@ class XYZReader(BaseReader):
             pass
         return None
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Stream read the source and yield standardized XYZ recarrays."""
 
         cols_to_extract = [self.xpos, self.ypos, self.zpos]

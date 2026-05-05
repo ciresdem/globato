@@ -244,11 +244,11 @@ class SimpleStack(FetchHook):
                 return entries
 
         for mod, entry in entries:
-            stream = entry.get("stream")
-            if not stream:
+            if not self.has_stream(entry):
                 new_entries.append((mod, entry))
                 continue
 
+            stream = entry.get("stream")
             processed_count += 1
 
             if not self._global_mode:

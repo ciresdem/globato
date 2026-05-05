@@ -16,7 +16,7 @@ import logging
 import numpy as np
 
 from fetchez.utils import float_or
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 try:
     import fiona
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.ERROR)
 
 
-class FionaReader(BaseReader):
+class FionaReader(BaseGlobatoReader):
     """Streaming Fiona Vector Parser for extracting 3D points/vertices."""
 
     name = "fiona-point-reader"
@@ -164,7 +164,7 @@ class FionaReader(BaseReader):
             return pts
         return []
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         if not HAS_FIONA:
             logger.error("Fiona/Shapely required for vector processing.")
             return

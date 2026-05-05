@@ -25,7 +25,7 @@ from shapely.geometry import shape
 import fetchez
 from fetchez import utils
 from fetchez.core import run_fetchez
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 try:
     from sklearn.cluster import DBSCAN
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # ==============================================
 # IceSat2Reader (generic)
 # ==============================================
-class IceSat2Reader(BaseReader):
+class IceSat2Reader(BaseGlobatoReader):
     """Base class for ICESat-2 Readers."""
 
     def __init__(self, path, **kwargs):
@@ -1184,7 +1184,7 @@ class ATL03Reader(IceSat2Reader):
 
         return df
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Pipeline to yield classified points."""
 
         # bing_geom = None

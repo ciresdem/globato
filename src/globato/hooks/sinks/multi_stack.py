@@ -441,10 +441,9 @@ class MultiStackHook(FetchHook):
                 entry.pop("stream", None)
                 entry.pop("raster_stream", None)
             else:
-                stream_key = "raster_stream" if "raster_stream" in entry else "stream"
-                stream = entry.get(stream_key)
-                if stream:
-                    entry[stream_key] = self._intercept(stream, dataset_id)
+                if self.has_stream(entry):
+                    stream = entry.get("stream")
+                    entry["stream"] = self._intercept(stream, dataset_id)
 
             entry.setdefault("artifacts", {})[self.name] = self.output
 

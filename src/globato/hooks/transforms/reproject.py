@@ -73,12 +73,7 @@ class StreamReproject(FetchHook):
             if not self.dst_srs:
                 continue
 
-            stream = entry.get("stream")
-            stream_type = entry.get("stream_type")
-            if not stream:
-                continue
-
-            if stream_type == "xyz_recarray" or stream_type == "point-stream":
+            if self.is_point_stream(entry):
                 src_srs = entry.get("src_srs", "EPSG:4326")
                 pipeline = self._get_pipeline(src_srs, region=mod.region)
 

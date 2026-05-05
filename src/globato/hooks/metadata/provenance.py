@@ -116,8 +116,8 @@ class ProvenanceHook(FetchHook):
                 self._init_raster(region)
 
         for mod, entry in entries:
-            stream = entry.get("stream")
-            if stream:
+            if self.is_point_stream(entry):
+                stream = entry.get("stream")
                 bit_val = self._get_module_bit(mod.name)
                 entry["stream"] = self._intercept(stream, bit_val)
 
@@ -241,8 +241,8 @@ class SourceMasks(FetchHook):
                 self._init_grid(region)
 
         for mod, entry in entries:
-            stream = entry.get("stream")
-            if stream and self._initialized:
+            if self.is_point_stream(entry) and self._initialized:
+                stream = entry.get("stream")
                 src_name = os.path.basename(entry.get("dst_fn", f"unknown_{id(entry)}"))
                 base = os.path.splitext(src_name)[0]
                 tif_path = os.path.join(self.output_dir, f"{base}_mask.tif")

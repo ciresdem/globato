@@ -152,7 +152,7 @@ class BAGReader(RasterioReader):
 
                 yield chunk
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         env_opts = {
             "GDAL_IGNORE_BAG_XML_METADATA": "YES",
             "OGR_BAG_MIN_VERSION": "1.0",

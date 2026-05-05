@@ -19,14 +19,14 @@ import logging
 import numpy as np
 import pandas as pd
 
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 from globato.utils import yield_cmd
 
 logger = logging.getLogger(__name__)
 
 
-class MBSReader(BaseReader):
+class MBSReader(BaseGlobatoReader):
     """Providing an mbsystem parser.
 
     Process MB-System supported multibeam data files.
@@ -337,7 +337,7 @@ class MBSReader(BaseReader):
 
         return df
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield data, attempting native reader for .fbt files with a subprocess fallback."""
         dataset = None
 

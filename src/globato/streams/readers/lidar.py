@@ -17,12 +17,12 @@ import numpy as np
 import laspy as lp
 
 from fetchez.utils import str_or
-from fetchez.streams import BaseReader
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class LASReader(BaseReader):
+class LASReader(BaseGlobatoReader):
     """Process LAS/LAZ lidar files using laspy."""
 
     name = "lidar-point-reader"
@@ -77,7 +77,7 @@ class LASReader(BaseReader):
 
         return None
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield points from local file using standard laspy."""
 
         try:

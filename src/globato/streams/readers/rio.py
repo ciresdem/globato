@@ -18,13 +18,14 @@ import rasterio
 from rasterio.windows import Window, from_bounds
 from rasterio.warp import transform_bounds
 from rasterio.errors import WindowError
-from fetchez.streams import BaseReader
+
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 logging.getLogger("rasterio").setLevel(logging.ERROR)
 
 
-class RasterioReader(BaseReader):
+class RasterioReader(BaseGlobatoReader):
     """Streaming Raster Parser using Rasterio."""
 
     name = "rasterio-point-reader"
@@ -33,9 +34,15 @@ class RasterioReader(BaseReader):
     meta_desc = "Read raster data through rasterio into a point stream"
     meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
 
-    def __init__(self, path, band_no=1, chunk_size=None, region=None, **kwargs):
+    def __init__(self, path, band_no=1, chunk_size=None, region=None, path_prefix="", path_suffix="", **kwargs):
         super().__init__(path, **kwargs)
-        self.src_fn = path
+
+        # Build the GDAL subdataset path if prefixes/suffixes are provided
+        if path_prefix or path_suffix:
+            self.src_fn = f"{path_prefix}{path}{path_suffix}"
+        else:
+            self.src_fn = path
+
         self.band_no = band_no
         self.chunk_size = chunk_size
         self.region = region
@@ -51,7 +58,7 @@ class RasterioReader(BaseReader):
         except Exception:
             return "EPSG:4326"
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield chunks using Rasterio Windows."""
 
         try:

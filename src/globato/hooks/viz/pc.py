@@ -41,11 +41,10 @@ class PointCloudViz(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get("stream")
-            print(stream)
-            if not stream:
+            if not self.is_point_stream(entry):
                 continue
 
+            stream = entry.get("stream")
             region = getattr(mod, "region", None)
             if not region:
                 continue
