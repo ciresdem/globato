@@ -52,8 +52,7 @@ class GlobatoFilter(FetchHook):
 
         for mod, entry in entries:
             if not self.is_point_stream(entry):
-                logger.warning(f"{entry} data has no stream!")
-                logger.info(self.name)
+                logger.debug(f"{entry} data has no stream!")
                 continue
 
             stream = entry.get("stream")
@@ -86,7 +85,7 @@ class GlobatoFilter(FetchHook):
                     eligible_mask = np.ones(len(chunk), dtype=bool)
 
                 # subclass returns a boolean mask (True = Outlier/Target)
-                # OR returns a modified chunk (for destructive filters)
+                # or returns a modified chunk (for destructive filters)
                 result = self.filter_chunk(chunk)
 
                 if result is None:

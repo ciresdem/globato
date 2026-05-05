@@ -68,14 +68,14 @@ class CRMSchema(BaseSchema):
             insert_idx = len(hooks)
             for i, hook in enumerate(hooks):
                 if hook.get("name") in ["stream-init", "stream_data"]:
-                    insert_idx = i
+                    insert_idx = i+1
                     break
 
             # Add range_z between Marians Trench and Mt. Everest for safety
             # right after stream_data starts. This is in meters.
             hooks.insert(
                 insert_idx,
-                {"name": "range_z", "args": {"min_z": -11000, "max_z": 9000}},
+                {"name": "range-z", "args": {"min_z": -11000, "max_z": 9000}},
             )
             module["hooks"] = hooks
 
