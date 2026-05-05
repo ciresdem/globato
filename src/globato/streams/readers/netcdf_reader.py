@@ -9,7 +9,6 @@ from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
-# ✨ GLOBAL LOCK to prevent HDF5 thread collisions across the Fetchez pipeline
 NC_LOCK = threading.Lock()
 
 
@@ -47,15 +46,14 @@ class NetCDFReader(BaseGlobatoReader):
 
     def _yield_raw_chunks(self):
         try:
-            #from netCDF4 import Dataset
-            # import h5netcdf.legacyapi as Dataset
+            # from netCDF4 import Dataset
             from h5netcdf.legacyapi import Dataset
         except ImportError:
-            logger.error(f"[{self.name}] The 'netCDF4' python library is required.")
+            logger.error(f"[{self.name}] The 'h5netcdf' python library is required.")
             return
 
         # =================================================================
-        # 1. READ-AND-CLOSE PHASE (Protected by Thread Lock)
+        # READ-AND-CLOSE PHASE (Protected by Thread Lock)
         # =================================================================
         try:
             with NC_LOCK:
@@ -71,12 +69,10 @@ class NetCDFReader(BaseGlobatoReader):
                         logger.error(f"[{self.name}] Could not resolve coordinates in {self.path}")
                         return
 
-                    # Extract the core arrays into RAM immediately
                     x_data = nc.variables[x_col][:]
                     y_data = nc.variables[y_col][:]
                     z_data = nc.variables[z_col][:]
 
-                    # Safely extract optional metadata into a dictionary
                     opt_data = {}
                     for v_attr, v_name in [
                         ('w', self.weight_var),
@@ -92,10 +88,9 @@ class NetCDFReader(BaseGlobatoReader):
             return
 
         # =================================================================
-        # 2. MATH & YIELD PHASE (Unblocked and pure Python/Numpy)
+        # YIELD Data
         # =================================================================
         try:
-            # Handle Grid to Point Cloud Conversion
             if z_data.ndim == 2 and x_data.ndim == 1 and y_data.ndim == 1:
                 x_data, y_data = np.meshgrid(x_data, y_data)
 
@@ -103,14 +98,12 @@ class NetCDFReader(BaseGlobatoReader):
             y_flat = y_data.flatten()
             z_flat = z_data.flatten()
 
-            # Handle Masked Arrays properly outside of netCDF4
             if np.ma.isMaskedArray(z_flat):
                 valid_mask = ~z_flat.mask & ~np.isnan(z_flat.data)
-                z_flat = z_flat.data # Strip the mask wrapper for the pipeline
+                z_flat = z_flat.data
             else:
                 valid_mask = ~np.isnan(z_flat)
 
-            # Build the base chunks
             chunk_arrays = {
                 'x': x_flat[valid_mask].astype(np.float64),
                 'y': y_flat[valid_mask].astype(np.float64),
@@ -118,20 +111,17 @@ class NetCDFReader(BaseGlobatoReader):
             }
             dtypes = [('x', 'f8'), ('y', 'f8'), ('z', 'f4')]
 
-            # Inject the optional data
             type_map = {'w': 'f4', 'u': 'f4', 'classification': 'u1', 'confidence': 'i2'}
             for v_attr, data in opt_data.items():
                 if data.ndim == 2 and x_data.ndim == 2:
                     data = data.flatten()
 
-                # Strip mask wrappers if present
                 if np.ma.isMaskedArray(data):
                     data = data.data
 
                 chunk_arrays[v_attr] = data[valid_mask].astype(type_map[v_attr])
                 dtypes.append((v_attr, type_map[v_attr]))
 
-            # Yield Chunks
             total_points = len(chunk_arrays['z'])
             for i in range(0, total_points, self.chunk_size):
                 end = min(i + self.chunk_size, total_points)

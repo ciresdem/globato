@@ -53,6 +53,7 @@ class GlobatoFilter(FetchHook):
         for mod, entry in entries:
             if not self.is_point_stream(entry):
                 logger.warning(f"{entry} data has no stream!")
+                logger.info(self.name)
                 continue
 
             stream = entry.get("stream")

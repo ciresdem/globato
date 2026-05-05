@@ -23,11 +23,10 @@ import sys
 import logging
 import numpy as np
 
-from fetchez.registry import HookRegistry, ModuleRegistry, ReaderRegistry
+from fetchez.registry import HookRegistry, ModuleRegistry, ReaderRegistry, ProfileRegistry
 from fetchez.core import run_fetchez
 from fetchez.spatial import Region
 
-from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.transforms.reproject import StreamReproject
 
 logger = logging.getLogger(__name__)
@@ -183,6 +182,7 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
     HookRegistry.load_all()
     ModuleRegistry.load_all()
     ReaderRegistry.load_all()
+    ProfileRegistry.load_all()
 
     active_global_filters = []
     for f_str in global_filters:
@@ -249,7 +249,6 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
 
         if mod_name in ["file", "local_fs"]:
             target_path = mod_args.get("paths", mod_args.get("path"))
-            #reader = StreamFactory.get_reader(target_path, chunk_size=chunk_size)
             reader = ReaderRegistry.get_reader(target_path, data_type)#, **kwargs_copy)
             if reader:
                 streams.append(

@@ -15,7 +15,7 @@ modules:
   # --- Global Sources ---
   - module: copernicus
     args:
-      weight: 2.0
+      weight: .85
       datatype: 1
     hooks:
       - name: unzip
@@ -45,7 +45,7 @@ modules:
 
   - module: copernicus_marine
     args:
-      weight: 1.2
+      weight: 1
     hooks:
       - name: set-datatype
         args:
@@ -55,7 +55,7 @@ modules:
         args:
           source_field: confidence
           method: inverse
-          offset: 1.5
+          offset: 1
       - name: stream-reproject
         args:
           src_srs: "EPSG:4326+9003"
@@ -63,7 +63,7 @@ modules:
 
   - module: sysu
     args:
-      weight: .75
+      weight: .1
     hooks:
       - name: set-datatype
         args:
@@ -83,20 +83,20 @@ modules:
   #     - name: range-z
   #       args: {max_z: -0.1}
 
-  - module: margrav
-    args:
-      weight: .01
-    hooks:
-      - name: set-datatype
-        args:
-          data_type: margrav-xyz
-      - name: stream-init
-      - name: stream-reproject
-        args:
-          src_srs: "EPSG:4326+9003"
-      - name: range_z
-        args:
-          max_z: -0.1
+  # - module: margrav
+  #   args:
+  #     weight: .1
+  #   hooks:
+  #     - name: set-datatype
+  #       args:
+  #         data_type: margrav-xyz
+  #     - name: stream-init
+  #     - name: stream-reproject
+  #       args:
+  #         src_srs: "EPSG:4326+9003"
+  #     - name: range_z
+  #       args:
+  #         max_z: -0.1
 
   # - module: gmrt
   #   args:
@@ -228,8 +228,9 @@ global_hooks:
   - name: ms_cudem
     args:
       resolutions: "3s/9s/15s"
-      weights: "1/.5/0.1"
-      algo: "raster_fill"  # use raster_fill for lower dependencies.
+      weights: "1/.5/0.25"
+      #algo: "raster_fill"  # use raster_fill for lower dependencies.
+      algo: "interp_rbf"
       barrier: "osm"  # OSM coastline, fast and global.
       blend_dist: 1  # Only blend one cell for coarse data.
       output: "quick_coastal_dem.tif"

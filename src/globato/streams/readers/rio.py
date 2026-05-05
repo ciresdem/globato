@@ -114,8 +114,8 @@ class RasterioReader(BaseGlobatoReader):
                             cols = min(w_chunk, x_end - x)
                             window = Window(x, y, cols, rows)
                             z = src.read(self.band_no, window=window)
-                            u = np.zeros_like(z)
-                            w = np.ones_like(z)
+                            # u = np.zeros_like(z)
+                            # w = np.ones_like(z)
 
                             if not np.issubdtype(z.dtype, np.floating):
                                 z = z.astype(np.float32)
@@ -133,8 +133,8 @@ class RasterioReader(BaseGlobatoReader):
                                 continue
 
                             z_valid = z[mask]
-                            w_valid = w[mask]
-                            u_valid = u[mask]
+                            # w_valid = w[mask]
+                            # u_valid = u[mask]
 
                             local_rows, local_cols = np.where(mask)
 
@@ -152,16 +152,16 @@ class RasterioReader(BaseGlobatoReader):
                                     ("x", "f8"),
                                     ("y", "f8"),
                                     ("z", "f4"),
-                                    ("w", "f4"),
-                                    ("u", "f4"),
+                                    # ("w", "f4"),
+                                    # ("u", "f4"),
                                 ],
                             )
 
                             chunk["x"] = xs
                             chunk["y"] = ys
                             chunk["z"] = z_valid
-                            chunk["u"] = u_valid
-                            chunk["w"] = w_valid
+                            # chunk["u"] = u_valid
+                            # chunk["w"] = w_valid
 
                             yield chunk
 

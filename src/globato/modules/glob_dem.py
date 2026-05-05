@@ -24,7 +24,7 @@ from fetchez import core, cli, utils
 from fetchez.registry import ModuleRegistry
 from fetchez.modules import FetchModule
 
-from globato.hooks.formats.stream_factory import DataStream
+from fetchez.hooks.stream_init import DataStream
 from globato.hooks.sinks.simple_stack import SimpleStack
 
 # try:

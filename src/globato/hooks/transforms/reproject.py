@@ -76,6 +76,7 @@ class StreamReproject(FetchHook):
             if self.is_point_stream(entry):
                 src_srs = entry.get("src_srs", "EPSG:4326")
                 pipeline = self._get_pipeline(src_srs, region=mod.region)
+                stream = entry.get("stream")
 
                 if pipeline:
                     entry["stream"] = self._apply_transform(stream, pipeline)

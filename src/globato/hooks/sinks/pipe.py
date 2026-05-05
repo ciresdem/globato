@@ -49,6 +49,7 @@ class XYZPrinter(FetchHook):
             if not self.has_stream(entry):
                 continue
 
+            stream = entry["stream"]
             try:
                 if self.is_point_stream(entry):
                     for chunk in stream:

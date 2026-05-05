@@ -1184,7 +1184,7 @@ class ATL03Reader(IceSat2Reader):
 
         return df
 
-    def _yield_raw_chunks(self):
+    def yield_chunks(self):
         """Pipeline to yield classified points."""
 
         # bing_geom = None

@@ -374,6 +374,7 @@ class PixelsToPoints(FetchHook):
     def run(self, entries):
         for mod, entry in entries:
             if self.is_raster_stream(entry):
+                stream = entry["stream"]
                 entry["stream"] = self._raster_to_xyz(stream)
                 entry["stream_type"] = "point-stream"
 
@@ -476,6 +477,7 @@ class Point2PixelStream(FetchHook):
     def run(self, entries):
         for mod, entry in entries:
             if self.is_point_stream(entry):
+                stream = entry["stream"]
                 entry["stream"] = self._stream_wrapper(
                     stream, entry=entry, region=getattr(mod, "region", None)
                 )
