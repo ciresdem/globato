@@ -1,6 +1,7 @@
 import numpy as np
 from globato.streams.base import BaseGlobatoReader
 
+
 class MockGlobatoReader(BaseGlobatoReader):
     """A dummy reader that only yields X, Y, Z."""
 
@@ -13,6 +14,7 @@ class MockGlobatoReader(BaseGlobatoReader):
         chunk["x"] = np.arange(10)
         chunk["z"] = 5.0
         yield chunk
+
 
 def test_base_globato_reader_schema_enforcement():
     """Ensure BaseGlobatoReader automatically applies the strict Globato schema and weights."""

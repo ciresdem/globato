@@ -288,7 +288,7 @@ class SourceMasks(FetchHook):
         if not self._initialized or not self.tifs:
             return
 
-        #vrt_path = os.path.join(self.output_dir, self.vrt_name)
+        # vrt_path = os.path.join(self.output_dir, self.vrt_name)
         logger.debug(f"Building master VRT mask: {self.output}")
 
         try:
