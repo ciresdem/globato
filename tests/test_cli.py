@@ -42,7 +42,7 @@ def test_cli_base_help(runner):
         "gritz",
         "regions",
         "fetchez",
-        "pointz",
+        "dlim",
         "perspecto",
         "transformez",
     ]
@@ -92,7 +92,7 @@ def test_recipe_build_save_only(runner):
         assert config["modules"][0]["module"] == "mbdb"
 
         hooks = config["modules"][0]["hooks"]
-        assert hooks[0]["name"] == "stream_data"
+        assert hooks[0]["name"] == "stream-init"
         assert hooks[1]["name"] == "rq"
         assert hooks[1]["args"]["threshold"] == 50
 
