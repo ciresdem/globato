@@ -1,0 +1,7 @@
+name: atl03-xyz
+description: Bare-Earth IceSat photons
+stream-type: "point-stream"
+reader:
+  name: atl03-point-reader
+  args:
+    classes: "1"

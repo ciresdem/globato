@@ -1,0 +1,20 @@
+# name: copernicus_sdb
+# description: Copernicus Marine SDB
+# stream-type: xyz_recarray
+# reader:
+#   name: rasterio-point-reader # ✨ Just use Rio!
+#   args:
+#     # Tell GDAL to specifically target the height subdataset
+#     path_prefix: "NETCDF:"
+#     path_suffix: ":height"
+name: copernicus_sdb
+description: Copernicus Marine Sentinel-2 Satellite Derived Bathymetry
+stream-type: point-stream
+reader:
+  name: netcdf_reader
+  args:
+    x_var: longitude
+    y_var: latitude
+    z_var: height
+    class_var: SDB_type
+    conf_var: Quality_indicator
