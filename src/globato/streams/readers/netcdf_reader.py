@@ -32,7 +32,7 @@ class NetCDFReader(BaseGlobatoReader):
         class_var=None,
         conf_var=None,
         chunk_size=100000,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(path, **kwargs)
         self.x_var = x_var
@@ -57,16 +57,36 @@ class NetCDFReader(BaseGlobatoReader):
         # =================================================================
         try:
             with NC_LOCK:
-                with Dataset(self.path, 'r') as nc:
+                with Dataset(self.path, "r") as nc:
                     vars_dict = nc.variables.keys()
 
                     # Auto-detect coordinates
-                    x_col = self.x_var or next((c for c in vars_dict if c.lower() in ['x', 'lon', 'longitude']), None)
-                    y_col = self.y_var or next((c for c in vars_dict if c.lower() in ['y', 'lat', 'latitude']), None)
-                    z_col = self.z_var or next((c for c in vars_dict if c.lower() in ['z', 'elev', 'elevation', 'height', 'depth']), None)
+                    x_col = self.x_var or next(
+                        (
+                            c
+                            for c in vars_dict
+                            if c.lower() in ["x", "lon", "longitude"]
+                        ),
+                        None,
+                    )
+                    y_col = self.y_var or next(
+                        (c for c in vars_dict if c.lower() in ["y", "lat", "latitude"]),
+                        None,
+                    )
+                    z_col = self.z_var or next(
+                        (
+                            c
+                            for c in vars_dict
+                            if c.lower()
+                            in ["z", "elev", "elevation", "height", "depth"]
+                        ),
+                        None,
+                    )
 
                     if not (x_col and y_col and z_col):
-                        logger.error(f"[{self.name}] Could not resolve coordinates in {self.path}")
+                        logger.error(
+                            f"[{self.name}] Could not resolve coordinates in {self.path}"
+                        )
                         return
 
                     x_data = nc.variables[x_col][:]
@@ -75,10 +95,10 @@ class NetCDFReader(BaseGlobatoReader):
 
                     opt_data = {}
                     for v_attr, v_name in [
-                        ('w', self.weight_var),
-                        ('u', self.unc_var),
-                        ('classification', self.class_var),
-                        ('confidence', self.conf_var)
+                        ("w", self.weight_var),
+                        ("u", self.unc_var),
+                        ("classification", self.class_var),
+                        ("confidence", self.conf_var),
                     ]:
                         if v_name and v_name in vars_dict:
                             opt_data[v_attr] = nc.variables[v_name][:]
@@ -105,13 +125,18 @@ class NetCDFReader(BaseGlobatoReader):
                 valid_mask = ~np.isnan(z_flat)
 
             chunk_arrays = {
-                'x': x_flat[valid_mask].astype(np.float64),
-                'y': y_flat[valid_mask].astype(np.float64),
-                'z': z_flat[valid_mask].astype(np.float32)
+                "x": x_flat[valid_mask].astype(np.float64),
+                "y": y_flat[valid_mask].astype(np.float64),
+                "z": z_flat[valid_mask].astype(np.float32),
             }
-            dtypes = [('x', 'f8'), ('y', 'f8'), ('z', 'f4')]
+            dtypes = [("x", "f8"), ("y", "f8"), ("z", "f4")]
 
-            type_map = {'w': 'f4', 'u': 'f4', 'classification': 'u1', 'confidence': 'i2'}
+            type_map = {
+                "w": "f4",
+                "u": "f4",
+                "classification": "u1",
+                "confidence": "i2",
+            }
             for v_attr, data in opt_data.items():
                 if data.ndim == 2 and x_data.ndim == 2:
                     data = data.flatten()
@@ -122,7 +147,7 @@ class NetCDFReader(BaseGlobatoReader):
                 chunk_arrays[v_attr] = data[valid_mask].astype(type_map[v_attr])
                 dtypes.append((v_attr, type_map[v_attr]))
 
-            total_points = len(chunk_arrays['z'])
+            total_points = len(chunk_arrays["z"])
             for i in range(0, total_points, self.chunk_size):
                 end = min(i + self.chunk_size, total_points)
                 size = end - i
@@ -134,4 +159,6 @@ class NetCDFReader(BaseGlobatoReader):
                 yield chunk
 
         except Exception as e:
-            logger.error(f"[{self.name}] Failed to process array chunks for {self.path}: {e}")
+            logger.error(
+                f"[{self.name}] Failed to process array chunks for {self.path}: {e}"
+            )

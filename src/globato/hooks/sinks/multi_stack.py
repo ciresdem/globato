@@ -537,7 +537,6 @@ class MultiStackHook(FetchHook):
                 else:
                     u_str = f" | U: [{u_min:.2f} to {u_max:.2f}]"
 
-
             stats_str = f"{z_str}{w_str}{u_str}"
 
         # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"

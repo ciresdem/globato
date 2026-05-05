@@ -23,7 +23,12 @@ import sys
 import logging
 import numpy as np
 
-from fetchez.registry import HookRegistry, ModuleRegistry, ReaderRegistry, ProfileRegistry
+from fetchez.registry import (
+    HookRegistry,
+    ModuleRegistry,
+    ReaderRegistry,
+    ProfileRegistry,
+)
 from fetchez.core import run_fetchez
 from fetchez.spatial import Region
 
@@ -138,7 +143,10 @@ def pointz_list_filters():
     click.secho("\n🌪️  Available `point-stream` Filters:\n", fg="cyan", bold=True)
     click.echo("=" * 50)
     for name, meta in sorted(registry.items()):
-        if meta.get("category") == "stream-filter" or meta.get("category") == "point-stream":
+        if (
+            meta.get("category") == "stream-filter"
+            or meta.get("category") == "point-stream"
+        ):
             if name in meta.get("aliases", ""):
                 continue
             desc = meta.get("desc", "No description provided.")
@@ -261,7 +269,11 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
                     }
                 )
             else:
-                click.secho(f"Warning: Could not detect reader for {target_path}", fg="yellow", err=True)
+                click.secho(
+                    f"Warning: Could not detect reader for {target_path}",
+                    fg="yellow",
+                    err=True,
+                )
 
             click.secho(f"Reading local source: {target_path}", fg="cyan", err=True)
         else:
@@ -293,10 +305,15 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
                     entry_type = entry.get("data_type")
                     term = data_type or entry_type or dst_fn.split(".")[-1]
 
-                    reader = ReaderRegistry.get_reader(dst_fn, term, chunk_size=chunk_size)
+                    reader = ReaderRegistry.get_reader(
+                        dst_fn, term, chunk_size=chunk_size
+                    )
 
                     if reader:
-                        detected_srs = entry.get("src_srs") or getattr(reader, "get_srs", lambda: "EPSG:4326")()
+                        detected_srs = (
+                            entry.get("src_srs")
+                            or getattr(reader, "get_srs", lambda: "EPSG:4326")()
+                        )
 
                         streams.append(
                             {
@@ -404,7 +421,9 @@ def pointz_info(source):
     reader = ReaderRegistry.get_reader(source, term)
 
     if not reader:
-        click.secho(f"Error: Could not determine format for {source}", fg="red", err=True)
+        click.secho(
+            f"Error: Could not determine format for {source}", fg="red", err=True
+        )
         sys.exit(1)
 
     inf = generate_stream_inf(reader.yield_chunks())
@@ -425,5 +444,6 @@ def pointz_info(source):
         click.echo(f"Bounds (X)   : {region[0]:.6f} to {region[1]:.6f}")
         click.echo(f"Bounds (Y)   : {region[2]:.6f} to {region[3]:.6f}")
         click.echo(f"Elevation (Z): {region[4]:.3f} to {region[5]:.3f}")
+
 
 pointz_group.add_command(pointz_cmd)

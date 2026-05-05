@@ -11,7 +11,6 @@ OGR data parsing from cudem
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 

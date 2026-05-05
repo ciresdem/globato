@@ -11,7 +11,6 @@ Fiona/Shapely based Vector Reader (Shapefile, GeoPackage, S-57).
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 

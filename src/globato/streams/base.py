@@ -29,7 +29,5 @@ class BaseGlobatoReader(BaseReader):
         raw_stream = self._yield_raw_chunks()
 
         yield from ensure_schema(
-            raw_stream,
-            module_weight=self.module_weight,
-            module_unc=self.module_unc
+            raw_stream, module_weight=self.module_weight, module_unc=self.module_unc
         )

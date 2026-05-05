@@ -11,7 +11,6 @@ Process XYZ/ASCII files
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import warnings
 import numpy as np

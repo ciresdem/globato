@@ -24,7 +24,8 @@ from shapely.geometry import shape
 
 import fetchez
 from fetchez import utils
-from fetchez.core import run_fetchez
+
+# from fetchez.core import run_fetchez
 from globato.streams import BaseGlobatoReader
 
 try:
@@ -695,7 +696,9 @@ class ATL03Reader(IceSat2Reader):
                     ~df["ph_h_classed"].isin(protected_classes)
                 )
                 df.loc[mask, "ph_h_classed"] = 7
-                logger.debug(f"Classified {np.count_nonzero(mask)} photons as Buildings")
+                logger.debug(
+                    f"Classified {np.count_nonzero(mask)} photons as Buildings"
+                )
             else:
                 logger.debug("No building photons classified")
         except Exception as e:
@@ -860,9 +863,7 @@ class ATL03Reader(IceSat2Reader):
         tree = STRtree(geoms)
         return tree
 
-    def classify_by_mask_tree(
-            self, dataset, tree, classification, except_classes=[]
-    ):
+    def classify_by_mask_tree(self, dataset, tree, classification, except_classes=[]):
         """Uses Fiona and Shapely STRtree for point-in-polygon classification."""
 
         if tree is None:
@@ -891,7 +892,9 @@ class ATL03Reader(IceSat2Reader):
                 )
                 dataset.loc[mask, "ph_h_classed"] = classification
 
-                logger.debug(f"External mask classified {np.count_nonzero(mask)} photons.")
+                logger.debug(
+                    f"External mask classified {np.count_nonzero(mask)} photons."
+                )
             else:
                 logger.debug("no photons classified by external mask")
         except Exception as e:

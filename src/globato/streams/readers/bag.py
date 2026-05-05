@@ -41,7 +41,6 @@ class BAGReader(RasterioReader):
     meta_desc = "Read BAG data through rasterio into a point stream"
     meta_extensions = ["bag"]
 
-
     def __init__(self, path, mode="resampled", min_weight=0, **kwargs):
         super().__init__(path, **kwargs)
         self.mode = mode

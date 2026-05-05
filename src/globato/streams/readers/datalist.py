@@ -17,7 +17,7 @@ import os
 import json
 import shlex
 import logging
-import numpy as npr
+import numpy as np
 
 from globato.streams import BaseGlobatoReader
 
@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 class DatalistReader(BaseGlobatoReader):
-
     name = "datalist-point-reader"
     meta_category = "point-stream"
     meta_dtype = "datalist"

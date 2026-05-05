@@ -39,6 +39,7 @@ class GlobatoStream:
             for chunk in self._iterator:
                 if chunk is not None and len(chunk) > 0:
                     yield func(chunk, **kwargs)
+
         self._iterator = _wrapper()
         return self
 
@@ -47,6 +48,7 @@ class GlobatoStream:
 
         def _repro_func(chunk):
             return stream_reproject_chunk(chunk, self.src_srs, dst_srs)
+
         return self.map(_repro_func)
 
     def crop(self, region: List[float]):
@@ -108,7 +110,7 @@ def read(
         if not os.path.exists(source):
             raise FileNotFoundError(f"Source not found: {source}")
 
-        term = data_type or source.split('.')[-1]
+        term = data_type or source.split(".")[-1]
         reader = ReaderRegistry.get_reader(source, term, **kwargs)
 
         if not reader:

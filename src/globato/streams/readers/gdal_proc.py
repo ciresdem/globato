@@ -11,7 +11,6 @@ GDAL data parsing
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 
@@ -50,6 +49,7 @@ class GDALReader(BaseGlobatoReader):
         unc_band=None,
         chunk_size=4096,
         node="pixel",
+        **kwargs,
     ):
 
         if not HAS_GDAL:

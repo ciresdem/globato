@@ -11,7 +11,6 @@ This readers lidar to a point stream.
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 import laspy as lp

@@ -11,7 +11,6 @@ Rasterio data parsing
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 import rasterio
@@ -34,7 +33,16 @@ class RasterioReader(BaseGlobatoReader):
     meta_desc = "Read raster data through rasterio into a point stream"
     meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
 
-    def __init__(self, path, band_no=1, chunk_size=None, region=None, path_prefix="", path_suffix="", **kwargs):
+    def __init__(
+        self,
+        path,
+        band_no=1,
+        chunk_size=None,
+        region=None,
+        path_prefix="",
+        path_suffix="",
+        **kwargs,
+    ):
         super().__init__(path, **kwargs)
 
         # Build the GDAL subdataset path if prefixes/suffixes are provided

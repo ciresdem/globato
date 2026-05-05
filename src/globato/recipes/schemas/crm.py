@@ -48,7 +48,9 @@ class CRMSchema(BaseSchema):
         proc_region = dist_region.copy()
         proc_region.buffer(10)  # Buffering slightly to ensure overlap coverage
         config["region"] = proc_region.to_list()
-        logger.debug(f"[Schema: {cls.name}] Expanded processing region to {proc_region}.")
+        logger.debug(
+            f"[Schema: {cls.name}] Expanded processing region to {proc_region}."
+        )
 
         global_hooks = config.get("global_hooks", [])
         modules = config.get("modules", [])
@@ -78,7 +80,9 @@ class CRMSchema(BaseSchema):
             module["hooks"] = hooks
 
             mod_name = module.get("module", "unknown")
-            logger.debug(f"[Schema: {cls.name}] Injected 'range_z' into {mod_name} module.")
+            logger.debug(
+                f"[Schema: {cls.name}] Injected 'range_z' into {mod_name} module."
+            )
 
         # Update Stack parameters
         for hook in global_hooks:
@@ -91,9 +95,15 @@ class CRMSchema(BaseSchema):
                         "srs": "EPSG:4326+3855",
                     }
                 )
-                logger.debug(f"[Schema: {cls.name}] Changed 'multi-stack' resolution to {res_deg}.")
-                logger.debug(f"[Schema: {cls.name}] Changed 'multi-stack' registration to 'grid'.")
-                logger.debug(f"[Schema: {cls.name}] Changed 'multi-stack' srs to 'EPSG:4326+3855'.")
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'multi-stack' resolution to {res_deg}."
+                )
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'multi-stack' registration to 'grid'."
+                )
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'multi-stack' srs to 'EPSG:4326+3855'."
+                )
 
             if hook.get("name") == ["viz_geoshade", "viz-geoshade"]:
                 hook.setdefault("args", {})
@@ -103,7 +113,9 @@ class CRMSchema(BaseSchema):
                         "z_max": 1500,
                     }
                 )
-                logger.debug(f"[Schema: {cls.name}] Changed 'viz_geoshade' z_range to [-3500 - 1500].")
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'viz_geoshade' z_range to [-3500 - 1500]."
+                )
 
         # Find where to insert the cut/crop hooks!
         # We want to put it after dem_uncertainty, but before viz_geoshade
@@ -131,7 +143,9 @@ class CRMSchema(BaseSchema):
                 },
             },
         )
-        logger.debug(f"[Schema: {cls.name}] Injected 'raster-cut' in global hooks with region: {dist_region}.")
+        logger.debug(
+            f"[Schema: {cls.name}] Injected 'raster-cut' in global hooks with region: {dist_region}."
+        )
 
         global_hooks.append(
             {
@@ -142,7 +156,9 @@ class CRMSchema(BaseSchema):
                 },
             }
         )
-        logger.debug(f"[Schema: {cls.name}] Injected 'copy-artifact' in global hooks to copy delivery tifs to ../_crm_deliverables")
+        logger.debug(
+            f"[Schema: {cls.name}] Injected 'copy-artifact' in global hooks to copy delivery tifs to ../_crm_deliverables"
+        )
 
         config["global_hooks"] = global_hooks
         return config

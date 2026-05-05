@@ -327,7 +327,6 @@ class PixelsToPoints(FetchHook):
     def _raster_to_xyz(self, raster_stream):
         _profile = next(raster_stream)
         for window, buff_win, data, ndv, transform in raster_stream:
-
             bands, rows, cols = data.shape
 
             z_raw = data[0].flatten()
@@ -356,7 +355,9 @@ class PixelsToPoints(FetchHook):
                 col_indices, row_indices = np.meshgrid(np.arange(cols), np.arange(rows))
                 global_cols = col_indices + window.col_off
                 global_rows = row_indices + window.row_off
-                xs, ys = rasterio.transform.xy(transform, global_rows, global_cols, offset="center")
+                xs, ys = rasterio.transform.xy(
+                    transform, global_rows, global_cols, offset="center"
+                )
 
                 x = np.array(xs).flatten()[valid]
                 y = np.array(ys).flatten()[valid]

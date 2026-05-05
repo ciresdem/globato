@@ -17,6 +17,7 @@ from fetchez.core import run_fetchez
 from fetchez.cli import cli_opts
 
 from fetchez.modules.earthdata import IceSat2
+
 # from globato.streams.readers.icesat2 import IceSat2Stream
 from globato.hooks.sinks.xyz_writer import WriteXYZ
 from fetchez.hooks.copy_artifact import CopyArtifactHook
