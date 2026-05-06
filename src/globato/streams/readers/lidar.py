@@ -2,39 +2,42 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.lidar
+globato.streams.readers.lidar
 ~~~~~~~~~~~~~
 
-This hook converts lidar to a point stream.
+This readers lidar to a point stream.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 import laspy as lp
 
 from fetchez.utils import str_or
-from fetchez.hooks import FetchHook
-
-from .xyz import XYZReader
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class LASReader:
+class LASReader(BaseGlobatoReader):
     """Process LAS/LAZ lidar files using laspy."""
+
+    name = "lidar-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "lidar"
+    meta_desc = "Read lidar data through laspy into a point stream"
+    meta_extensions = ["las", "laz"]
 
     def __init__(
         self,
-        src_fn: str,
+        path: str,
         classes="2/29/40",
         **kwargs,
     ):
-
-        self.src_fn = src_fn
+        super().__init__(path, **kwargs)
+        self.src_fn = path
         try:
             if isinstance(str_or(classes), str):
                 self.classes = [int(x) for x in str(classes).split("/")]
@@ -73,7 +76,7 @@ class LASReader:
 
         return None
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield points from local file using standard laspy."""
 
         try:
@@ -101,48 +104,3 @@ class LASReader:
         except Exception as e:
             logger.error(f"LAS/Z processing failed for {self.src_fn}: {e}")
             return None
-
-
-class LASStream(FetchHook):
-    """Process raw las/laz files into XYZ format.
-    Updates the entry so downstream tools see the .xyz file, not the .laz.
-    """
-
-    name = "las_stream"
-    meta_stage = "file"
-    meta_desc = "stream las data through laspy"
-    meta_category = "format-stream"
-
-    def __init__(self, classes="2/7/29/40", **kwargs):
-        super().__init__(**kwargs)
-        self.classes = classes
-
-    def run(self, entries):
-        new_entries = []
-        for mod, entry in entries:
-            src = entry["dst_fn"]
-
-            if not os.path.exists(src):
-                new_entries.append((mod, entry))
-                continue
-
-            # Simple check for LAS/LAZ extension
-            if not src.lower().endswith((".las", ".laz")):
-                new_entries.append((mod, entry))
-                continue
-
-            try:
-                reader = XYZReader(src, **self.params)
-                # Get EPSG for metadata (unused right now but good to have)
-                # src_epsg = reader.get_epsg()
-
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-                entry["las_classes"] = self.classes
-
-            except Exception as e:
-                logger.error(f"LAS extraction failed for {src}: {e}")
-
-            new_entries.append((mod, entry))
-
-        return new_entries

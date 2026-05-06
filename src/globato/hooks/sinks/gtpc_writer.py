@@ -56,10 +56,10 @@ class WriteGTPC(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get("stream")
-            if not stream:
+            if not self.is_point_stream(entry):
                 continue
 
+            stream = entry.get("stream")
             src_fn = entry.get("dst_fn")
             base, _ = os.path.splitext(src_fn)
             out_fn = f"{base}.gtpc"

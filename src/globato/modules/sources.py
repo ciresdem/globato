@@ -19,7 +19,7 @@ from fetchez.hooks.datatype import SetDataType
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.registry import ModuleRegistry
 
-from globato.hooks.formats.stream_factory import DataStream
+from fetchez.hooks.stream_init import DataStream
 from globato.hooks.filters.rq import ReferenceQuality
 from globato.hooks.filters.rangez import RangeZ
 from globato.hooks.filters.dropclass import DropClass

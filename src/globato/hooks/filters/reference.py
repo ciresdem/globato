@@ -120,25 +120,88 @@ class DiffZ(FetchHook, RasterSampling):
             entry["stream"] = self._process_stream(stream)
         return entries
 
+    def filter_chunk(self, chunk):
+        if "classification" not in chunk.dtype.names:
+            chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
+
+        ref_z = self.sample_raster(self.raster, chunk)
+        diff = chunk["z"] - ref_z
+
+        keep = np.ones(len(diff), dtype=bool)
+        keep &= ~np.isnan(diff)
+
+        if self.min_diff is not None:
+            keep &= diff >= self.min_diff
+        if self.max_diff is not None:
+            keep &= diff <= self.max_diff
+
+        mask = ~keep if not self.invert else keep
+        if np.any(mask):
+            chunk["classification"][mask] = self.set_class
+
+        logger.debug(f"Reclassified {np.count_nonzero(mask)} points using {self.name}")
+        return mask
+
+    # def _process_stream(self, stream):
+    #     for chunk in stream:
+    #         self.filter_chunk(chunk)
+    #         if "classification" not in chunk.dtype.names:
+    #             chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
+
+    #         ref_z = self.sample_raster(self.raster, chunk)
+    #         diff = chunk["z"] - ref_z
+
+    #         keep = np.ones(len(diff), dtype=bool)
+    #         keep &= ~np.isnan(diff)
+
+    #         if self.min_diff is not None:
+    #             keep &= diff >= self.min_diff
+    #         if self.max_diff is not None:
+    #             keep &= diff <= self.max_diff
+
+    #         mask = ~keep if not self.invert else keep
+    #         if np.any(mask):
+    #             chunk["classification"][mask] = self.set_class
+
+    #         # logger.info(f"Reclassified {np.count_nonzero(mask)} points using {self.name}")
+    #         yield chunk
+
+
+class Diff_Z(FetchHook, RasterSampling):
+    """Filter based on diff from reference raster."""
+
+    name = "diff-z"
+    meta_stage = "file"
+    meta_desc = "Output the z difference based on a reference raster residuals"
+    meta_category = "stream-filter"
+
+    def __init__(
+        self, raster=None, min_diff=None, max_diff=None, invert=False, **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.raster = raster
+        self.min_diff = float_or(min_diff)
+        self.max_diff = float_or(max_diff)
+        self.invert = str2bool(invert)
+
+    def run(self, entries):
+        for mod, entry in entries:
+            stream = entry.get("stream")
+            if not stream:
+                continue
+
+            if not self.raster:
+                continue
+
+            entry["stream"] = self._process_stream(stream)
+        return entries
+
     def _process_stream(self, stream):
         for chunk in stream:
-            if "classification" not in chunk.dtype.names:
-                chunk = add_field_to_recarray(chunk, "classification", np.uint8, 0)
-
             ref_z = self.sample_raster(self.raster, chunk)
-            diff = chunk["z"] - ref_z
-
-            keep = np.ones(len(diff), dtype=bool)
-            keep &= ~np.isnan(diff)
-
-            if self.min_diff is not None:
-                keep &= diff >= self.min_diff
-            if self.max_diff is not None:
-                keep &= diff <= self.max_diff
-
-            mask = ~keep if not self.invert else keep
-            if np.any(mask):
-                chunk["classification"][mask] = self.set_class
-
-            # logger.info(f"Reclassified {np.count_nonzero(mask)} points using {self.name}")
+            chunk["z"] = chunk["z"] - ref_z
             yield chunk
+
+    def filter_chunk(self, chunk):
+        mask = np.isnan(chunk["z"])
+        return mask

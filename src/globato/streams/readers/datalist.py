@@ -2,11 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.datalist
+globato.streams.readers.datalist
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 A meta-reader for legacy CUDEM .datalist files.
 Delegates reading to the StreamFactory while enforcing spatial indices
 and hierarchical dataset weights.
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import os
@@ -14,6 +18,8 @@ import json
 import shlex
 import logging
 import numpy as np
+
+from globato.streams import BaseGlobatoReader
 
 from globato.utils import add_field_to_recarray
 
@@ -27,9 +33,16 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class DatalistReader:
-    def __init__(self, src_fn, region=None, **kwargs):
-        self.src_fn = os.path.abspath(src_fn)
+class DatalistReader(BaseGlobatoReader):
+    name = "datalist-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "datalist"
+    meta_desc = "Read datalist data into a point stream"
+    meta_extensions = ["datalist"]
+
+    def __init__(self, path, region=None, **kwargs):
+        super().__init__(path, **kwargs)
+        self.src_fn = os.path.abspath(path)
         self.region = region
         self.kwargs = kwargs
 
@@ -115,7 +128,7 @@ class DatalistReader:
 
         return None
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         from globato.hooks.formats.stream_factory import StreamFactory
 
         entries = self._get_entries()

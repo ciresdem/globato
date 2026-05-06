@@ -22,10 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 class StreamReproject(FetchHook):
-    name = "stream_reproject"
+    name = "stream-reproject"
     meta_stage = "file"
     meta_desc = "Reproject the stream to the desired SRS using Transformez."
-    meta_category = "pipeline"
+    meta_category = "point-stream"
+    meta_requires = "point-stream"
+    meta_aliases = ["stream_reproject"]
 
     def __init__(
         self, dst_srs=None, src_srs=None, vert_grid=None, cache_dir=".", **kwargs
@@ -71,17 +73,14 @@ class StreamReproject(FetchHook):
             if not self.dst_srs:
                 continue
 
-            stream = entry.get("stream")
-            stream_type = entry.get("stream_type")
-            if not stream or stream_type != "xyz_recarray":
-                continue
+            if self.is_point_stream(entry):
+                src_srs = entry.get("src_srs", "EPSG:4326")
+                pipeline = self._get_pipeline(src_srs, region=mod.region)
+                stream = entry.get("stream")
 
-            src_srs = entry.get("src_srs", "EPSG:4326")
-            pipeline = self._get_pipeline(src_srs, region=mod.region)
-
-            if pipeline:
-                entry["stream"] = self._apply_transform(stream, pipeline)
-                entry["src_srs"] = self.dst_srs
+                if pipeline:
+                    entry["stream"] = self._apply_transform(stream, pipeline)
+                    entry["src_srs"] = self.dst_srs
 
         return entries
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.fio
+globato.streams.readers.fio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Fiona/Shapely based Vector Reader (Shapefile, GeoPackage, S-57).
@@ -11,11 +11,11 @@ Fiona/Shapely based Vector Reader (Shapefile, GeoPackage, S-57).
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
-from fetchez.hooks import FetchHook
+
 from fetchez.utils import float_or
+from globato.streams import BaseGlobatoReader
 
 try:
     import fiona
@@ -29,8 +29,14 @@ logger = logging.getLogger(__name__)
 logging.getLogger("fiona").setLevel(logging.ERROR)
 
 
-class FionaReader:
+class FionaReader(BaseGlobatoReader):
     """Streaming Fiona Vector Parser for extracting 3D points/vertices."""
+
+    name = "fiona-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "fio-vector"
+    meta_desc = "Read vector data through fiona into a point stream"
+    meta_extensions = ["shp", "000", "json", "geojson", "kml", "gdb"]
 
     KNOWN_LAYERS = [
         "SOUNDG",
@@ -53,7 +59,7 @@ class FionaReader:
 
     def __init__(
         self,
-        src_fn,
+        path,
         layer=None,
         z_field=None,
         weight_field=None,
@@ -63,7 +69,8 @@ class FionaReader:
         chunk_size=50000,
         **kwargs,
     ):
-        self.src_fn = src_fn
+        super().__init__(path, **kwargs)
+        self.src_fn = path
         # this is very specific to EHydro GDB. We need to generalize this.
         if self.src_fn.lower().endswith(".zip"):
             import zipfile
@@ -156,7 +163,7 @@ class FionaReader:
             return pts
         return []
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         if not HAS_FIONA:
             logger.error("Fiona/Shapely required for vector processing.")
             return
@@ -217,26 +224,3 @@ class FionaReader:
         dt = [("x", "f8"), ("y", "f8"), ("z", "f4"), ("w", "f4"), ("u", "f4")]
         data = [np.array(x), np.array(y), np.array(z), np.array(w), np.array(u)]
         return np.rec.fromarrays(data, dtype=dt)
-
-
-class FionaStream(FetchHook):
-    name = "fiona_stream"
-    meta_stage = "file"
-    meta_category = "format-stream"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.params = kwargs
-
-    def run(self, entries):
-        for mod, entry in entries:
-            src = entry.get("dst_fn")
-            if not src or not os.path.exists(src):
-                continue
-            try:
-                reader = FionaReader(src, **self.params)
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-            except Exception as e:
-                logger.warning(f"FionaStream failed for {src}: {e}")
-        return entries

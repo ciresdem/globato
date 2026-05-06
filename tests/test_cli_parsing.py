@@ -21,7 +21,7 @@ def test_globato_source_parser_injects_stream_data():
 
     # Make sure stream_data was added before any other hooks
     assert len(res["hooks"]) == 1
-    assert res["hooks"][0]["name"] == "stream_data"
+    assert res["hooks"][0]["name"] == "stream-init"
 
 
 def test_globato_source_parser_chained_injection():
@@ -30,5 +30,5 @@ def test_globato_source_parser_chained_injection():
     res = globato_parse_source("mbdb+rq:threshold=10")
 
     assert len(res["hooks"]) == 2
-    assert res["hooks"][0]["name"] == "stream_data"
+    assert res["hooks"][0]["name"] == "stream-init"
     assert res["hooks"][1]["name"] == "rq"

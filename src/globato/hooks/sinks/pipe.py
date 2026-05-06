@@ -32,11 +32,12 @@ class XYZPrinter(FetchHook):
       --hook pipe_xyz:fmt=%.4f:delimiter=,
     """
 
-    name = "stream_pipe_xyz"
+    name = "stream-dump-xyz"
     meta_stage = "file"
     meta_desc = "Send the point-stream xyz data to stdout"
     meta_category = "point-stream"
     meta_requires = "point-stream"
+    meta_aliases = ["stream_pipe_xyz"]
 
     def __init__(self, fmt="%.6f", delimiter=" ", **kwargs):
         super().__init__(**kwargs)
@@ -45,13 +46,12 @@ class XYZPrinter(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get("stream")
-            stream_type = entry.get("stream_type")
-            if not stream:
+            if not self.has_stream(entry):
                 continue
 
+            stream = entry["stream"]
             try:
-                if stream_type == "xyz_recarray":
+                if self.is_point_stream(entry):
                     for chunk in stream:
                         columns = [chunk["x"], chunk["y"], chunk["z"]]
 
@@ -59,13 +59,17 @@ class XYZPrinter(FetchHook):
                             columns.append(chunk["w"])
                         if "u" in chunk.dtype.names:
                             columns.append(chunk["u"])
+                        if "classification" in chunk.dtype.names:
+                            columns.append(chunk["classification"])
+                        if "confidence" in chunk.dtype.names:
+                            columns.append(chunk["confidence"])
 
                         data = np.column_stack(columns)
                         np.savetxt(
                             sys.stdout, data, fmt=self.fmt, delimiter=self.delimiter
                         )
 
-                elif stream_type == "raster":
+                elif self.is_raster_stream(entry):
                     stream = entry.get("stream")
 
                     # Pop the profile off the top of the generator

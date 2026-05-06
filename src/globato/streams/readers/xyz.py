@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.xyz
+globato.streams.readers.xyz
 ~~~~~~~~~~~~~
 
 Process XYZ/ASCII files
@@ -11,28 +11,34 @@ Process XYZ/ASCII files
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import warnings
 import numpy as np
 
-from fetchez.hooks import FetchHook
 from fetchez.utils import int_or, float_or
+
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class XYZReader:
+class XYZReader(BaseGlobatoReader):
     """Chunked reader for ASCII XYZ data.
 
     Adapted from cudem.xyzfile to use numpy for speed.
     """
 
+    name = "xyz-point-reader"
+    meta_category = "point-stream"
+    meta_desc = "Read ASCII xyz data into a point stream (xyz-recarray)"
+    meta_dtype = "xyz"
+    meta_delimiters = ["xyz", "dat"]
+
     KNOWN_DELIMS = [",", " ", "\t", ";", "|"]
 
     def __init__(
         self,
-        src_fn: str,
+        path: str,
         xpos=0,
         ypos=1,
         zpos=2,
@@ -52,7 +58,9 @@ class XYZReader:
         while maintaining legacy cudem compatability (`xpos`, `skip`, `delim`).
         """
 
-        self.src_fn = src_fn
+        super().__init__(path, **kwargs)
+
+        self.src_fn = path
 
         self.xpos = int_or(
             kwargs.get("usecols", [xpos])[0] if "usecols" in kwargs else xpos, 0
@@ -133,7 +141,7 @@ class XYZReader:
             pass
         return None
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Stream read the source and yield standardized XYZ recarrays."""
 
         cols_to_extract = [self.xpos, self.ypos, self.zpos]
@@ -209,43 +217,3 @@ class XYZReader:
         except Exception as e:
             logger.error(f"XYZ processing failed for {self.src_fn}: {e}")
             return None
-
-
-class XYZStream(FetchHook):
-    """Standardize ASCII XYZ data.
-
-    Can reorder columns, handle delimiters, skip headers, and rescale units.
-
-    Usage:
-      --hook xyz_stream:xpos=1,ypos=0,skip=1,z_scale=0.3048
-    """
-
-    name = "xyz_stream"
-    meta_stage = "file"
-    meta_desc = "Standardize ASCII XYZ data"
-    meta_category = "format-stream"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.params = kwargs
-
-    def run(self, entries):
-        new_entries = []
-
-        for mod, entry in entries:
-            src = entry.get("dst_fn")
-
-            if not src or not os.path.exists(src):
-                new_entries.append((mod, entry))
-                continue
-
-            try:
-                reader = XYZReader(src, **self.params)
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-                new_entries.append((mod, entry))
-            except Exception as e:
-                logger.warning(f"XYZStream failed for {src}: {e}")
-                new_entries.append((mod, entry))
-
-        return new_entries

@@ -96,6 +96,9 @@ modules:
     args:
       weight: .01
     hooks:
+      - name: set_datatype
+        args:
+          data_type: "margrav-xyz"
       - name: stream_data
       - name: stream_reproject
         args: {src_srs: "EPSG:4326+9003", dst_srs: "EPSG:4269+3855"}
@@ -112,7 +115,7 @@ modules:
       - name: unzip
       - name: set_datatype
         args:
-          data_type: "nos_xyz"
+          data_type: "nos-xyz"
       - name: stream_data
         args:
           chunk_size: 100000

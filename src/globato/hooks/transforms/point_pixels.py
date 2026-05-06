@@ -326,37 +326,58 @@ class PixelsToPoints(FetchHook):
 
     def _raster_to_xyz(self, raster_stream):
         _profile = next(raster_stream)
-
         for window, buff_win, data, ndv, transform in raster_stream:
-            cols, rows = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
-            xs, ys = rasterio.transform.xy(transform, rows, cols)
+            bands, rows, cols = data.shape
 
-            z = data.flatten()
-            x = np.array(xs).flatten()
-            y = np.array(ys).flatten()
+            z_raw = data[0].flatten()
 
-            if ndv is not None:
-                valid = z != ndv
+            if bands >= 7:
+                count = data[1].flatten()
+
+                valid = (count > 0) & (~np.isnan(z_raw))
+
+                z = z_raw[valid] / count[valid]
+                x = data[5].flatten()[valid] / count[valid]
+                y = data[6].flatten()[valid] / count[valid]
+
+                arrays = [x, y, z]
+                names = ["x", "y", "z"]
+
+                arrays.append(data[2].flatten()[valid])
+                names.append("w")
+                arrays.append(data[3].flatten()[valid])
+                names.append("u")
+
             else:
-                valid = ~np.isnan(z)
+                valid = ~np.isnan(z_raw)
+                z = z_raw[valid]
 
-            chunk = np.core.records.fromarrays(
-                [x[valid], y[valid], z[valid]], names="x,y,z"
-            )
+                col_indices, row_indices = np.meshgrid(np.arange(cols), np.arange(rows))
+                global_cols = col_indices + window.col_off
+                global_rows = row_indices + window.row_off
+                xs, ys = rasterio.transform.xy(
+                    transform, global_rows, global_cols, offset="center"
+                )
 
-            if chunk.size > 0:
-                yield chunk
+                x = np.array(xs).flatten()[valid]
+                y = np.array(ys).flatten()[valid]
+
+                arrays = [x, y, z]
+                names = ["x", "y", "z"]
+
+            try:
+                chunk = np.rec.fromarrays(arrays, names=names)
+                if chunk.size > 0:
+                    yield chunk
+            except Exception as e:
+                logger.error(f"pixels2points crash: {e}")
 
     def run(self, entries):
         for mod, entry in entries:
-            # If the entry has a raster_stream, convert it!
-            stream = entry.get("raster_stream")
-            if stream:
+            if self.is_raster_stream(entry):
+                stream = entry["stream"]
                 entry["stream"] = self._raster_to_xyz(stream)
-                entry["stream_type"] = "xyz_recarray"
-
-                # Clean up the raster properties
-                del entry["raster_stream"]
+                entry["stream_type"] = "point-stream"
 
         return entries
 
@@ -365,7 +386,7 @@ class PixelsToPoints(FetchHook):
 class Point2PixelStream(FetchHook):
     """Base class for streaming point filters."""
 
-    name = "points2pixel"
+    name = "points2pixels"
     meta_stage = "file"
     meta_category = "stream-transform"
     meta_aliases = ["point2pixel", "points_to_pixel"]
@@ -423,7 +444,6 @@ class Point2PixelStream(FetchHook):
             for chunk in input_stream:
                 count += chunk.size
                 arrs, srcwin, chunk_gt = self.process_chunk(chunk, region=region)
-
                 if arrs is None or arrs.get("z") is None:
                     continue
 
@@ -457,14 +477,11 @@ class Point2PixelStream(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get("stream", "")
-            stream_type = entry.get("stream_type", "")
-            if stream and stream_type == "xyz_recarray":
-                # Swap the stream keys to indicate it is now a raster stream!
-                entry["raster_stream"] = self._stream_wrapper(
+            if self.is_point_stream(entry):
+                stream = entry["stream"]
+                entry["stream"] = self._stream_wrapper(
                     stream, entry=entry, region=getattr(mod, "region", None)
                 )
-                entry["stream_type"] = "raster"
-                del entry["stream"]
+                entry["stream_type"] = "raster-stream"
 
         return entries

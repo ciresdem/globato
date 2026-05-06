@@ -70,9 +70,9 @@ class RasterWrite(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            stream = entry.get("raster_stream")
+            stream = entry.get("stream")
 
-            if stream:
+            if self.is_raster_stream(entry):
                 # It's an active stream. Write it chunk by chunk!
                 base = os.path.splitext(entry.get("dst_fn", "out"))[0]
                 dst_fn = self.output_path or f"{base}{self.suffix}.tif"

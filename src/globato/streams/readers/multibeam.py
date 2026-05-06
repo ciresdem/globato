@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.multibeam
+globato.streams.readers.multibeam
 ~~~~~~~~~~~~~~~~~~~
 
 Multibeam Reader.
@@ -19,21 +19,29 @@ import logging
 import numpy as np
 import pandas as pd
 
-from ...utils import yield_cmd
+from globato.streams import BaseGlobatoReader
+
+from globato.utils import yield_cmd
 
 logger = logging.getLogger(__name__)
 
 
-class MBSReader:
+class MBSReader(BaseGlobatoReader):
     """Providing an mbsystem parser.
 
     Process MB-System supported multibeam data files.
     Prefers native python struct parsing for .fbt files.
     """
 
+    name = "multibeam-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "multibeam (mbs)"
+    meta_desc = "Read multibeam data into a point stream"
+    meta_extensions = ["fbt"]
+
     def __init__(
         self,
-        src_fn: str,
+        path: str,
         region=None,
         mb_fmt=None,
         mb_exclude="A",
@@ -46,8 +54,8 @@ class MBSReader:
         want_flagged=False,
         **kwargs,
     ):
-
-        self.src_fn = src_fn
+        super().__init__(path, **kwargs)
+        self.src_fn = path
 
         self.region = region
         self.mb_fmt = mb_fmt
@@ -329,7 +337,7 @@ class MBSReader:
 
         return df
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield data, attempting native reader for .fbt files with a subprocess fallback."""
         dataset = None
 

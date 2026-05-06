@@ -24,8 +24,9 @@ class DropClass(GlobatoFilter):
     Usage: --hook drop_class:classes=7/18
     """
 
-    name = "drop_class"
+    name = "drop-class"
     meta_desc = "Drop specified classes from the point stream"
+    meta_aliases = ["drop_class"]
 
     def __init__(self, classes="7/12", **kwargs):
         super().__init__(**kwargs)

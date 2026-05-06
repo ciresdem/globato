@@ -23,14 +23,20 @@ import sys
 import logging
 import numpy as np
 
-from fetchez.registry import HookRegistry, ModuleRegistry
+from fetchez.registry import (
+    HookRegistry,
+    ModuleRegistry,
+    ReaderRegistry,
+    ProfileRegistry,
+)
 from fetchez.core import run_fetchez
 from fetchez.spatial import Region
 
-from globato.hooks.formats.stream_factory import StreamFactory
 from globato.hooks.transforms.reproject import StreamReproject
 
 logger = logging.getLogger(__name__)
+
+POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
 
 
 @click.command(name="pipeline", hidden=False, cls=FetchezMainCommand)
@@ -94,8 +100,6 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
 
 # --- OLD POINTZ-GROUP --
 
-POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
-
 
 @click.version_option(package_name="globato")
 @click.group(
@@ -136,10 +140,15 @@ def pointz_list_filters():
     HookRegistry.load_all()
     registry = HookRegistry.get_registry()
 
-    click.secho("\n Available PointZ Filters:", fg="cyan", bold=True)
+    click.secho("\n🌪️  Available `point-stream` Filters:\n", fg="cyan", bold=True)
     click.echo("=" * 50)
     for name, meta in sorted(registry.items()):
-        if meta.get("category") == "stream-filter":
+        if (
+            meta.get("category") == "stream-filter"
+            or meta.get("category") == "point-stream"
+        ):
+            if name in meta.get("aliases", ""):
+                continue
             desc = meta.get("desc", "No description provided.")
             click.echo(f"  {click.style(name, bold=True, fg='yellow'):<15} : {desc}")
     click.echo("=" * 50 + "\n")
@@ -157,10 +166,11 @@ def pointz_list_filters():
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option("-T", "--t-srs", help="Target SRS for on-the-fly reprojection.")
 @click.option("-O", "--out", help="Output file (default: stdout).")
+@click.option("-D", "--data-type", default=None, help="Set the data type of the input.")
 @click.option(
     "--chunk-size", type=int, default=500000, help="Number of points per memory chunk."
 )
-def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
+def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_size):
     """Stream, filter, and format point cloud data.
 
     SOURCES can be local files (data.las), Fetchez modules (mbdb), or '-' for stdin.
@@ -179,6 +189,8 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
 
     HookRegistry.load_all()
     ModuleRegistry.load_all()
+    ReaderRegistry.load_all()
+    ProfileRegistry.load_all()
 
     active_global_filters = []
     for f_str in global_filters:
@@ -221,12 +233,14 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             continue
 
         parsed_src = parse_source_string(src_str)
+        if data_type:
+            parsed_src["data_type"] = data_type
+
         mod_name = parsed_src["module"]
         mod_args = parsed_src.get("args", {})
-
         source_filters = []
         for hook_dict in parsed_src.get("hooks", []):
-            if hook_dict["name"] == "stream_data":
+            if hook_dict["name"] == "stream_data" or hook_dict["name"] == "stream-init":
                 continue
             mod_cls = HookRegistry.get_class(hook_dict["name"])
             if mod_cls:
@@ -243,17 +257,24 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
 
         if mod_name in ["file", "local_fs"]:
             target_path = mod_args.get("paths", mod_args.get("path"))
-            reader = StreamFactory.get_reader(target_path, chunk_size=chunk_size)
+            term = data_type or target_path.split(".")[-1]
+            reader = ReaderRegistry.get_reader(target_path, term, chunk_size=chunk_size)
             if reader:
+                detected_srs = getattr(reader, "get_srs", lambda: "EPSG:4326")()
                 streams.append(
                     {
                         "generator": reader.yield_chunks(),
-                        "src_srs": reader.get_srs()
-                        if hasattr(reader, "get_srs") and reader.get_srs()
-                        else "EPSG:4326",
+                        "src_srs": detected_srs,
                         "filters": source_filters,
                     }
                 )
+            else:
+                click.secho(
+                    f"Warning: Could not detect reader for {target_path}",
+                    fg="yellow",
+                    err=True,
+                )
+
             click.secho(f"Reading local source: {target_path}", fg="cyan", err=True)
         else:
             mod_cls = ModuleRegistry.get_class(mod_name)
@@ -281,20 +302,23 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
             for entry in fetcher.results:
                 dst_fn = entry.get("dst_fn")
                 if dst_fn and os.path.exists(dst_fn):
-                    reader = StreamFactory.get_reader(
-                        dst_fn,
-                        data_type=entry.get("data_type", None),
-                        chunk_size=chunk_size,
+                    entry_type = entry.get("data_type")
+                    term = data_type or entry_type or dst_fn.split(".")[-1]
+
+                    reader = ReaderRegistry.get_reader(
+                        dst_fn, term, chunk_size=chunk_size
                     )
+
                     if reader:
-                        detected_srs = entry.get("src_srs")
-                        if not detected_srs and hasattr(reader, "get_srs"):
-                            detected_srs = reader.get_srs()
+                        detected_srs = (
+                            entry.get("src_srs")
+                            or getattr(reader, "get_srs", lambda: "EPSG:4326")()
+                        )
 
                         streams.append(
                             {
                                 "generator": reader.yield_chunks(),
-                                "src_srs": detected_srs or "EPSG:4326",
+                                "src_srs": detected_srs,
                                 "filters": source_filters,
                             }
                         )
@@ -388,13 +412,22 @@ def pointz_run(sources, global_filters, region, t_srs, out, chunk_size):
 @click.argument("source")
 def pointz_info(source):
     """Scan a point cloud and return its spatial statistics."""
-
     from globato.hooks.metadata.globato_inf import generate_stream_inf
 
-    # parsed_src = parse_source_string(source)
-    reader = StreamFactory.get_reader(source)  # , chunk_size=chunk_size)
+    ReaderRegistry.load_all()
+    ProfileRegistry.load_all()
 
-    inf = generate_stream_inf(reader.yield_chunks())  # , "test.inf")
+    term = source.split(".")[-1]
+    reader = ReaderRegistry.get_reader(source, term)
+
+    if not reader:
+        click.secho(
+            f"Error: Could not determine format for {source}", fg="red", err=True
+        )
+        sys.exit(1)
+
+    inf = generate_stream_inf(reader.yield_chunks())
+
     while True:
         try:
             next(inf)
@@ -404,7 +437,9 @@ def pointz_info(source):
 
     region = meta.get("minmax", None)
     click.secho(f"\n--- Point Cloud Info: {source} ---", fg="cyan", bold=True)
+    click.echo(f"Format Reader: {reader.name}")
     click.echo(f"Total Points : {meta.get('numpts', 0):,}")
+
     if region is not None:
         click.echo(f"Bounds (X)   : {region[0]:.6f} to {region[1]:.6f}")
         click.echo(f"Bounds (Y)   : {region[2]:.6f} to {region[3]:.6f}")

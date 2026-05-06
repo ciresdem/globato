@@ -17,7 +17,8 @@ from fetchez.core import run_fetchez
 from fetchez.cli import cli_opts
 
 from fetchez.modules.earthdata import IceSat2
-from globato.hooks.formats.icesat2 import IceSat2Stream
+
+# from globato.streams.readers.icesat2 import IceSat2Stream
 from globato.hooks.sinks.xyz_writer import WriteXYZ
 from fetchez.hooks.copy_artifact import CopyArtifactHook
 
@@ -53,13 +54,14 @@ class ICESat2ClassyModule(FetchModule):
             src_region=self.region, short_name="ATL03", outdir=self._outdir
         )
 
-        fetcher.add_hook(
-            IceSat2Stream(
-                cache_dir=self._outdir,
-                classes=self.classes,
-                use_dbscan=self.use_dbscan,
-            )
-        )
+        # TODO: fix this to use DataStream from fetchez.hooks.stream_init
+        # fetcher.add_hook(
+        #     IceSat2Stream(
+        #         cache_dir=self._outdir,
+        #         classes=self.classes,
+        #         use_dbscan=self.use_dbscan,
+        #     )
+        # )
 
         fetcher.add_hook(WriteXYZ())
 

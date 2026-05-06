@@ -11,7 +11,6 @@ OGR data parsing from cudem
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 
@@ -22,17 +21,23 @@ try:
 except ImportError:
     HAS_OGR = False
 
-from fetchez.hooks import FetchHook
 from fetchez.utils import float_or
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class OGRReader:
+class OGRReader(BaseGlobatoReader):
     """Providing an OGR 3D point dataset parser.
 
     Useful for data such as S-57, ENC, E-Hydro, Shapefiles, etc.
     """
+
+    name = "ogr-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "ogr-vector"
+    meta_desc = "Read vector data through ogr into a point stream"
+    meta_extensions = ["shp", "000", "json", "geojson", "kml", "gdb"]
 
     _known_layer_names = [
         "SOUNDG",
@@ -57,7 +62,7 @@ class OGRReader:
 
     def __init__(
         self,
-        src_fn: str,
+        path: str,
         ogr_layer=None,
         elev_field=None,
         weight_field=None,
@@ -67,7 +72,8 @@ class OGRReader:
         **kwargs,
     ):
 
-        self.src_fn = src_fn
+        super().__init__(path, **kwargs)
+        self.src_fn = path
 
         self.ogr_layer = ogr_layer
         self.elev_field = elev_field
@@ -115,7 +121,7 @@ class OGRReader:
         # Weight (No auto-detect)
         # Uncertainty (No auto-detect)
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield points from the OGR datasource."""
 
         if self.src_fn is None:
@@ -253,60 +259,3 @@ class OGRReader:
         except Exception as e:
             logger.error(f"OGR processing failed for {self.src_fn}: {e}")
             return None
-
-
-class OGRStream(FetchHook):
-    """Convert Vector Data (S-57, Shapefile, GDB) to XYZ points.
-
-    Auto-detects bathymetry layers (SOUNDG) and Z-fields (VALSOU).
-
-    Usage:
-      --hook ogr_to_xyz (Auto S-57)
-      --hook ogr_to_xyz:layer=SurveyPoint,z_field=depth (eHydro)
-    """
-
-    name = "ogr_stream"
-    meta_stage = "file"
-    meta_category = "format-stream"
-
-    def __init__(
-        self,
-        layer=None,
-        z_field=None,
-        weight_field=None,
-        unc_field=None,
-        z_scale=1,
-        keep_raw=True,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.keep_raw = str(keep_raw).lower() == "true"
-        self.params = {
-            "layer": layer,
-            "z_field": z_field,
-            "weight_field": weight_field,
-            "unc_field": unc_field,
-            "z_scale": z_scale,
-        }
-
-    def run(self, entries):
-        new_entries = []
-
-        for mod, entry in entries:
-            src = entry.get("dst_fn")
-
-            # Basic validation
-            if not src or not os.path.exists(src):
-                new_entries.append((mod, entry))
-                continue
-
-            try:
-                reader = OGRReader(src, **self.params)
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-            except Exception as e:
-                logger.warning(f"OGRStream failed for {src}: {e}")
-
-            new_entries.append((mod, entry))
-
-        return new_entries

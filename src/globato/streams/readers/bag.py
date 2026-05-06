@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.bag
+globato.streams.readers.bag
 ~~~~~~~~~~~~~~~~~~~
 
 Dedicated BAG (Bathymetric Attributed Grid) Reader.
@@ -35,8 +35,14 @@ class BAGReader(RasterioReader):
     - Calculates weight based on resolution.
     """
 
-    def __init__(self, src_fn, mode="resampled", min_weight=0, **kwargs):
-        super().__init__(src_fn, **kwargs)
+    name = "bag-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "bag-raster"
+    meta_desc = "Read BAG data through rasterio into a point stream"
+    meta_extensions = ["bag"]
+
+    def __init__(self, path, mode="resampled", min_weight=0, **kwargs):
+        super().__init__(path, **kwargs)
         self.mode = mode
         self.min_weight = float_or(min_weight, 0)
 
@@ -145,7 +151,7 @@ class BAGReader(RasterioReader):
 
                 yield chunk
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         env_opts = {
             "GDAL_IGNORE_BAG_XML_METADATA": "YES",
             "OGR_BAG_MIN_VERSION": "1.0",

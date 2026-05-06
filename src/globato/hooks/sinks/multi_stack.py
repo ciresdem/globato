@@ -92,6 +92,7 @@ class MultiStackAccumulator:
         self._init_raster()
 
         self.dataset = rasterio.open(self.sums_fn, "r+")
+        # Convert the point-stream to a raster-stream.
         self.pixel_binner = PointPixels(
             src_region=self.region, x_size=self.xcount, y_size=self.ycount
         )
@@ -440,10 +441,9 @@ class MultiStackHook(FetchHook):
                 entry.pop("stream", None)
                 entry.pop("raster_stream", None)
             else:
-                stream_key = "raster_stream" if "raster_stream" in entry else "stream"
-                stream = entry.get(stream_key)
-                if stream:
-                    entry[stream_key] = self._intercept(stream, dataset_id)
+                if self.has_stream(entry):
+                    stream = entry.get("stream")
+                    entry["stream"] = self._intercept(stream, dataset_id)
 
             entry.setdefault("artifacts", {})[self.name] = self.output
 
@@ -453,17 +453,13 @@ class MultiStackHook(FetchHook):
         """Generator wrapper to feed the accumulator and mark registry."""
 
         count = 0
-        z_min = float("inf")
-        z_max = float("-inf")
+        z_min, z_max = float("inf"), float("-inf")
+        w_min, w_max = float("inf"), float("-inf")
+        u_min, u_max = float("inf"), float("-inf")
 
         dataset_str = format_dataset_id(dataset_id)
-        # with tqdm(
-        #     desc=f"Streaming data from: {colorize(dataset_str, CYAN)}",
-        #     leave=False,
-        # ) as pbar:
+        logger.debug(f"Streaming data from: {dataset_str}")
         for chunk in stream:
-            # pbar.update()
-
             if isinstance(chunk, tuple) and len(chunk) >= 3:
                 # Raster stream chunk: (window, buff_win, data, ndv, transform)
                 data = chunk[2]
@@ -477,6 +473,20 @@ class MultiStackHook(FetchHook):
                 # Point rec-array stream chunk
                 valid_z = chunk["z"][~np.isnan(chunk["z"])]
                 count += len(chunk)
+
+                # Track W
+                if "w" in chunk.dtype.names:
+                    valid_w = chunk["w"][~np.isnan(chunk["w"])]
+                    if valid_w.size > 0:
+                        w_min = min(w_min, float(np.min(valid_w)))
+                        w_max = max(w_max, float(np.max(valid_w)))
+
+                # Track U
+                if "u" in chunk.dtype.names:
+                    valid_u = chunk["u"][~np.isnan(chunk["u"])]
+                    if valid_u.size > 0:
+                        u_min = min(u_min, float(np.min(valid_u)))
+                        u_max = max(u_max, float(np.max(valid_u)))
             else:
                 valid_z = np.array([])
                 count += len(chunk)
@@ -485,19 +495,57 @@ class MultiStackHook(FetchHook):
                 z_min = min(z_min, float(np.min(valid_z)))
                 z_max = max(z_max, float(np.max(valid_z)))
 
+                # check for valid w/u?
+                w_min = min(w_min, float(np.min(valid_w)))
+                w_max = max(w_max, float(np.max(valid_w)))
+
+                u_min = min(u_min, float(np.min(valid_u)))
+                u_max = max(u_max, float(np.max(valid_u)))
+
             if self._accumulator:
                 self._accumulator.update(chunk)
             yield chunk
 
         if z_min == float("inf") or z_max == float("-inf"):
-            z_str = "No valid Z data"
+            # z_str = "No valid Z data"
+            stats_str = "No valid Z data"
         else:
+            # if abs(z_min) > 1e10 or abs(z_max) > 1e10:
+            #     z_str = f"Z: [{z_min:.2e} to {z_max:.2e}]"
+            # else:
+            #     z_str = f"Z: [{z_min:,.2f} to {z_max:,.2f}]"
+
+            # Format Z
             if abs(z_min) > 1e10 or abs(z_max) > 1e10:
                 z_str = f"Z: [{z_min:.2e} to {z_max:.2e}]"
             else:
                 z_str = f"Z: [{z_min:,.2f} to {z_max:,.2f}]"
 
-        logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
+            # Format W
+            w_str = ""
+            if w_min != float("inf"):
+                if w_min == w_max:
+                    w_str = f" | W: [{w_min:.2f}]"
+                else:
+                    w_str = f" | W: [{w_min:.2f} to {w_max:.2f}]"
+
+            # Format U
+            u_str = ""
+            if u_min != float("inf"):
+                if u_min == u_max:
+                    u_str = f" | U: [{u_min:.2f}]"
+                else:
+                    u_str = f" | U: [{u_min:.2f} to {u_max:.2f}]"
+
+            stats_str = f"{z_str}{w_str}{u_str}"
+
+        # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
+        pts_str = colorize(f"{count:,}", BOLD) + " pts"
+        ds_str = colorize(dataset_str, BLUE)
+        st_str = colorize(f"({stats_str})", CYAN)
+
+        logger_str = f"Stacked {ds_str} -> {pts_str} {st_str}"
+        # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({stats_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
         logger.info(logger_str)
 
         # The stream is exhausted; permanently mark this dataset as completed

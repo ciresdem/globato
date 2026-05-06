@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.gtpc
+globato.streams.readers.gtpc
 ~~~~~~~~~~~~~
 
 Globato Point Cloud files.
@@ -15,17 +15,26 @@ import logging
 import h5py
 import numpy as np
 
+from globato.streams import BaseGlobatoReader
+
 logger = logging.getLogger(__name__)
 
 
-class GTPCReader:
+class GTPCReader(BaseGlobatoReader):
     """Reads .gtpc (Globato Point Cloud) files."""
 
-    def __init__(self, fn, chunk_size=50000, **kwargs):
-        self.fn = fn
+    name = "gtpc-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "globato"
+    meta_desc = "Read globato point-cloud data into a point stream"
+    meta_extensions = ["gtpc"]
+
+    def __init__(self, path, chunk_size=50000, **kwargs):
+        super().__init__(path, **kwargs)
+        self.fn = path
         self.chunk_size = chunk_size
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         try:
             with h5py.File(self.fn, "r") as f:
                 if "points" not in f:

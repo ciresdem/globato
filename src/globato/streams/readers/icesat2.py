@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.icesat2
+globato.streams.readers.icesat2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ICESat-2 Data Parser (ATL03, ATL24) ported from CUDEM for Fetchez-Globato.
@@ -22,9 +22,11 @@ import shapely
 from shapely.strtree import STRtree
 from shapely.geometry import shape
 
+import fetchez
 from fetchez import utils
-from fetchez.core import run_fetchez
-from fetchez.hooks import FetchHook
+
+# from fetchez.core import run_fetchez
+from globato.streams import BaseGlobatoReader
 
 try:
     from sklearn.cluster import DBSCAN
@@ -39,39 +41,15 @@ import rasterio
 logger = logging.getLogger(__name__)
 
 
-class IceSat2Stream(FetchHook):
-    name = "icesat2_stream"
-    meta_stage = "format"
-    meta_category = "format-stream"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.params = kwargs
-
-    def run(self, entries):
-        for mod, entry in entries:
-            dst_fn = entry.get("dst_fn")
-
-            if dst_fn and dst_fn.endswith(".h5") and os.path.exists(dst_fn):
-                logger.info(
-                    f"[{self.name}] Initiating IceSat2 stream for {os.path.basename(dst_fn)}"
-                )
-
-                reader = ATL03Reader(dst_fn, **self.params)
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-
-        return entries
-
-
 # ==============================================
 # IceSat2Reader (generic)
 # ==============================================
-class IceSat2Reader:
+class IceSat2Reader(BaseGlobatoReader):
     """Base class for ICESat-2 Readers."""
 
-    def __init__(self, src_fn, **kwargs):
-        self.fn = src_fn
+    def __init__(self, path, **kwargs):
+        super().__init__(path, **kwargs)
+        self.fn = path
         self.verbose = kwargs.get("verbose", False)
         self.cache_dir = kwargs.get("cache_dir", ".")
 
@@ -85,10 +63,16 @@ class IceSat2Reader:
 class ATL24Reader(IceSat2Reader):
     """ICESat-2 ATL24 (Bathymetry) Data Parser."""
 
+    name = "atl24-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "icesat-atl24"
+    meta_desc = "Read icesat2 ATL24 data into a point stream"
+    meta_extensions = ["h5"]
+
     def __init__(
-        self, src_fn, min_confidence=None, classes="40", water_surface="ortho", **kwargs
+        self, path, min_confidence=None, classes="40", water_surface="ortho", **kwargs
     ):
-        super().__init__(src_fn, **kwargs)
+        super().__init__(path, **kwargs)
         self.orientDict = {0: "l", 1: "r", 21: "error"}
         self.water_surface = (
             water_surface
@@ -197,9 +181,15 @@ class ATL24Reader(IceSat2Reader):
 class ATL03Reader(IceSat2Reader):
     """ICESat-2 ATL03 (Global Geolocated Photon Data) Parser."""
 
+    name = "atl03-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "icesat-atl03"
+    meta_desc = "Read icesat2 ATL03 data into a point stream"
+    meta_extensions = ["h5"]
+
     def __init__(
         self,
-        src_fn,
+        path,
         water_surface="geoid",
         classes=None,
         confidence_levels="2/3/4",
@@ -216,7 +206,7 @@ class ATL03Reader(IceSat2Reader):
         **kwargs,
     ):
 
-        super().__init__(src_fn, **kwargs)
+        super().__init__(path, **kwargs)
 
         self.water_surface = (
             water_surface
@@ -625,6 +615,7 @@ class ATL03Reader(IceSat2Reader):
         max_building_length=150,
     ):
         try:
+            logger.debug("Attempting to discover building photons...")
             signal_mask = (df["confidence"] >= 3) & (df["ph_h_classed"] != 0)
             if not np.any(signal_mask):
                 return df
@@ -705,6 +696,11 @@ class ATL03Reader(IceSat2Reader):
                     ~df["ph_h_classed"].isin(protected_classes)
                 )
                 df.loc[mask, "ph_h_classed"] = 7
+                logger.debug(
+                    f"Classified {np.count_nonzero(mask)} photons as Buildings"
+                )
+            else:
+                logger.debug("No building photons classified")
         except Exception as e:
             logger.warning(f"Building classification failed: {e}")
         return df
@@ -838,25 +834,42 @@ class ATL03Reader(IceSat2Reader):
             logger.warning(f"Inland water classification failed: {e}")
         return df
 
-    def classify_by_mask_geoms(
-        self, dataset, mask_file, classification, except_classes=[]
-    ):
+    def _get_bldg_tree(self, source="bing"):
+        region_geom = self.region.to_shapely()
+        geoms = []
+        if source.lower() == "bing":
+            # Bing Buildings -> Class 7 (Buildings/Noise)
+            bldg_results = fetchez.get(
+                "bing", region=self.region.to_list(), hooks=["unzip"]
+            )
+        elif source.lower() == "gba":
+            # Global Building Atlas -> Class 7 (Buildings/Noise)
+            bldg_results = fetchez.get("gba", region=self.region.to_list())
+
+        if not bldg_results:
+            return None
+
+        for res in bldg_results:
+            with fiona.open(res, "r") as src:
+                for feat in src:
+                    if feat.get("geometry") is not None:
+                        bldg_geom = shape(feat["geometry"])
+                        result = region_geom.intersection(bldg_geom)
+                        if result.area:
+                            geoms.append(bldg_geom)
+        if not geoms:
+            return None
+
+        tree = STRtree(geoms)
+        return tree
+
+    def classify_by_mask_tree(self, dataset, tree, classification, except_classes=[]):
         """Uses Fiona and Shapely STRtree for point-in-polygon classification."""
 
-        if not os.path.exists(mask_file):
+        if tree is None:
             return dataset
 
         try:
-            geoms = []
-            with fiona.open(mask_file, "r") as src:
-                for feat in src:
-                    if feat.get("geometry") is not None:
-                        geoms.append(shape(feat["geometry"]))
-
-            if not geoms:
-                return dataset
-
-            tree = STRtree(geoms)
             x_vals = (
                 dataset["x"].values
                 if "x" in dataset.columns
@@ -868,83 +881,147 @@ class ATL03Reader(IceSat2Reader):
                 else dataset["latitude"].values
             )
             points = shapely.points(x_vals, y_vals)
-
-            _, pt_idx = tree.query(points, predicate="intersects")
+            pt_idx = tree.query(points, predicate="intersects")
+            # slogger.info(pt_idx)
             intersecting_indices = np.unique(pt_idx)
 
             if len(intersecting_indices) > 0:
-                real_indices = dataset.iloc[intersecting_indices].index
-                mask = dataset.index.isin(real_indices) & (
+                # real_indices = dataset.iloc[intersecting_indices].index
+                mask = dataset.index.isin(intersecting_indices) & (
                     ~dataset["ph_h_classed"].isin(except_classes)
                 )
                 dataset.loc[mask, "ph_h_classed"] = classification
 
+                logger.debug(
+                    f"External mask classified {np.count_nonzero(mask)} photons."
+                )
+            else:
+                logger.debug("no photons classified by external mask")
         except Exception as e:
-            logger.warning(f"Failed to apply mask {mask_file}: {e}")
+            logger.warning(f"Failed to apply mask: {e}")
 
         return dataset
 
-    def apply_external_masks(self, df):
-        """Dynamically fetches building and land masks to classify photons."""
+    # def classify_by_mask_geoms(
+    #     self, dataset, mask_file, classification, except_classes=[]
+    # ):
+    #     """Uses Fiona and Shapely STRtree for point-in-polygon classification."""
 
-        if not self.use_external_masks or not self.region:
-            return df
+    #     if not os.path.exists(mask_file):
+    #         return dataset
 
-        from fetchez.spatial import Region
-        from fetchez.modules.bing import Bing
-        from fetchez.modules.wsf import WSF
-        from fetchez.modules.gba import GBA
-        from globato.hooks.hooks.osm_landmask import OSMLandmask
+    #     try:
+    #         geoms = []
+    #         region_geom = self.region.to_shapely()
+    #         with fiona.open(mask_file, "r") as src:
+    #             for feat in src:
+    #                 if feat.get("geometry") is not None:
+    #                     bldg_geom = shape(feat["geometry"])
+    #                     result = region_geom.intersection(bldg_geom)
+    #                     if result.area:
+    #                         # geoms.append(shape(feat["geometry"]))
+    #                         geoms.append(bldg_geom)
 
-        if isinstance(self.region, list):
-            region_obj = Region.from_list(self.region)
-        else:
-            region_obj = self.region
+    #         if not geoms:
+    #             return dataset
 
-        logger.info("Fetching external masks to classify ICESat-2 photons...")
+    #         tree = STRtree(geoms)
+    #     try:
+    #         x_vals = (
+    #             dataset["x"].values
+    #             if "x" in dataset.columns
+    #             else dataset["longitude"].values
+    #         )
+    #         y_vals = (
+    #             dataset["y"].values
+    #             if "y" in dataset.columns
+    #             else dataset["latitude"].values
+    #         )
+    #         points = shapely.points(x_vals, y_vals)
+    #         pt_idx = self.tree.query(points, predicate="intersects")
+    #         intersecting_indices = np.unique(pt_idx)
 
-        # Bing Buildings -> Class 7 (Buildings/Noise)
-        bing_fetcher = Bing(src_region=region_obj)
-        run_fetchez([bing_fetcher])
-        for res in bing_fetcher.results:
-            if res.get("dst_fn"):
-                df = self.classify_by_mask_geoms(
-                    df, res["dst_fn"], 7, except_classes=[40, 41, 42, 44]
-                )
+    #         if len(intersecting_indices) > 0:
+    #             real_indices = dataset.iloc[intersecting_indices].index
+    #             mask = dataset.index.isin(real_indices) & (
+    #                 ~dataset["ph_h_classed"].isin(except_classes)
+    #             )
+    #             dataset.loc[mask, "ph_h_classed"] = classification
 
-        # Global Building Atlas -> Class 7 (Buildings/Noise)
-        gba_fetcher = GBA(src_region=region_obj, fmt="geojson")
-        run_fetchez([gba_fetcher])
-        for res in gba_fetcher.results:
-            if res.get("dst_fn"):
-                df = self.classify_by_mask_geoms(
-                    df, res["dst_fn"], 7, except_classes=[40, 41, 42, 44]
-                )
+    #             logger.debug(f"External mask classified {np.count_nonzero(mask)} photons.")
+    #         else:
+    #             logger.debug("no photons classified by external mask")
+    #     except Exception as e:
+    #         logger.warning(f"Failed to apply mask: {mask_file}: {e}")
 
-        # World Settlement Footprint -> Class 7 (Buildings/Noise)
-        wsf_fetcher = WSF(src_region=region_obj)
-        run_fetchez([wsf_fetcher])
-        for res in wsf_fetcher.results:
-            if res.get("dst_fn"):
-                # WSF returns GeoTIFFs, so we need to vectorize it first.
-                logger.info(
-                    f"WSF tile fetched: {res['dst_fn']}. (Raster masking hook needed here)"
-                )
+    #     return dataset
 
-        # OSM Landmask -> Class 1 (Land / Unclassified)
-        osm_hook = OSMLandmask(filename="temp_icesat2_landmask.geojson")
-        dummy_mod = type("Dummy", (), {"region": region_obj})()
-        osm_hook.run([(dummy_mod, {})])
+    # def apply_external_masks(self, df, geoms):
+    #     """Dynamically fetches building and land masks to classify photons."""
 
-        if os.path.exists("temp_icesat2_landmask.geojson"):
-            df = self.classify_by_mask_geoms(
-                df,
-                "temp_icesat2_landmask.geojson",
-                1,
-                except_classes=[7, 40, 41, 42, 44],
-            )
+    #     if not self.use_external_masks or not self.region:
+    #         return df
 
-        return df
+    #     import fetchez
+    #     #from fetchez.spatial import Region
+    #     from fetchez.modules.bing import Bing
+    #     #from fetchez.modules.wsf import WSF
+    #     #from fetchez.modules.gba import GBA
+    #     #from globato.hooks.tools.osm_landmask import OSMLandmask
+
+    #     # if isinstance(self.region, list):
+    #     #     region_obj = Region.from_list(self.region)
+    #     # else:
+    #     #     region_obj = self.region
+
+    #     logger.debug("Fetching external masks to classify ICESat-2 photons...")
+
+    #     # Bing Buildings -> Class 7 (Buildings/Noise)
+    #     # bing_fetcher = Bing(src_region=self.region).run()
+    #     # logger.info(bing_fetcher)
+    #     # run_fetchez([bing_fetcher])
+    #     bing_results = fetchez.get("bing", region=self.region.to_list(), hooks=["unzip"])
+    #     for res in bing_results:
+    #         logger.info(res)
+    #         # if res.get("dst_fn"):
+    #         #     logger.info(res.get("dst_fn"))
+    #         df = self.classify_by_mask_geoms(
+    #             df, res, 7, except_classes=[40, 41, 42, 44]
+    #         )
+
+    #     # # Global Building Atlas -> Class 7 (Buildings/Noise)
+    #     # gba_fetcher = GBA(src_region=region_obj, fmt="geojson")
+    #     # run_fetchez([gba_fetcher])
+    #     # for res in gba_fetcher.results:
+    #     #     if res.get("dst_fn"):
+    #     #         df = self.classify_by_mask_geoms(
+    #     #             df, res["dst_fn"], 7, except_classes=[40, 41, 42, 44]
+    #     #         )
+
+    #     # # World Settlement Footprint -> Class 7 (Buildings/Noise)
+    #     # wsf_fetcher = WSF(src_region=region_obj)
+    #     # run_fetchez([wsf_fetcher])
+    #     # for res in wsf_fetcher.results:
+    #     #     if res.get("dst_fn"):
+    #     #         # WSF returns GeoTIFFs, so we need to vectorize it first.
+    #     #         logger.info(
+    #     #             f"WSF tile fetched: {res['dst_fn']}. (Raster masking hook needed here)"
+    #     #         )
+
+    #     # # OSM Landmask -> Class 1 (Land / Unclassified)
+    #     # osm_hook = OSMLandmask(filename="temp_icesat2_landmask.geojson")
+    #     # dummy_mod = type("Dummy", (), {"region": region_obj})()
+    #     # osm_hook.run([(dummy_mod, {})])
+
+    #     # if os.path.exists("temp_icesat2_landmask.geojson"):
+    #     #     df = self.classify_by_mask_geoms(
+    #     #         df,
+    #     #         "temp_icesat2_landmask.geojson",
+    #     #         1,
+    #     #         except_classes=[7, 40, 41, 42, 44],
+    #     #     )
+
+    #     return df
 
     # ==============================================
     # Main Reader
@@ -960,6 +1037,7 @@ class ATL03Reader(IceSat2Reader):
         atl06_fn=None,
         atl12_fn=None,
         atl13_fn=None,
+        bldg_tree=None,
     ):
         if orientation is None:
             orientation = f["/orbit_info/sc_orient"][0]
@@ -995,7 +1073,8 @@ class ATL03Reader(IceSat2Reader):
             geoid = geophys_grp["geoid"][...]
             geoid_f2m = geophys_grp["geoid_free2mean"][...]
             dem_h = geophys_grp["dem_h"][...]
-        except KeyError:
+        except KeyError as e:
+            logger.debug(f"Could not parse h5 keys: {e}")
             return None
 
         ph_seg_ids = np.repeat(seg_id, seg_ph_cnt)
@@ -1059,33 +1138,52 @@ class ATL03Reader(IceSat2Reader):
         seg_idx_dict = dict(zip(seg_id, seg_starts))
 
         if atl08_fn:
+            logger.debug("Apply ATL08 Classifications")
             df = self.apply_atl08_classifications(df, atl08_fn, laser, seg_idx_dict)
         if atl09_fn:
+            logger.debug("Apply ATL09 Classifications")
             df = self.apply_atl09_data(df, atl09_fn, laser)
         if "reflectance" not in df.columns or df["reflectance"].isna().all():
+            logger.debug("Apply Reflectance Classifications")
             df = self.calculate_pseudo_reflectance(df, is_strong=is_strong)
 
+        logger.debug("Apply Open Ocean Classification")
         is_open_ocean = (ph_is_ocean == 1) & (np.abs(h_ortho) < 2)
         df.loc[is_open_ocean, "ph_h_classed"] = 44
         df = self.classify_outliers_algo(df, multiplier=3.0)
 
         if atl24_fn:
+            logger.debug("Apply ATL24 Classifications")
             df = self.apply_atl24_classifications(
                 df, atl24_fn, laser, geoseg_beg, geoseg_end
             )
         if atl13_fn:
+            logger.debug("Apply ATL13 Classifications")
             df = self.apply_atl13_classifications(df, atl13_fn, laser)
         if atl12_fn:
+            logger.debug("Apply ATL12 Classifications")
             df = self.apply_atl12_classifications(df, atl12_fn, laser)
 
+        logger.debug("Apply Near-Shore Classifications")
         df = self.classify_nearshore_roughness(df)
+        logger.debug("Apply Inland Water Classifications")
         df = self.classify_inland_water_algo(
             df, max_roughness=0.45, max_reflectance=0.2, max_range=1, fill_gaps=True
         )
+        logger.debug("Apply Building Classifications")
         df = self.classify_buildings_algo(df)
 
         if self.known_bathymetry or (self.use_dbscan and HAS_SKLEARN):
+            logger.debug("Apply Supplemental Bathymetry Classifications")
             df = self.classify_bathymetry_algo(df)
+
+        # df = self.apply_external_masks(df)
+        if self.use_external_masks:
+            if bldg_tree:
+                logger.debug("Apply External Building Classifications")
+                df = self.classify_by_mask_tree(
+                    df, bldg_tree, 7, except_classes=[40, 41, 42, 44]
+                )
 
         return df
 
@@ -1096,7 +1194,9 @@ class ATL03Reader(IceSat2Reader):
         # osm_geom = None
         # osm_lakes = None
 
+        bldg_tree = None
         if self.use_external_masks:
+            bldg_tree = self._get_bldg_tree(source="gba")
             logger.warning(
                 "External mask fetching (Bing/OSM) disabled. Need fetches.osm/bingbfp module."
             )
@@ -1125,6 +1225,7 @@ class ATL03Reader(IceSat2Reader):
                         atl09_fn=atl09_fn,
                         atl24_fn=atl24_fn,
                         atl06_fn=atl06_fn,
+                        bldg_tree=bldg_tree,
                     )
 
                     if dataset is None or dataset.empty:
@@ -1173,100 +1274,100 @@ class ATL03Reader(IceSat2Reader):
 # ==============================================
 # Testing reader/stream hook
 # ==============================================
-class ATL03Stream(FetchHook):
-    name = "atl03_stream"
-    meta_stage = "format"
-    meta_category = "format-stream"
+# class ATL03Stream(FetchHook):
+#     name = "atl03_stream"
+#     meta_stage = "format"
+#     meta_category = "format-stream"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.params = kwargs
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.params = kwargs
 
-    def run(self, entries):
-        for mod, entry in entries:
-            dst_fn = entry.get("dst_fn")
+#     def run(self, entries):
+#         for mod, entry in entries:
+#             dst_fn = entry.get("dst_fn")
 
-            if dst_fn and dst_fn.endswith(".h5") and os.path.exists(dst_fn):
-                logger.info(
-                    f"[{self.name}] Initiating raw ATL03 stream for {os.path.basename(dst_fn)}"
-                )
+#             if dst_fn and dst_fn.endswith(".h5") and os.path.exists(dst_fn):
+#                 logger.info(
+#                     f"[{self.name}] Initiating raw ATL03 stream for {os.path.basename(dst_fn)}"
+#                 )
 
-                reader = ATL03RawReader(dst_fn, **self.params)
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
+#                 reader = ATL03RawReader(dst_fn, **self.params)
+#                 entry["stream"] = reader.yield_chunks()
+#                 entry["stream_type"] = "xyz_recarray"
 
-        return entries
+#         return entries
 
 
-class ATL03RawReader:
-    """A reader for raw ICESat-2 ATL03 HDF5 files.
-    Yields chunks of NumPy structured arrays containing photons across all 6 beams.
+# class ATL03RawReader:
+#     """A reader for raw ICESat-2 ATL03 HDF5 files.
+#     Yields chunks of NumPy structured arrays containing photons across all 6 beams.
 
-    Usage:
-      --hook read_atl03
-    """
+#     Usage:
+#       --hook read_atl03
+#     """
 
-    def __init__(self, src_fn, chunk_size=1000000, **kwargs):
-        self.src_fn = src_fn
-        self.chunk_size = int(chunk_size)
-        self.beams = ["gt1l", "gt1r", "gt2l", "gt2r", "gt3l", "gt3r"]
+#     def __init__(self, src_fn, chunk_size=1000000, **kwargs):
+#         self.src_fn = src_fn
+#         self.chunk_size = int(chunk_size)
+#         self.beams = ["gt1l", "gt1r", "gt2l", "gt2r", "gt3l", "gt3r"]
 
-    def yield_chunks(self):
-        try:
-            with h5.File(self.src_fn, "r") as f:
-                for beam in self.beams:
-                    if beam not in f or f"{beam}/heights" not in f:
-                        continue
+#     def yield_chunks(self):
+#         try:
+#             with h5.File(self.src_fn, "r") as f:
+#                 for beam in self.beams:
+#                     if beam not in f or f"{beam}/heights" not in f:
+#                         continue
 
-                    h_grp = f[f"{beam}/heights"]
+#                     h_grp = f[f"{beam}/heights"]
 
-                    if not all(k in h_grp for k in ["lon_ph", "lat_ph", "h_ph"]):
-                        logger.warning(
-                            f"[{self.src_fn}] Missing spatial arrays in beam {beam}"
-                        )
-                        continue
+#                     if not all(k in h_grp for k in ["lon_ph", "lat_ph", "h_ph"]):
+#                         logger.warning(
+#                             f"[{self.src_fn}] Missing spatial arrays in beam {beam}"
+#                         )
+#                         continue
 
-                    total_pts = h_grp["h_ph"].shape[0]
-                    if total_pts == 0:
-                        continue
+#                     total_pts = h_grp["h_ph"].shape[0]
+#                     if total_pts == 0:
+#                         continue
 
-                    logger.debug(
-                        f"[{self.src_fn}] Streaming {total_pts} photons from {beam}..."
-                    )
+#                     logger.debug(
+#                         f"[{self.src_fn}] Streaming {total_pts} photons from {beam}..."
+#                     )
 
-                    for i in range(0, total_pts, self.chunk_size):
-                        chunk_end = min(i + self.chunk_size, total_pts)
-                        n_pts = chunk_end - i
+#                     for i in range(0, total_pts, self.chunk_size):
+#                         chunk_end = min(i + self.chunk_size, total_pts)
+#                         n_pts = chunk_end - i
 
-                        dt = [
-                            ("x", "f8"),
-                            ("y", "f8"),
-                            ("z", "f4"),
-                            ("w", "f4"),
-                            ("delta_time", "f8"),
-                            ("beam", "S4"),
-                        ]
+#                         dt = [
+#                             ("x", "f8"),
+#                             ("y", "f8"),
+#                             ("z", "f4"),
+#                             ("w", "f4"),
+#                             ("delta_time", "f8"),
+#                             ("beam", "S4"),
+#                         ]
 
-                        chunk_arr = np.zeros(n_pts, dtype=dt)
-                        chunk_arr["x"] = h_grp["lon_ph"][i:chunk_end]
-                        chunk_arr["y"] = h_grp["lat_ph"][i:chunk_end]
-                        chunk_arr["z"] = h_grp["h_ph"][i:chunk_end]
+#                         chunk_arr = np.zeros(n_pts, dtype=dt)
+#                         chunk_arr["x"] = h_grp["lon_ph"][i:chunk_end]
+#                         chunk_arr["y"] = h_grp["lat_ph"][i:chunk_end]
+#                         chunk_arr["z"] = h_grp["h_ph"][i:chunk_end]
 
-                        if "delta_time" in h_grp:
-                            chunk_arr["delta_time"] = h_grp["delta_time"][i:chunk_end]
-                        chunk_arr["beam"] = beam.encode("utf-8")
+#                         if "delta_time" in h_grp:
+#                             chunk_arr["delta_time"] = h_grp["delta_time"][i:chunk_end]
+#                         chunk_arr["beam"] = beam.encode("utf-8")
 
-                        if "signal_conf_ph" in h_grp:
-                            # ATL03 confidence is an (N, 5) array for 5 surface types.
-                            # Taking the max across axis 1 securely grabs the highest
-                            # confidence rating this photon received across any algorithm!
-                            conf_block = h_grp["signal_conf_ph"][i:chunk_end]
-                            if conf_block.ndim == 2:
-                                chunk_arr["w"] = np.max(conf_block, axis=1)
-                            else:
-                                chunk_arr["w"] = conf_block
+#                         if "signal_conf_ph" in h_grp:
+#                             # ATL03 confidence is an (N, 5) array for 5 surface types.
+#                             # Taking the max across axis 1 securely grabs the highest
+#                             # confidence rating this photon received across any algorithm!
+#                             conf_block = h_grp["signal_conf_ph"][i:chunk_end]
+#                             if conf_block.ndim == 2:
+#                                 chunk_arr["w"] = np.max(conf_block, axis=1)
+#                             else:
+#                                 chunk_arr["w"] = conf_block
 
-                        yield chunk_arr
+#                         yield chunk_arr
 
-        except Exception as e:
-            logger.error(f"[ATL03] Failed to parse ATL03 {self.src_fn}: {e}")
+#         except Exception as e:
+#             logger.error(f"[ATL03] Failed to parse ATL03 {self.src_fn}: {e}")

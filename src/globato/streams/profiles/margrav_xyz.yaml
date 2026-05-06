@@ -1,0 +1,9 @@
+name: margrav-xyz
+description: Marine Gravity Bathymetry
+stream-type: "point-stream"
+reader:
+  name: "xyz-point-reader"
+  args:
+    skiprows: 1
+    delimiter: " "
+    x_offset: "REM"

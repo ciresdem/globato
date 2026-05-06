@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.rio
+globato.streams.readers.rio
 ~~~~~~~~~~~~~
 
 Rasterio data parsing
@@ -11,7 +11,6 @@ Rasterio data parsing
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 import rasterio
@@ -19,18 +18,39 @@ from rasterio.windows import Window, from_bounds
 from rasterio.warp import transform_bounds
 from rasterio.errors import WindowError
 
-from fetchez.hooks import FetchHook
-# from fetchez.utils import float_or
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 logging.getLogger("rasterio").setLevel(logging.ERROR)
 
 
-class RasterioReader:
+class RasterioReader(BaseGlobatoReader):
     """Streaming Raster Parser using Rasterio."""
 
-    def __init__(self, src_fn, band_no=1, chunk_size=None, region=None, **kwargs):
-        self.src_fn = src_fn
+    name = "rasterio-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "rio-raster"
+    meta_desc = "Read raster data through rasterio into a point stream"
+    meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
+
+    def __init__(
+        self,
+        path,
+        band_no=1,
+        chunk_size=None,
+        region=None,
+        path_prefix="",
+        path_suffix="",
+        **kwargs,
+    ):
+        super().__init__(path, **kwargs)
+
+        # Build the GDAL subdataset path if prefixes/suffixes are provided
+        if path_prefix or path_suffix:
+            self.src_fn = f"{path_prefix}{path}{path_suffix}"
+        else:
+            self.src_fn = path
+
         self.band_no = band_no
         self.chunk_size = chunk_size
         self.region = region
@@ -46,7 +66,7 @@ class RasterioReader:
         except Exception:
             return "EPSG:4326"
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield chunks using Rasterio Windows."""
 
         try:
@@ -102,8 +122,8 @@ class RasterioReader:
                             cols = min(w_chunk, x_end - x)
                             window = Window(x, y, cols, rows)
                             z = src.read(self.band_no, window=window)
-                            u = np.zeros_like(z)
-                            w = np.ones_like(z)
+                            # u = np.zeros_like(z)
+                            # w = np.ones_like(z)
 
                             if not np.issubdtype(z.dtype, np.floating):
                                 z = z.astype(np.float32)
@@ -121,8 +141,8 @@ class RasterioReader:
                                 continue
 
                             z_valid = z[mask]
-                            w_valid = w[mask]
-                            u_valid = u[mask]
+                            # w_valid = w[mask]
+                            # u_valid = u[mask]
 
                             local_rows, local_cols = np.where(mask)
 
@@ -140,44 +160,18 @@ class RasterioReader:
                                     ("x", "f8"),
                                     ("y", "f8"),
                                     ("z", "f4"),
-                                    ("w", "f4"),
-                                    ("u", "f4"),
+                                    # ("w", "f4"),
+                                    # ("u", "f4"),
                                 ],
                             )
 
                             chunk["x"] = xs
                             chunk["y"] = ys
                             chunk["z"] = z_valid
-                            chunk["u"] = u_valid
-                            chunk["w"] = w_valid
+                            # chunk["u"] = u_valid
+                            # chunk["w"] = w_valid
 
                             yield chunk
 
         except Exception as e:
             logger.error(f"Rasterio read failed: {e}")
-
-
-class RasterioStream(FetchHook):
-    name = "rasterio_stream"
-    meta_stage = "file"
-    meta_category = "format-stream"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.params = kwargs
-
-    def run(self, entries):
-        for mod, entry in entries:
-            src = entry.get("dst_fn")
-            if not src or not os.path.exists(src):
-                continue
-
-            region = getattr(mod, "region", None)
-
-            try:
-                reader = RasterioReader(src, region=region, **self.params)
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-            except Exception as e:
-                logger.warning(f"RasterioStream failed for {src}: {e}")
-        return entries

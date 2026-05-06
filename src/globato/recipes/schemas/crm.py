@@ -11,8 +11,12 @@ Registers CRM DEM-specific schema into the Fetchez engine.
 :license: MIT, see LICENSE for more details.
 """
 
+import logging
+
 from fetchez.recipes.schemas import BaseSchema  # , SchemaRegistry
 from fetchez.spatial import parse_region
+
+logger = logging.getLogger(__name__)
 
 
 class CRMSchema(BaseSchema):
@@ -44,6 +48,9 @@ class CRMSchema(BaseSchema):
         proc_region = dist_region.copy()
         proc_region.buffer(10)  # Buffering slightly to ensure overlap coverage
         config["region"] = proc_region.to_list()
+        logger.debug(
+            f"[Schema: {cls.name}] Expanded processing region to {proc_region}."
+        )
 
         global_hooks = config.get("global_hooks", [])
         modules = config.get("modules", [])
@@ -53,28 +60,33 @@ class CRMSchema(BaseSchema):
             hooks = module.get("hooks", [])
 
             for hook in hooks:
-                if hook.get("name") == "stream_reproject":
+                if hook.get("name") in ["stream-reproject", "stream_reproject"]:
                     if not hook.get("args", None):
                         hook.setdefault("args", {})
                     hook["args"].update({"dst_srs": "EPSG:4326+3855"})
 
             insert_idx = len(hooks)
             for i, hook in enumerate(hooks):
-                if hook.get("name") == "stream_data":
-                    insert_idx = i
+                if hook.get("name") in ["stream-init", "stream_data"]:
+                    insert_idx = i + 1
                     break
 
             # Add range_z between Marians Trench and Mt. Everest for safety
             # right after stream_data starts. This is in meters.
             hooks.insert(
                 insert_idx,
-                {"name": "range_z", "args": {"min_z": -11000, "max_z": 9000}},
+                {"name": "range-z", "args": {"min_z": -11000, "max_z": 9000}},
             )
             module["hooks"] = hooks
 
+            mod_name = module.get("module", "unknown")
+            logger.debug(
+                f"[Schema: {cls.name}] Injected 'range_z' into {mod_name} module."
+            )
+
         # Update Stack parameters
         for hook in global_hooks:
-            if hook.get("name") == "multi_stack":
+            if hook.get("name") in ["multi_stack", "multi-stack"]:
                 hook.setdefault("args", {})
                 hook["args"].update(
                     {
@@ -83,7 +95,17 @@ class CRMSchema(BaseSchema):
                         "srs": "EPSG:4326+3855",
                     }
                 )
-            if hook.get("name") == "viz_geoshade":
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'multi-stack' resolution to {res_deg}."
+                )
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'multi-stack' registration to 'grid'."
+                )
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'multi-stack' srs to 'EPSG:4326+3855'."
+                )
+
+            if hook.get("name") == ["viz_geoshade", "viz-geoshade"]:
                 hook.setdefault("args", {})
                 hook["args"].update(
                     {
@@ -91,12 +113,15 @@ class CRMSchema(BaseSchema):
                         "z_max": 1500,
                     }
                 )
+                logger.debug(
+                    f"[Schema: {cls.name}] Changed 'viz_geoshade' z_range to [-3500 - 1500]."
+                )
 
         # Find where to insert the cut/crop hooks!
         # We want to put it after dem_uncertainty, but before viz_geoshade
         insert_idx = len(global_hooks)
         for i, hook in enumerate(global_hooks):
-            if hook.get("name") == "viz_geoshade":
+            if hook.get("name") in ["viz_geoshade", "viz-geoshade"]:
                 insert_idx = i
                 break
 
@@ -107,6 +132,7 @@ class CRMSchema(BaseSchema):
         global_hooks.insert(
             insert_idx, {"name": "raster_crop", "args": {"output": delivery_fn}}
         )
+        logger.debug(f"[Schema: {cls.name}] Injected 'raster-crop' in global hooks.")
 
         global_hooks.insert(
             insert_idx,
@@ -117,6 +143,9 @@ class CRMSchema(BaseSchema):
                 },
             },
         )
+        logger.debug(
+            f"[Schema: {cls.name}] Injected 'raster-cut' in global hooks with region: {dist_region}."
+        )
 
         global_hooks.append(
             {
@@ -126,6 +155,9 @@ class CRMSchema(BaseSchema):
                     "match": [delivery_fn, "hillshade.tif"],
                 },
             }
+        )
+        logger.debug(
+            f"[Schema: {cls.name}] Injected 'copy-artifact' in global hooks to copy delivery tifs to ../_crm_deliverables"
         )
 
         config["global_hooks"] = global_hooks

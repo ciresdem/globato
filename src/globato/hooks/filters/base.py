@@ -51,10 +51,11 @@ class GlobatoFilter(FetchHook):
         """Standard function to hook into the stream pipeline."""
 
         for mod, entry in entries:
-            stream = entry.get("stream")
-            if not stream:
+            if not self.is_point_stream(entry):
+                logger.debug(f"{entry} data has no stream!")
                 continue
 
+            stream = entry.get("stream")
             # `setup` allows subclass to prepare resources based on region/module
             if hasattr(self, "setup"):
                 if self.setup(mod, entry) is False:
@@ -84,7 +85,7 @@ class GlobatoFilter(FetchHook):
                     eligible_mask = np.ones(len(chunk), dtype=bool)
 
                 # subclass returns a boolean mask (True = Outlier/Target)
-                # OR returns a modified chunk (for destructive filters)
+                # or returns a modified chunk (for destructive filters)
                 result = self.filter_chunk(chunk)
 
                 if result is None:

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.formats.gdal_proc
+globato.streams.readers.gdal_proc
 ~~~~~~~~~~~~~
 
 GDAL data parsing
@@ -11,7 +11,6 @@ GDAL data parsing
 :license: MIT, see LICENSE for more details.
 """
 
-import os
 import logging
 import numpy as np
 
@@ -22,21 +21,27 @@ try:
 except ImportError:
     HAS_GDAL = False
 
-from fetchez.hooks import FetchHook
 from fetchez.utils import int_or
+from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
-class GDALReader:
+class GDALReader(BaseGlobatoReader):
     """Streaming GDAL Raster Parser.
 
     Reads a raster in chunks and yields structured numpy arrays.
     """
 
+    name = "gdal-point-reader"
+    meta_category = "point-stream"
+    meta_dtype = "gdal-raster"
+    meta_desc = "Read raster data through gdal into a point stream"
+    meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
+
     def __init__(
         self,
-        src_fn,
+        path,
         region=None,
         band_no=1,
         mask_band=None,
@@ -44,12 +49,14 @@ class GDALReader:
         unc_band=None,
         chunk_size=4096,
         node="pixel",
+        **kwargs,
     ):
 
         if not HAS_GDAL:
             raise ImportError("GDAL is required for this processor.")
 
-        self.src_fn = src_fn
+        super().__init__(path, **kwargs)
+        self.src_fn = path
         self.req_region_bounds = region
         self.band_no = int_or(band_no, 1)
         self.mask_band = int_or(mask_band)
@@ -100,7 +107,7 @@ class GDALReader:
         except Exception:
             return "EPSG:4326"
 
-    def yield_chunks(self):
+    def _yield_raw_chunks(self):
         """Yield numpy recarrays (x,y,z,w,u) from raster chunks."""
 
         ds = gdal.Open(self.src_fn, gdal.GA_ReadOnly)
@@ -195,33 +202,3 @@ class GDALReader:
             logger.error(f"could not chunk gdal file {self.src_fn}.")
         finally:
             ds = None
-
-
-class GDALStream(FetchHook):
-    """Source Hook: Opens a raster and attaches a stream iterator."""
-
-    name = "gdal_stream"
-    meta_stage = "file"
-    meta_category = "format-stream"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.reader_kwargs = kwargs
-
-    def run(self, entries):
-        for mod, entry in entries:
-            src = entry.get("dst_fn")
-            if not src or not os.path.exists(src):
-                continue
-
-            try:
-                reader = GDALReader(src, **self.reader_kwargs)
-                # print(reader.get_srs())
-                # Attach the generator
-                # entry['src_srs'] = reader.get_srs()
-                entry["stream"] = reader.yield_chunks()
-                entry["stream_type"] = "xyz_recarray"
-            except Exception as e:
-                logger.warning(f"GDALStream failed for {src}: {e}")
-
-        return entries

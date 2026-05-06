@@ -1,0 +1,8 @@
+name: dnc-xyz
+description: DNC Nautical Charts
+stream-type: "point-stream"
+reader:
+  name: "fiona-point-reader"
+  args:
+    z_field: "hdp"
+    z_scale: -1
