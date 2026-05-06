@@ -59,6 +59,10 @@ class XYZPrinter(FetchHook):
                             columns.append(chunk["w"])
                         if "u" in chunk.dtype.names:
                             columns.append(chunk["u"])
+                        if "classification" in chunk.dtype.names:
+                            columns.append(chunk["classification"])
+                        if "confidence" in chunk.dtype.names:
+                            columns.append(chunk["confidence"])
 
                         data = np.column_stack(columns)
                         np.savetxt(
