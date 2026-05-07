@@ -120,6 +120,7 @@ class RasterioReader(BaseGlobatoReader):
 
                         for x in range(x_start, x_end, w_chunk):
                             cols = min(w_chunk, x_end - x)
+
                             window = Window(x, y, cols, rows)
                             z = src.read(self.band_no, window=window)
                             # u = np.zeros_like(z)
@@ -152,7 +153,6 @@ class RasterioReader(BaseGlobatoReader):
                             xs, ys = rasterio.transform.xy(
                                 src.transform, global_rows, global_cols, offset="center"
                             )
-
                             count = len(z_valid)
                             chunk = np.zeros(
                                 count,

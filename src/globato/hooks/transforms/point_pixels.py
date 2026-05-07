@@ -286,6 +286,17 @@ class PointPixels:
         # --- Fill Output Grids ---
         grid_shape = (this_srcwin[3], this_srcwin[2])  # rows, cols
 
+        # -- Safety First ---
+        if grid_shape[0] <= 0 or grid_shape[1] <= 0:
+            for key in out_arrays:
+                out_arrays[key] = None
+            return out_arrays, None, None
+
+        if mode == "sums" and np.sum(unq_cnt) == 0:
+            for key in out_arrays:
+                out_arrays[key] = None
+            return out_arrays, None, None
+
         def fill_grid(values, fill_val=np.nan):
             grid = np.full(grid_shape, fill_val)
             grid[unq[:, 0], unq[:, 1]] = values

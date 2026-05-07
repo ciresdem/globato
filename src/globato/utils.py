@@ -18,6 +18,7 @@ import logging
 import io
 
 from tqdm import tqdm
+from rasterio.windows import Window
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
@@ -163,3 +164,36 @@ def yield_parsed_regions(region_str):
         # feat_name = f"tile_{i:03d}" if is_batch else None
         feat_name = t_reg.format("fn") if is_batch else None
         yield t_reg, feat_name
+
+
+# -- rasterio helpers ---
+
+def is_valid_window(window_tuple):
+    """Safeguard against Rasterio's zero-width truncation quirk.
+    Accepts a tuple of (col_off, row_off, width, height) or a Rasterio Window.
+    """
+
+    if isinstance(window_tuple, Window):
+        w, h = window_tuple.width, window_tuple.height
+    else:
+        _, _, w, h = window_tuple
+
+    return w > 0 and h > 0
+
+
+def safe_window_read(src, window):
+    """Reads a window from a Rasterio dataset safely.
+    Prevents the GDAL/NumPy broadcasting crash on edge chunks.
+    """
+
+    if not is_valid_window(window):
+        return None
+
+    data = src.read(window=window)
+
+    # Rasterio can still truncate at the exact file edge, so we verify
+    # the returned array actually has data to broadcast against.
+    if 0 in data.shape:
+        return None
+
+    return data

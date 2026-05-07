@@ -162,7 +162,7 @@ class MultiStackAccumulator:
             return
 
         arrays, sub_win, _ = self.pixel_binner(points, mode="sums")
-        if arrays["z"] is None:
+        if arrays is None or arrays.get("z") is None:
             return
 
         col_off, row_off, width, height = sub_win
