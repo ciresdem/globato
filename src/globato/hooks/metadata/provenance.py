@@ -183,9 +183,7 @@ class SourceMasks(FetchHook):
     meta_category = "metadata"
     meta_aliases = ["source_masks"]
 
-    def __init__(
-        self, res="1s", output_dir=None, output="source_masks.vrt", **kwargs
-    ):
+    def __init__(self, res="1s", output_dir=None, output="source_masks.vrt", **kwargs):
         logger.info(f"res init: {res}")
         super().__init__(**kwargs)
         self.res = str2inc(res)

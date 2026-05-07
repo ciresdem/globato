@@ -168,6 +168,7 @@ def yield_parsed_regions(region_str):
 
 # -- rasterio helpers ---
 
+
 def is_valid_window(window_tuple):
     """Safeguard against Rasterio's zero-width truncation quirk.
     Accepts a tuple of (col_off, row_off, width, height) or a Rasterio Window.
