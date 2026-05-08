@@ -19,11 +19,12 @@ from rasterio.windows import Window
 
 from fetchez.hooks import FetchHook
 from globato.utils import add_field_to_recarray
+from globato.hooks.filters.reference import RasterSampling
 
 logger = logging.getLogger(__name__)
 
 
-class BindGrid(FetchHook):
+class BindGrid(FetchHook, RasterSampling):
     """Dynamically samples an external raster and binds the values
     to a specific column in the point stream.
     """
@@ -73,6 +74,10 @@ class BindGrid(FetchHook):
 
         target_dtype = self.DTYPE_MAP.get(self.column, np.float32)
 
+        # for chunk in stream:
+        #     vals = self.sample_raster(target_raster, chunk, default_val=0)
+        #     print(vals)
+        #     yield chunk
         try:
             with rasterio.Env(CPL_MIN_LOG_LEVEL=rasterio.logging.ERROR):
                 with rasterio.open(target_raster) as src:
@@ -81,6 +86,7 @@ class BindGrid(FetchHook):
                             chunk = add_field_to_recarray(
                                 chunk, self.column, target_dtype, 0
                             )
+
 
                         rows, cols = rasterio.transform.rowcol(
                             src.transform, chunk["x"], chunk["y"]
@@ -91,7 +97,6 @@ class BindGrid(FetchHook):
                             & (cols >= 0)
                             & (cols < src.width)
                         )
-
                         if not np.any(valid):
                             yield chunk
                             continue
@@ -119,7 +124,7 @@ class BindGrid(FetchHook):
 
     def run(self, entries):
         for mod, entry in entries:
-            if not self.is_points(entry):
+            if not self.is_point_stream(entry):
                 continue
 
             # Determine which raster to sample

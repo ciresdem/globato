@@ -55,9 +55,9 @@ class ProvenanceHook(FetchHook):
             return
 
         x_inc, y_inc = self.res, self.res
-
-        self.xcount = int(region.width / x_inc)
-        self.ycount = int(region.height / y_inc)
+        self.xcount, self.ycount, self.dst_gt = region.geo_transform(
+            x_inc=x_inc, y_inc=y_inc, node="grid"
+        )
         self.transform = rasterio.transform.from_origin(
             region.xmin, region.ymax, x_inc, y_inc
         )
@@ -184,7 +184,6 @@ class SourceMasks(FetchHook):
     meta_aliases = ["source_masks"]
 
     def __init__(self, res="1s", output_dir=None, output="source_masks.vrt", **kwargs):
-        logger.info(f"res init: {res}")
         super().__init__(**kwargs)
         self.res = str2inc(res)
         self.output = output
@@ -200,12 +199,10 @@ class SourceMasks(FetchHook):
         if self._initialized:
             return
 
-        logger.info(f"res init_grid: {self.res}")
         x_inc, y_inc = self.res, self.res
-
-        self.xcount = int(region.width / x_inc)
-        self.ycount = int(region.height / y_inc)
-
+        self.xcount, self.ycount, self.dst_gt = region.geo_transform(
+            x_inc=x_inc, y_inc=y_inc, node="grid"
+        )
         self.transform = rasterio.transform.from_origin(
             region.xmin, region.ymax, x_inc, y_inc
         )
