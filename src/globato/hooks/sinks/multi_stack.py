@@ -372,6 +372,7 @@ class MultiStackHook(FetchHook):
         mode="mean",
         weight_threshold="1",
         crs=None,
+        drop_classes=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -381,6 +382,7 @@ class MultiStackHook(FetchHook):
         self.weight_threshold = weight_threshold
         self.crs = crs
         self._accumulator = None
+        self.drop_classes = [int(x) for x in str(drop_classes).split("/")] if drop_classes else []
 
     def _init_accumulator(self, region):
         if self._accumulator:
@@ -470,6 +472,14 @@ class MultiStackHook(FetchHook):
                 count += valid_z.size
 
             elif isinstance(chunk, np.ndarray) and "z" in chunk.dtype.names:
+
+                if self.drop_classes and "classification" in chunk.dtype.names:
+                    keep_mask = ~np.isin(chunk["classification"], self.drop_classes)
+                    chunk = chunk[keep_mask]
+
+                    if len(chunk) == 0:
+                        continue
+
                 # Point rec-array stream chunk
                 valid_z = chunk["z"][~np.isnan(chunk["z"])]
                 count += len(chunk)
