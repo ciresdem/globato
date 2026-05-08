@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.hooks.transforms.bind_value
+globato.hooks.transforms.bind_grid
 ~~~~~~~~~~~~~
 
-Bind a constant value to a point-stream field
+Bind grid values to a point-stream field
 
 :copyright: (c) 2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
@@ -21,6 +21,7 @@ from fetchez.hooks import FetchHook
 from globato.utils import add_field_to_recarray
 
 logger = logging.getLogger(__name__)
+
 
 class BindGrid(FetchHook):
     """Dynamically samples an external raster and binds the values
@@ -40,7 +41,14 @@ class BindGrid(FetchHook):
         "confidence": np.int16,
     }
 
-    def __init__(self, column="classification", grid_path=None, path_replace=None, band=1, **kwargs):
+    def __init__(
+        self,
+        column="classification",
+        grid_path=None,
+        path_replace=None,
+        band=1,
+        **kwargs,
+    ):
         """
         Args:
             column (str): Target array column (e.g., 'classification', 'w', 'confidence').
@@ -59,7 +67,8 @@ class BindGrid(FetchHook):
     def _process(self, stream, target_raster):
         if not target_raster or not os.path.exists(target_raster):
             logger.warning(f"[{self.name}] Raster not found: {target_raster}")
-            for chunk in stream: yield chunk
+            for chunk in stream:
+                yield chunk
             return
 
         target_dtype = self.DTYPE_MAP.get(self.column, np.float32)
@@ -67,13 +76,21 @@ class BindGrid(FetchHook):
         try:
             with rasterio.Env(CPL_MIN_LOG_LEVEL=rasterio.logging.ERROR):
                 with rasterio.open(target_raster) as src:
-
                     for chunk in stream:
                         if self.column not in chunk.dtype.names:
-                            chunk = add_field_to_recarray(chunk, self.column, target_dtype, 0)
+                            chunk = add_field_to_recarray(
+                                chunk, self.column, target_dtype, 0
+                            )
 
-                        rows, cols = rasterio.transform.rowcol(src.transform, chunk["x"], chunk["y"])
-                        valid = (rows >= 0) & (rows < src.height) & (cols >= 0) & (cols < src.width)
+                        rows, cols = rasterio.transform.rowcol(
+                            src.transform, chunk["x"], chunk["y"]
+                        )
+                        valid = (
+                            (rows >= 0)
+                            & (rows < src.height)
+                            & (cols >= 0)
+                            & (cols < src.width)
+                        )
 
                         if not np.any(valid):
                             yield chunk
@@ -82,7 +99,9 @@ class BindGrid(FetchHook):
                         r_min, r_max = np.min(rows[valid]), np.max(rows[valid])
                         c_min, c_max = np.min(cols[valid]), np.max(cols[valid])
 
-                        window = Window(c_min, r_min, c_max - c_min + 1, r_max - r_min + 1)
+                        window = Window(
+                            c_min, r_min, c_max - c_min + 1, r_max - r_min + 1
+                        )
 
                         data = src.read(self.band, window=window)
 
@@ -95,7 +114,8 @@ class BindGrid(FetchHook):
 
         except Exception as e:
             logger.error(f"[{self.name}] Failed to sample {target_raster}: {e}")
-            for chunk in stream: yield chunk
+            for chunk in stream:
+                yield chunk
 
     def run(self, entries):
         for mod, entry in entries:
@@ -106,7 +126,9 @@ class BindGrid(FetchHook):
             target_raster = self.grid_path
             if self.path_replace and entry.get("dst_fn"):
                 old_str, new_str = self.path_replace.split(",")
-                target_raster = entry["dst_fn"].replace(old_str.strip(), new_str.strip())
+                target_raster = entry["dst_fn"].replace(
+                    old_str.strip(), new_str.strip()
+                )
 
             entry["stream"] = self._process(entry["stream"], target_raster)
 
