@@ -472,7 +472,6 @@ def _list_sources(ctx, param, value):
         category = meta.get("category", "")
         mod_path = meta.get("mod", "")
 
-        # ✨ THE FILTER: Only show sources explicitly tagged for Globato DEM use!
         is_globato = (
             mod_path.startswith("globato.modules")
             or category.lower() == "globato"
@@ -669,6 +668,7 @@ def recipe_build(
     """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
 
     from fetchez.registry import HookRegistry
+    HookRegistry.load_all()
 
     if not sources:
         click.secho(
@@ -708,7 +708,7 @@ def recipe_build(
         "stream_xyz",
     ]
     # Known file-stage filters that MUST run before the stream starts
-    file_stage_hooks = ["filename_filter", "raster_flats"]
+    file_stage_hooks = ["filename_filter", "raster_flats", "unzip"]
 
     for mod in compiled_modules:
         hooks = mod.setdefault("hooks", [])
@@ -824,13 +824,13 @@ def recipe_build(
                         "name": "ms_blend",
                         "args": {
                             "weight_threshold": w,
-                            "blend_dist": 20,  # Defaulting to 20, could also make this an option!
+                            "blend_dist": 20,  # Defaulting to 20
                             "random_scale": 0.25,
                         },
                     }
                 )
 
-            # Add requested Filters (-T)
+            # --- Add requested Filters (-T) ---
             for f in filters:
                 global_hooks.append(parse_hook_string(f))
 
@@ -841,18 +841,20 @@ def recipe_build(
 
                 base_res = str2inc(increment)
 
-                # Automatically step the resolutions down by a factor of 3 for each weight tier!
+                # Automatically step the resolutions down by a factor of 3 for each weight tier.
                 step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
 
                 args = algo_hook.setdefault("args", {})
                 args["resolutions"] = step_resolutions
                 args["weights"] = weight_list
                 args["steps"] = len(weight_list)
+                args["barrier"] = "osm"
+                args["algo"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
 
-            # Add Clipping (-C)
+            # --- Add Clipping (-C) ---
             if clip:
                 clip_hook = parse_hook_string(clip, default_name="raster_clip")
                 if clip_hook["name"] != "raster_clip":
@@ -903,16 +905,16 @@ def recipe_build(
                     # Inject it! (Using 'description' key)
                     hook["description"] = desc
 
+            # --- Build the recipe ---
             config = {
                 "project": {"name": tile_outname},
-                "region": proc_r_str,  # Provide the BIG region to the modules
+                "region": proc_r_str,  # Provide the buffered region to the modules
                 "modules": compiled_modules,  # Use our compiled modules list
-                "global_hooks": global_hooks,
+                "global_hooks": global_hooks,  # Use compiled global dem-building hooks
                 "execution": {"threads": 4},
             }
 
             yaml_str = yaml.dump(config, sort_keys=False)
-
             out_yaml = f"{tile_outname}_recipe.yaml"
             with open(out_yaml, "w") as f:
                 f.write(yaml_str)

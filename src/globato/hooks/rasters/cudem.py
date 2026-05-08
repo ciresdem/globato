@@ -282,8 +282,8 @@ class CudemStepDown(RasterGlobalHook):
                 from .rbf_interp import RBFInterp
 
                 interp = RBFInterp(
-                    smoothing=20.0,
-                    neighbors=1000,
+                    smoothing=10.0,
+                    neighbors=200,
                 )
 
             elif self.algo == "interp_scipy" or interp is None:
