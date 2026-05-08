@@ -454,8 +454,7 @@ def _parse_source(src_str):
 
 
 def _list_sources(ctx, param, value):
-    """Eager callback to list available data sources and exit."""
-
+    """Eager callback to list curated data sources and exit."""
     if not value or ctx.resilient_parsing:
         return
 
@@ -464,19 +463,25 @@ def _list_sources(ctx, param, value):
     ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
-    click.secho("\nCurated Globato Data Sources:", fg="cyan", bold=True)
+    click.secho("\nCurated Globato Data Sources & Bundles:", fg="cyan", bold=True)
     click.echo("=" * 60)
 
     count = 0
     for name, meta in sorted(registry.items()):
-        if (
-            meta.get("mod", "").startswith("globato.modules")
-            or meta.get("category") == "Globato"
-        ):
-            if name in meta.get("aliases", []):
-                continue
+        tags = meta.get("tags", [])
+        category = meta.get("category", "")
+        mod_path = meta.get("mod", "")
 
-            desc = meta.get("desc", "No description provided.")
+        # ✨ THE FILTER: Only show sources explicitly tagged for Globato DEM use!
+        is_globato = (
+            mod_path.startswith("globato.modules")
+            or category.lower() == "globato"
+            or "globato" in tags
+            or "bundle" in tags
+        )
+
+        if is_globato and name not in meta.get("aliases", []):
+            desc = meta.get("desc", "No description provided.").strip().split("\n")[0]
             click.echo(f"  {click.style(name, bold=True, fg='yellow'):<25} : {desc}")
             count += 1
 
@@ -616,6 +621,28 @@ def _info_source(ctx, param, value):
 )
 @click.option("-C", "--clip", help="Clip output to polygon file. e.g. 'clip_ply.shp'")
 @click.option(
+    "-B",
+    "--buffer",
+    type=int,
+    default=0,
+    help="Buffer the processing region by N cells to prevent edge artifacts. The final DEM will be cropped back to the strict -R region.",
+)
+@click.option(
+    "-W",
+    "--weights",
+    default="1.0/0.5",
+    help="Weight thresholds for stacking, blending, and interpolation tiers (e.g. 1.0/0.5/0.1).",
+)
+@click.option(
+    "--shared-cache",
+    type=click.Path(resolve_path=True),
+    help="Centralized directory to cache fetched data. Injects 'outdir' into all modules.",
+)
+@click.option(
+    "--metadata",
+    help="Global tags to inject into the final DEM (e.g., 'Project=CRM,Author=NOAA').",
+)
+@click.option(
     "--save-only",
     is_flag=True,
     help="Save the generated YAML recipe to disk WITHOUT running it.",
@@ -632,31 +659,134 @@ def recipe_build(
     stack_mode,
     filters,
     clip,
+    buffer,
+    weights,
+    shared_cache,
+    metadata,
     save_only,
     sources,
 ):
     """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
 
+    from fetchez.registry import HookRegistry
+
     if not sources:
-        click.secho("Error: You must provide at least one data source.", fg="red")
+        click.secho(
+            "Error: You must provide at least one data source or a modules.yaml file.",
+            fg="red",
+        )
         sys.exit(1)
+
+    compiled_modules = []
+    for src in sources:
+        if str(src).lower().endswith((".yaml", ".yml")) and os.path.exists(src):
+            try:
+                with open(src, "r") as f:
+                    partial_recipe = yaml.safe_load(f)
+                    if "modules" in partial_recipe:
+                        compiled_modules.extend(partial_recipe["modules"])
+                        click.secho(
+                            f"Imported {len(partial_recipe['modules'])} modules from {src}",
+                            fg="green",
+                        )
+            except Exception as e:
+                click.secho(f"Failed to read modules from {src}: {e}", fg="red")
+                sys.exit(1)
+        else:
+            # Standard CLI string parsing
+            compiled_modules.append(parse_source_string(src))
+
+    abs_cache = os.path.abspath(shared_cache) if shared_cache else None
+
+    # Known hooks that successfully turn files into streams
+    stream_initiators = [
+        "stream_data",
+        "stream-init",
+        "stream_init",
+        "raster_stream",
+        "stream_las",
+        "stream_xyz",
+    ]
+    # Known file-stage filters that MUST run before the stream starts
+    file_stage_hooks = ["filename_filter", "raster_flats"]
+
+    for mod in compiled_modules:
+        hooks = mod.setdefault("hooks", [])
+
+        if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
+            mod.setdefault("args", {})["outdir"] = abs_cache
+
+        has_stream = any(h.get("name") in stream_initiators for h in hooks)
+        if not has_stream:
+            # Find the best place to insert `stream-init`.
+            insert_idx = 0
+            for i, h in enumerate(hooks):
+                if h.get("name") in file_stage_hooks:
+                    insert_idx = i + 1
+
+            hooks.insert(insert_idx, {"name": "stream-init"})
+            logger.debug(
+                f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
+            )
+
+        if crs:
+            hooks = mod.setdefault("hooks", [])
+
+            reproject_hook = None
+            for h in hooks:
+                if h.get("name") in ["stream_reproject", "stream-reproject"]:
+                    reproject_hook = h
+                    break
+
+            if reproject_hook:
+                reproject_hook.setdefault("args", {})["dst_srs"] = crs
+
+            else:
+                hooks.append({"name": "stream_reproject", "args": {"dst_srs": crs}})
 
     try:
         for t_reg, feat_name in yield_parsed_regions(region):
-            r_str = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
+            strict_r_str = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
             tile_outname = f"{outname}_{feat_name}" if feat_name else outname
+
+            proc_reg = t_reg.copy()
+            if buffer > 0:
+                from fetchez.utils import str2inc
+
+                inc_val = str2inc(increment)
+                proc_reg.buffer(pct=0, x_bv=(inc_val * buffer), y_bv=(inc_val * buffer))
+
+            proc_r_str = (
+                f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
+            )
 
             if feat_name:
                 click.secho(
-                    f"\n--- Building Batch Tile: {feat_name} ({r_str}) ---",
-                    fg="cyan",
-                    bold=True,
+                    f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True
                 )
+                click.secho(f"  Delivery Region: {strict_r_str}", fg="blue")
+                if buffer > 0:
+                    click.secho(
+                        f"  Buffered Region: {proc_r_str} (+{buffer} cells)",
+                        fg="yellow",
+                    )
 
-            global_hooks = []
+            # --- Base Pipeline Standard Hooks ---
+            global_hooks = [
+                {"name": "audit"},
+                {"name": "enrich"},
+                {"name": "transfer_log"},
+                {"name": "drop_class"},
+                {
+                    "name": "provenance",
+                    "args": {
+                        "res": increment,
+                        "output": f"{tile_outname}_provenance.tif",
+                    },
+                },
+            ]
 
-            # The Base Stack
-            global_hooks.append({"name": "drop_class"})
+            # --- Multi Stack ---
             global_hooks.append(
                 {
                     "name": "multi_stack",
@@ -665,6 +795,7 @@ def recipe_build(
                         "crs": crs,
                         "mode": stack_mode,
                         "nodata": nodata,
+                        "weight_threshold": weights,
                         "output": f"{tile_outname}_stack.tif",
                     },
                 }
@@ -683,25 +814,40 @@ def recipe_build(
                 }
             )
 
+            # --- Dynamic Blending Tiers ---
+            # Parse the weights to generate the correct number of blend/cudem steps
+            weight_list = [float(w) for w in str(weights).split("/")]
+
+            for w in weight_list:
+                global_hooks.append(
+                    {
+                        "name": "ms_blend",
+                        "args": {
+                            "weight_threshold": w,
+                            "blend_dist": 20,  # Defaulting to 20, could also make this an option!
+                            "random_scale": 0.25,
+                        },
+                    }
+                )
+
             # Add requested Filters (-T)
             for f in filters:
                 global_hooks.append(parse_hook_string(f))
 
-            global_hooks.append(
-                {
-                    "name": "ms_blend",
-                    "args": {
-                        "weight_threshold": 0.5,
-                        "blend_dist": 20,
-                        "random_scale": 0.25,
-                    },
-                }
-            )
-
-            # Add requested Interpolation Algorithm (-M)
+            # --- Interpolation Algorithm (-M) ---
             algo_hook = parse_hook_string(algo)
             if algo_hook["name"] == "ms_cudem":
-                algo_hook.setdefault("args", {})["resolutions"] = increment
+                from fetchez.utils import str2inc
+
+                base_res = str2inc(increment)
+
+                # Automatically step the resolutions down by a factor of 3 for each weight tier!
+                step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
+
+                args = algo_hook.setdefault("args", {})
+                args["resolutions"] = step_resolutions
+                args["weights"] = weight_list
+                args["steps"] = len(weight_list)
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
@@ -714,10 +860,53 @@ def recipe_build(
                     clip_hook["name"] = "raster_clip"
                 global_hooks.append(clip_hook)
 
+            if buffer > 0:
+                global_hooks.append(
+                    {
+                        "name": "raster_cut",
+                        "args": {
+                            "region": strict_r_str,
+                        },
+                    }
+                )
+                global_hooks.append(
+                    {
+                        "name": "raster_crop",
+                        "args": {"output": f"{tile_outname}_final.tif"},
+                    }
+                )
+
+            if metadata:
+                global_hooks.append(
+                    {
+                        "name": "raster_metadata",
+                        "args": {"tags": metadata, "bands": "Elevation (meters)"},
+                    }
+                )
+
+            for hook in global_hooks:
+                hook_name = hook.get("name")
+                hook_cls = HookRegistry.get_class(hook_name)
+
+                if hook_cls:
+                    # Grab the class's official description
+                    desc = getattr(
+                        hook_cls, "meta_desc", f"Executes the {hook_name} process."
+                    )
+
+                    # We can even append default argument hints if we want!
+                    if hook_name == "multi_stack":
+                        desc += " Args define the target resolution and grid math (e.g., mean, idw)."
+                    elif hook_name == "ms_cudem":
+                        desc += " Args define interpolation resolutions and blending distances."
+
+                    # Inject it! (Using 'description' key)
+                    hook["description"] = desc
+
             config = {
                 "project": {"name": tile_outname},
-                "region": r_str,
-                "modules": [parse_source_string(s) for s in sources],
+                "region": proc_r_str,  # Provide the BIG region to the modules
+                "modules": compiled_modules,  # Use our compiled modules list
                 "global_hooks": global_hooks,
                 "execution": {"threads": 4},
             }
