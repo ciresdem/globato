@@ -278,6 +278,14 @@ class CudemStepDown(RasterGlobalHook):
                     )
                     self.algo = "raster_fill"
 
+            elif self.algo == "interp_rbf":
+                from .rbf_interp import RBFInterp
+
+                interp = RBFInterp(
+                    smoothing=20.0,
+                    neighbors=1000,
+                )
+
             elif self.algo == "interp_scipy" or interp is None:
                 from .scipy_griddata import ScipyInterp
 

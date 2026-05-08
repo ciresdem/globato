@@ -19,6 +19,7 @@ import rasterio
 from rasterio.windows import Window
 
 from fetchez.hooks import FetchHook
+from fetchez.utils import str2inc, inc2str
 from ..transforms.point_pixels import PointPixels
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class ProvenanceHook(FetchHook):
 
     def __init__(self, res="1s", output="provenance.tif", **kwargs):
         super().__init__(**kwargs)
-        self.res = res
+        self.res = str2inc(res)
         self.output = output
         self._initialized = False
         self.lock = threading.Lock()
@@ -53,15 +54,10 @@ class ProvenanceHook(FetchHook):
         if self._initialized:
             return
 
-        if isinstance(self.res, str) and self.res.endswith("s"):
-            inc = float(self.res[:-1]) / 3600.0
-            x_inc, y_inc = inc, inc
-        else:
-            inc = float(self.res)
-            x_inc, y_inc = inc, inc
-
-        self.xcount = int(region.width / x_inc)
-        self.ycount = int(region.height / y_inc)
+        x_inc, y_inc = self.res, self.res
+        self.xcount, self.ycount, self.dst_gt = region.geo_transform(
+            x_inc=x_inc, y_inc=y_inc, node="grid"
+        )
         self.transform = rasterio.transform.from_origin(
             region.xmin, region.ymax, x_inc, y_inc
         )
@@ -187,13 +183,14 @@ class SourceMasks(FetchHook):
     meta_category = "metadata"
     meta_aliases = ["source_masks"]
 
-    def __init__(
-        self, res="1s", output_dir="source_masks", output="source_masks.vrt", **kwargs
-    ):
+    def __init__(self, res="1s", output_dir=None, output="source_masks.vrt", **kwargs):
         super().__init__(**kwargs)
-        self.res = res
-        self.output_dir = output_dir
+        self.res = str2inc(res)
         self.output = output
+
+        base_name = os.path.splitext(self.output)[0]
+        self.output_dir = output_dir or f"{base_name}_temp_masks"
+
         self._initialized = False
         self.tifs = []
         self.lock = threading.Lock()
@@ -202,15 +199,10 @@ class SourceMasks(FetchHook):
         if self._initialized:
             return
 
-        if isinstance(self.res, str) and self.res.endswith("s"):
-            inc = float(self.res[:-1]) / 3600.0
-            x_inc, y_inc = inc, inc
-        else:
-            inc = float(self.res)
-            x_inc, y_inc = inc, inc
-
-        self.xcount = int(region.width / x_inc)
-        self.ycount = int(region.height / y_inc)
+        x_inc, y_inc = self.res, self.res
+        self.xcount, self.ycount, self.dst_gt = region.geo_transform(
+            x_inc=x_inc, y_inc=y_inc, node="grid"
+        )
         self.transform = rasterio.transform.from_origin(
             region.xmin, region.ymax, x_inc, y_inc
         )
@@ -246,7 +238,8 @@ class SourceMasks(FetchHook):
                 stream = entry.get("stream")
                 src_name = os.path.basename(entry.get("dst_fn", f"unknown_{id(entry)}"))
                 base = os.path.splitext(src_name)[0]
-                tif_path = os.path.join(self.output_dir, f"{base}_mask.tif")
+                res_str = inc2str(self.res)
+                tif_path = os.path.join(self.output_dir, f"{base}_{res_str}_mask.tif")
 
                 with rasterio.open(tif_path, "w", **self.profile) as dst:
                     dst.write(np.zeros((1, self.ycount, self.xcount), dtype="uint8"))

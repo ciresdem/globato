@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+globato.hooks.transforms.dynamic_weights
+~~~~~~~~~~~~~
+
+Adjust weight values based on point-stream array fields
+
+:copyright: (c) 2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
+"""
+
 import numpy as np
 import logging
 from fetchez.hooks import FetchHook
@@ -46,7 +59,6 @@ class DynamicWeight(FetchHook):
             # Extract the source array
             src_arr = chunk[self.source_field].astype(np.float32)
 
-            # Apply mathematical transformation
             if self.method == "inverse":
                 # w = scale / (src + offset)
                 new_w = self.scale / (src_arr + self.offset)
@@ -62,10 +74,7 @@ class DynamicWeight(FetchHook):
             else:  # linear
                 new_w = src_arr * self.scale
 
-            # Clip weights to ensure they never go negative or exact zero
             new_w = np.clip(new_w, 0.0001, None)
-
-            # Overwrite the weight column
             chunk["w"] = new_w
             yield chunk
 

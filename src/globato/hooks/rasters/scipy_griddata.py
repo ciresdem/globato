@@ -33,21 +33,31 @@ class ScipyInterp(RasterStreamHook):
             self.buffer = 20
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
-        valid_mask = (data != ndv) & ~np.isnan(data)
+        is_3d = data.ndim == 3
+        work_data = data[0] if is_3d else data
+
+        valid_mask = (work_data != ndv) & ~np.isnan(work_data)
 
         if np.all(valid_mask) or not np.any(valid_mask):
             return data
 
         points = np.column_stack(np.where(valid_mask))
-        values = data[valid_mask]
+        values = work_data[valid_mask]
 
-        grid_y, grid_x = np.mgrid[0 : data.shape[0], 0 : data.shape[1]]
+        grid_y, grid_x = np.mgrid[0 : work_data.shape[0], 0 : work_data.shape[1]]
 
         try:
             interp = interpolate.griddata(
                 points, values, (grid_y, grid_x), method=self.method
             )
             interp[np.isnan(interp)] = ndv
-            return interp.astype(data.dtype)
+
+            if is_3d:
+                result = data.copy()
+                result[0] = interp
+            else:
+                result = interp
+
+            return result.astype(data.dtype)
         except Exception:
             return data

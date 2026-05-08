@@ -414,7 +414,7 @@ class RasterGlobalHook(RasterBaseHook):
                     entry["dst_fn"] = dst_fn
                     entry.setdefault("artifacts", {})[self.name] = dst_fn
             except Exception as e:
-                logger.error(f"GlobalHook {self.name} failed on {src_fn}: {e}")
+                logger.exception(f"GlobalHook {self.name} failed on {src_fn}: {e}")
 
             new_entries.append((mod, entry))
 

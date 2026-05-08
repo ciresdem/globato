@@ -5,8 +5,8 @@
 globato.hooks.filters.base
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Base class for all Globato stream filters.
-Handles stream iteration, schema enforcement, and classification logic.
+Base class for all Globato stream filters/classifiers.
+Handles stream iteration, schema enforcement, and classification.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.

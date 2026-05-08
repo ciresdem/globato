@@ -10,7 +10,7 @@ class RasterStreamInit(RasterStreamHook):
 
     name = "raster_stream"
     meta_stage = "post"
-    meta_category = "format-stream"
+    meta_category = "raster-stream"
 
     def _yield_chunks(self, src_path):
         with rasterio.open(src_path) as src:

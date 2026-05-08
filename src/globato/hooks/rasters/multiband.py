@@ -26,7 +26,7 @@ class BuildMultiBandHook(FetchHook):
 
     name = "build_multiband"
     meta_stage = "collection"
-    meta_category = "raster"
+    meta_category = "raster-op"
 
     def __init__(self, output="stacked_bands.tif", **kwargs):
         super().__init__(**kwargs)
