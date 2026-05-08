@@ -87,7 +87,6 @@ class BindGrid(FetchHook, RasterSampling):
                                 chunk, self.column, target_dtype, 0
                             )
 
-
                         rows, cols = rasterio.transform.rowcol(
                             src.transform, chunk["x"], chunk["y"]
                         )

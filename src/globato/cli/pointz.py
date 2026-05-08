@@ -259,7 +259,9 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
         if mod_name in ["file", "local_fs"]:
             target_path = mod_args.get("paths", mod_args.get("path"))
             term = data_type or target_path.split(".")[-1]
-            reader = ReaderRegistry.get_reader(target_path, term=term, chunk_size=chunk_size)
+            reader = ReaderRegistry.get_reader(
+                target_path, term=term, chunk_size=chunk_size
+            )
             if reader:
                 detected_srs = getattr(reader, "get_srs", lambda: "EPSG:4326")()
                 streams.append(
