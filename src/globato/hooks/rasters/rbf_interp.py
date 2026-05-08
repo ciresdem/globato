@@ -59,13 +59,16 @@ class RBFInterp(RasterStreamHook):
             self.buffer = 40
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
-        valid_mask = (data != ndv) & ~np.isnan(data)
+        is_3d = data.ndim == 3
+        work_data = data[0] if is_3d else data
+
+        valid_mask = (work_data != ndv) & ~np.isnan(work_data)
         if np.all(valid_mask) or not np.any(valid_mask):
             return data
 
         y_valid, x_valid = np.where(valid_mask)
         points = np.column_stack((x_valid, y_valid))
-        values = data[valid_mask]
+        values = work_data[valid_mask]
 
         missing_mask = ~valid_mask
         y_missing, x_missing = np.where(missing_mask)
@@ -88,8 +91,14 @@ class RBFInterp(RasterStreamHook):
             rbf = RBFInterpolator(points, values, **kwargs)
             interpolated_values = rbf(query_points)
 
-            result = data.copy()
-            result[missing_mask] = interpolated_values
+            z_filled = work_data.copy()
+            z_filled[missing_mask] = interpolated_values
+
+            if is_3d:
+                result = data.copy()
+                result[0] = z_filled
+            else:
+                result = z_filled
 
             return result.astype(data.dtype)
 
