@@ -34,39 +34,6 @@ RECIPE_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["re
 # RECIPE_COMMANDS = ["run", "build", "recipes"]
 
 
-def validate_dependencies(recipe_obj):
-    """Interrogates all modules and hooks to ensure heavy dependencies exist."""
-
-    errors = []
-
-    # Check all global hooks
-    for hook in getattr(recipe_obj, "global_hooks", []):
-        if hasattr(hook, "_validate_deps"):
-            passed, msg = hook._validate_deps()
-            if not passed:
-                errors.append(f"[{hook.name}] {msg}")
-
-    # Check all streaming hooks inside the modules
-    for mod in getattr(recipe_obj, "modules", []):
-        for hook in getattr(mod, "hooks", []):
-            if hasattr(hook, "_validate_deps"):
-                passed, msg = hook._validate_deps()
-                if not passed:
-                    errors.append(f"[{mod.name} -> {hook.name}] {msg}")
-
-    if errors:
-        click.secho("\n[ DEPENDENCY VALIDATION CHECK FAILED ]", fg="red", bold=True)
-        click.secho(
-            "The following dependencies are missing for this recipe:", fg="yellow"
-        )
-        for error in errors:
-            click.echo(f"   {error}")
-        click.echo(
-            "\nPlease install the required packages or modify the recipe and try again.\n"
-        )
-        sys.exit(1)
-
-
 @click.version_option(package_name="globato")
 @click.group(
     cls=FetchezMainGroup,
@@ -77,34 +44,6 @@ def recipe_group():
     """Execute and manage YAML DEM recipes."""
 
     pass
-
-
-# @recipe_group.command("list")
-# @click.option("--search", "-s", help="Filter recipes by name or keyword.")
-# def recipe_list(search):
-#     """List all available curated DEM recipes."""
-
-#     RecipeRegistry.load_all()
-#     registry = RecipeRegistry.get_registry()
-
-#     click.secho("\nAvailable Curated Recipes:", fg="cyan", bold=True)
-#     click.echo("=" * 60)
-
-#     count = 0
-#     for name, meta in sorted(registry.items()):
-#         if (
-#             search
-#             and search.lower() not in name.lower()
-#             and search.lower() not in meta["desc"].lower()
-#         ):
-#             continue
-
-#         click.secho(f"  {name:<25}", fg="green", bold=True, nl=False)
-#         click.echo(f" - {meta['desc']}")
-#         count += 1
-
-#     click.echo("=" * 60)
-#     click.echo(f"Total recipes found: {count}\n")
 
 
 def _load_yaml(target):
@@ -454,7 +393,8 @@ def _parse_source(src_str):
 
 
 def _list_sources(ctx, param, value):
-    """Eager callback to list curated data sources and exit."""
+    """List curated data sources and exit."""
+
     if not value or ctx.resilient_parsing:
         return
 
