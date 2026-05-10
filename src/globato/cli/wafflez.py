@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.cli.recipe
+globato.cli.wafflez
 ~~~~~~~~~~~~~~~~~~
-The command-line interface for the recipe group.
+The command-line interface for the wafflez group.
 
 list, dump, copy, validate, run, build
 """
@@ -29,19 +29,19 @@ from fetchez.cli.recipes import recipes_group
 
 logger = logging.getLogger(__name__)
 
-RECIPE_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["recipes"]}
+WAFFLEZ_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["recipes"]}
 
-# RECIPE_COMMANDS = ["run", "build", "recipes"]
+# WAFFLEZ_COMMANDS = ["run", "build", "recipes"]
 
 
 @click.version_option(package_name="globato")
 @click.group(
     cls=FetchezMainGroup,
-    name="recipe",
-    fetchez_commands=RECIPE_COMMANDS,
+    name="wafflez",
+    fetchez_commands=WAFFLEZ_COMMANDS,
 )
-def recipe_group():
-    """Execute and manage YAML DEM recipes."""
+def wafflez_group():
+    """Build and execute Digital Elevation Models."""
 
     pass
 
@@ -55,7 +55,7 @@ def _load_yaml(target):
         recipe_meta = RecipeRegistry.get_recipe(target)
         if recipe_meta:
             base_config = recipe_meta["config"]
-            click.secho(f"Loaded curated recipe: {target}", fg="cyan")
+            click.secho(f"Loaded recipe: {target}", fg="cyan")
 
     return base_config
 
@@ -85,7 +85,7 @@ def _absolutize_local_sources(config, base_dir):
     return config
 
 
-@recipe_group.command("run", cls=FetchezMainCommand)
+@wafflez_group.command("run", cls=FetchezMainCommand)
 @click.argument("target")
 @click.option(
     "-R",
@@ -113,10 +113,11 @@ def _absolutize_local_sources(config, base_dir):
     type=click.Path(resolve_path=True),
     help="Centralized directory to cache fetched data across all tiles.",
 )
-def recipe_run(
+def wafflez_run(
     target, region, increment, crs, outname, outdir, overwrite, shared_cache
 ):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
+
     import copy
 
     RecipeRegistry.load_all()
@@ -431,11 +432,11 @@ def _list_sources(ctx, param, value):
     click.echo("  Files will be wrapped in the 'file' module.")
     click.echo("  Directories will be crawled using the 'local_fs' module.")
     click.echo(
-        "  Example: globato recipe build -R ... ./my_data.tif ./my_folder:ext=.xyz"
+        "  Example: globato wafflez build -R ... ./my_data.tif ./my_folder:ext=.xyz"
     )
 
     click.echo(
-        f"\nTry 'globato recipe build --info-source <name>' for details. Total: {count}\n"
+        f"\nTry 'globato wafflez build --info-source <name>' for details. Total: {count}\n"
     )
     ctx.exit()
 
@@ -499,7 +500,7 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
-@recipe_group.command("build", cls=FetchezMainCommand)
+@wafflez_group.command("build", cls=FetchezMainCommand)
 @click.option(
     "--list-sources",
     is_flag=True,
@@ -584,10 +585,10 @@ def _info_source(ctx, param, value):
 @click.option(
     "--save-only",
     is_flag=True,
-    help="Save the generated YAML recipe to disk WITHOUT running it.",
+    help="Save the generated YAML recipe to disk without running it.",
 )
 @click.argument("sources", nargs=-1)
-def recipe_build(
+def wafflez_build(
     region,
     increment,
     outname,
@@ -605,7 +606,7 @@ def recipe_build(
     save_only,
     sources,
 ):
-    """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
+    """Build and run a Digital Elevation Model."""
 
     from fetchez.registry import HookRegistry
     HookRegistry.load_all()
@@ -858,7 +859,7 @@ def recipe_build(
             out_yaml = f"{tile_outname}_recipe.yaml"
             with open(out_yaml, "w") as f:
                 f.write(yaml_str)
-            click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
+            click.secho(f"Wafflez recipe saved to {out_yaml}.", fg="green", bold=True)
 
             # if not save_only:
             #     click.secho(
@@ -871,4 +872,4 @@ def recipe_build(
         sys.exit(1)
 
 
-recipe_group.add_command(recipes_group, name="recipes")
+wafflez_group.add_command(recipes_group, name="recipes")
