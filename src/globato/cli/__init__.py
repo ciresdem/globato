@@ -11,7 +11,7 @@ import click
 import logging
 
 from .recipe import recipe_group
-from .grtiz import gritz_group
+from .gritz import gritz_group
 from .region import region_group
 
 from .pointz import pointz_group

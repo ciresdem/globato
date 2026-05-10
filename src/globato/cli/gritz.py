@@ -145,7 +145,7 @@ GRITZ_COMMANDS = [
     name="gritz",
     fetchez_commands=GRITZ_COMMANDS,
 )
-def raster_group():
+def gritz_group():
     """Raster manipulation tools."""
 
     pass
@@ -317,6 +317,3 @@ def raster_zscore(src, dst, strip_bands, threshold, size):
 
     hook = RasterZScore(threshold=threshold, kernel_size=size)
     run_raster_hook(hook, src, dst, strip_bands)
-
-
-gritz_group.add_command(gritz_cmd)
