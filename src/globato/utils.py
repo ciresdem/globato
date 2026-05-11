@@ -196,21 +196,6 @@ def compile_sources(sources, shared_cache=None):
 def globatize_modules(modules, shared_cache=None, crs=None):
     abs_cache = os.path.abspath(shared_cache) if shared_cache else None
 
-    # We should update the hooks meta entries themselves to indicate such things
-    # as if it's a stream-init or stream-hook or file-hook, etc.
-    # This will do for now.
-    # Known hooks that successfully turn files into streams
-    stream_initiators = [
-        "stream_data",
-        "stream-init",
-        "stream_init",
-        "raster_stream",
-        "stream_las",
-        "stream_xyz",
-    ]
-    # Known file-stage filters that MUST run before the stream starts
-    file_stage_hooks = ["filename_filter", "raster_flats", "unzip", "set_datatype"]
-
     for mod in modules:
         hooks = mod.setdefault("hooks", [])
 
@@ -218,19 +203,13 @@ def globatize_modules(modules, shared_cache=None, crs=None):
         if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
             mod.setdefault("args", {})["outdir"] = abs_cache
 
-        # -- Make sure the source has a stream initiator ---
-        has_stream = any(h.get("name") in stream_initiators for h in hooks)
-        if not has_stream:
-            # Find the best place to insert `stream-init`.
-            insert_idx = 0
-            for i, h in enumerate(hooks):
-                if h.get("name") in file_stage_hooks:
-                    insert_idx = i + 1
-
-            hooks.insert(insert_idx, {"name": "stream-init"})
-            logger.debug(
-                f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
-            )
+        # # -- Make sure the source has a stream initiator ---
+        # has_stream = any(h.get("name") in stream_initiators for h in hooks)
+        # if not has_stream:
+        #     hooks.append({"name": "stream-init"})
+        #     logger.debug(
+        #         f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
+        #     )
 
         # --- Insert the target crs into stream-reproject ---
         if crs:
@@ -251,12 +230,12 @@ def globatize_modules(modules, shared_cache=None, crs=None):
 
 # --- Recipe building ---
 
-def make_recipe(name, r_str, modules, hooks, threads=4):
+def make_recipe_config(name, r_str, modules, hooks, threads=4):
     config = {
         "project": {"name": name},
         "region": r_str,  # Provide the buffered region to the modules
         "modules": modules,  # Use our compiled modules list
-        "global_hooks": hooks,  # Use compiled global dem-building hooks
+        "l_hooks": hooks,  # Use compiled global dem-building hooks
         "execution": {"threads": threads},
     }
 
