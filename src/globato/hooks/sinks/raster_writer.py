@@ -24,7 +24,7 @@ class RasterWrite(FetchHook):
     """Universal sink that writes a TIFF. Can act as a terminal sink or an inline tap."""
 
     name = "raster-write"
-    meta_stage = "collection"
+    meta_stage = "collection"  # set to 'stream' to dump from stream
     meta_category = "raster-stream"
     meta_desc = "Write a raster-stream to raster"
     meta_requires = "raster-stream"

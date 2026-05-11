@@ -35,7 +35,7 @@ class OSMLandmask(FetchHook):
     """Generates a Land/Water mask vector from OpenStreetMap."""
 
     name = "osm_landmask"
-    meta_stage = "pre"
+    meta_stage = "manifest"  # pre
     meta_category = "metadata"
 
     def __init__(self, filename="landmask.geojson", **kwargs):

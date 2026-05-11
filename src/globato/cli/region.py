@@ -225,7 +225,7 @@ def region_split(ctx, size, out, prefix):
     help="Output format.",
 )
 @click.pass_context
-def region_transform(region_str, t_srs, s_srs, format):
+def region_transform(ctx, region_str, t_srs, s_srs, format):
     """Transform a region to a new coordinate reference system.
 
     Densifies the boundary before projecting to ensure safe encapsulation.

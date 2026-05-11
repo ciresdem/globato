@@ -72,10 +72,11 @@ class GlobatoInfo(FetchHook):
     seamlessly inside a YAML recipe or Fetchez pipeline.
     """
 
-    name = "stream_inf"
+    name = "stream-inf"
     meta_desc = "Generate .inf metadata (minmax, count, wkt)."
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "metadata"
+    meta_aliases = ["stream_inf"]
 
     def run(self, entries):
         for mod, entry in entries:
@@ -83,10 +84,8 @@ class GlobatoInfo(FetchHook):
             dst_fn = entry.get("dst_fn")
 
             if stream:
-                # Determine where to save the file based on the entry dict
                 inf_out = dst_fn + ".inf" if dst_fn else None
 
-                # Replace the stream with our transparent wrapper
                 entry["stream"] = generate_stream_inf(
                     stream,
                     out_path=inf_out,

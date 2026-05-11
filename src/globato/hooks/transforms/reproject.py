@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class StreamReproject(FetchHook):
     name = "stream-reproject"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_desc = "Reproject the stream to the desired SRS using Transformez."
     meta_category = "point-stream"
     meta_requires = "point-stream"

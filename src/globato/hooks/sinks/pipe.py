@@ -33,7 +33,7 @@ class XYZPrinter(FetchHook):
     """
 
     name = "stream-dump-xyz"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_desc = "Send the point-stream xyz data to stdout"
     meta_category = "point-stream"
     meta_requires = "point-stream"

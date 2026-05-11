@@ -28,7 +28,7 @@ class WriteXYZ(FetchHook):
     """
 
     name = "write_xyz"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "point-stream"
     meta_desc = "Write a point stream to xyz"
     meta_requires = "point-stream"
@@ -96,7 +96,7 @@ class WriteXYZ(FetchHook):
 
 class XYZWrite(FetchHook):
     name = "xyz_write"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "stream-sink"
 
     def __init__(self, output_path=None, **kwargs):
