@@ -96,7 +96,7 @@ class WriteXYZ(FetchHook):
 
 class XYZWrite(FetchHook):
     name = "xyz_write"
-    meta_stage = "collection"
+    meta_stage = "file"
     meta_category = "stream-sink"
 
     def __init__(self, output_path=None, **kwargs):

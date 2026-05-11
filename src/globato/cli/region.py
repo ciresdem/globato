@@ -18,26 +18,44 @@ from globato.utils import yield_parsed_regions
 REGION_COMMANDS = ["echo", "buffer", "split", "transform"]
 
 
+def region_dec(f):
+    """Click Decorator to share standard region argument."""
+
+    f = click.option(
+        "-R",
+        "--region",
+        "region_str",
+        help="Bounding box (W/E/S/N) or location string, or geojson file.",
+        hidden=False,
+    )(f)
+    return f
+
+
 @click.version_option(package_name="globato")
 @click.group(
     cls=FetchezMainGroup,
     name="region",
     fetchez_commands=REGION_COMMANDS,
 )
-def region_group():
-    """Generate and manipulate spatial bounding boxes and tilesets."""
-
-    pass
-
-
-@region_group.command("echo", cls=FetchezMainCommand)
 @click.option(
     "-R",
     "--region",
     "region_str",
-    required=True,
+    # required=True,
     help="Bounding box (W/E/S/N) or location string, or geojson file.",
 )
+@click.pass_context
+def region_group(ctx, region_str):
+    """Generate and manipulate spatial bounding boxes and tilesets."""
+
+    ctx.ensure_object(dict)
+    ctx.obj['region_str'] = region_str
+
+    #pass
+
+
+@region_group.command("echo", cls=FetchezMainCommand)
+@region_dec
 @click.option(
     "--format",
     "-F",
@@ -45,13 +63,15 @@ def region_group():
     default="gmt",
     help="Output format.",
 )
-def region_echo(region_str, format):
+@click.pass_context
+def region_echo(ctx, region_str, format):
     """Parse a region and echo it to stdout.
 
     Useful for geocoding a location and piping it to another command.
     Example: globato region echo --region loc:"San Diego, CA" -F wkt
     """
 
+    region_str = region_str or ctx.obj.get("region_str")
     try:
         for region, feat_name in yield_parsed_regions(region_str):
             prefix = f"{feat_name}: " if feat_name else ""
@@ -61,15 +81,12 @@ def region_echo(region_str, format):
         click.secho(str(e), fg="red")
         sys.exit(1)
 
+    except AttributeError as e:
+        click.echo(ctx.get_help())
+        click.secho(str(e), fg="red")
+
 
 @region_group.command("buffer", cls=FetchezMainCommand)
-@click.option(
-    "-R",
-    "--region",
-    "region_str",
-    required=True,
-    help="Bounding box (W/E/S/N) or location string.",
-)
 @click.option(
     "--pct",
     type=float,
@@ -82,12 +99,14 @@ def region_echo(region_str, format):
     type=click.Choice(["gmt", "bbox", "wkt", "geojson", "fn"]),
     default="gmt",
 )
-def region_buffer(region_str, pct, format):
+@click.pass_context
+def region_buffer(ctx, pct, format):
     """Expand a bounding box by a given percentage.
 
-    Example: globato region buffer --region -120/-119/34/35 --pct 10
+    Example: globato region --region -120/-119/34/35 buffer --pct 10
     """
 
+    region_str = ctx.obj.get("region_str")
     try:
         for region, feat_name in yield_parsed_regions(region_str):
             prefix = f"{feat_name}: " if feat_name else ""
@@ -100,13 +119,6 @@ def region_buffer(region_str, pct, format):
 
 
 @region_group.command("split", cls=FetchezMainCommand)
-@click.option(
-    "-R",
-    "--region",
-    "region_str",
-    required=True,
-    help="Bounding box (W/E/S/N) or location string.",
-)
 @click.option(
     "--size",
     type=float,
@@ -121,12 +133,14 @@ def region_buffer(region_str, pct, format):
     default="tile",
     help="Prefix for the generated tile names (default: 'tile').",
 )
-def region_split(region_str, size, out, prefix):
+@click.pass_context
+def region_split(ctx, size, out, prefix):
     """Split a region into a GeoJSON tileset for batch processing.
 
     Example: globato region split loc:"California" --size 0.5 -O cali_tiles.geojson
     """
 
+    region_str = ctx.obj.get("region_str")
     try:
         for region, feat_name in yield_parsed_regions(region_str):
             prefix = f"{feat_name}: " if feat_name else ""
@@ -196,13 +210,6 @@ def region_split(region_str, size, out, prefix):
 
 @region_group.command("transform", cls=FetchezMainCommand)
 @click.option(
-    "-R",
-    "--region",
-    "region_str",
-    required=True,
-    help="Bounding box (W/E/S/N) or location string.",
-)
-@click.option(
     "--t-srs", required=True, help="Target spatial reference system (e.g., EPSG:3857)."
 )
 @click.option(
@@ -217,6 +224,7 @@ def region_split(region_str, size, out, prefix):
     default="gmt",
     help="Output format.",
 )
+@click.pass_context
 def region_transform(region_str, t_srs, s_srs, format):
     """Transform a region to a new coordinate reference system.
 
@@ -225,6 +233,7 @@ def region_transform(region_str, t_srs, s_srs, format):
     Example: globato region transform loc:"San Francisco" --t-srs EPSG:3857
     """
 
+    region_str = ctx.obj.get("region_str")
     try:
         for region, feat_name in yield_parsed_regions(region_str):
             prefix = f"{feat_name}: " if feat_name else ""

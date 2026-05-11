@@ -32,7 +32,7 @@ class XYZReader(BaseGlobatoReader):
     meta_category = "point-stream"
     meta_desc = "Read ASCII xyz data into a point stream (xyz-recarray)"
     meta_dtype = "xyz"
-    meta_delimiters = ["xyz", "dat"]
+    meta_extensions = ["xyz", "dat"]
 
     KNOWN_DELIMS = [",", " ", "\t", ";", "|"]
 

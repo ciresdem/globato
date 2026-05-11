@@ -15,7 +15,7 @@ import yaml
 from fetchez.recipe import Recipe
 from fetchez.utils import parse_hook_string, FetchezMainGroup, FetchezMainCommand
 
-from globato.utils import parse_source_string
+from globato.utils import parse_source_string, compile_sources, globatize_modules
 
 # --- OLD POINTZ-GROUP --
 import os
@@ -36,14 +36,13 @@ from globato.hooks.transforms.reproject import StreamReproject
 
 logger = logging.getLogger(__name__)
 
-POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
+POINTZ_COMMANDS = ["info", "region", "dump", "list-filters", "pipeline"]
 
 
 @click.command(name="pipeline", hidden=False, cls=FetchezMainCommand)
-@click.argument("src", nargs=-1, required=True)
 @click.option("-R", "--region", help="Spatial crop (W/E/S/N).")
 @click.option(
-    "-I", "--inc", help="Grid increment (e.g., 1s, 0.0001). Triggers stacking!"
+    "-E", "--inc", help="Grid increment (e.g., 1s, 0.0001). Triggers stacking!"
 )
 @click.option("-T", "--t-srs", help="Target SRS for reprojection (e.g., EPSG:4326).")
 @click.option(
@@ -51,26 +50,22 @@ POINTZ_COMMANDS = ["info", "run", "list-filters", "pipeline"]
 )
 @click.option("-o", "--output", help="Output file (Default: stdout).")
 @click.option("--save-only", is_flag=True, help="Save the pipeline as YAML.")
-def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
+@click.argument("sources", nargs=-1, required=True)
+def pointz_cmd(sources, region, inc, t_srs, hook, output, save_only):
     """Build and execute a 3D point cloud processing pipeline."""
 
-    modules = []
-    for src_str in src:
-        if src_str == "-":
-            modules.append({"module": "stdin", "args": {}})
-            continue
+    if not sources:
+        click.secho(
+            "Error: You must provide at least one data source or a modules.yaml file.",
+            fg="red",
+        )
+        sys.exit(1)
 
-        parsed = parse_source_string(src_str)
-        mod_dict = {"module": parsed["module"], "args": parsed.get("args", {})}
-        if parsed.get("hooks"):
-            mod_dict["hooks"] = parsed["hooks"]
-        modules.append(mod_dict)
-
+    compiled_modules = globatize_modules(compile_sources(sources))
     global_hooks = []
-    # global_hooks.append({"name": "stream_data", "args": {"stream_type": "xyz"}})
 
-    if t_srs:
-        global_hooks.append({"name": "stream_reproject", "args": {"dst_srs": t_srs}})
+    # if t_srs:
+    #     global_hooks.append({"name": "stream_reproject", "args": {"dst_srs": t_srs}})
 
     if inc and region:
         global_hooks.append({"name": "simple_stack", "args": {"inc": inc}})
@@ -84,10 +79,10 @@ def pointz_cmd(src, region, inc, t_srs, hook, output, save_only):
     config = {
         "project": {"name": "pointz_pipeline"},
         "region": region,
-        "modules": modules,
+        "modules": compiled_modules,
         "global_hooks": global_hooks,
     }
-
+    click.echo(config)
     if save_only:
         out_yaml = "pointz_recipe.yaml"
         with open(out_yaml, "w") as f:
@@ -143,10 +138,7 @@ def pointz_list_filters():
     click.secho("\n🌪️  Available `point-stream` Filters:\n", fg="cyan", bold=True)
     click.echo("=" * 50)
     for name, meta in sorted(registry.items()):
-        if (
-            meta.get("category") == "stream-filter"
-            or meta.get("category") == "point-stream"
-        ):
+        if meta.get("category") in ["stream-filter", "point-stream"]:
             if name in meta.get("aliases", ""):
                 continue
             desc = meta.get("desc", "No description provided.")
@@ -154,7 +146,7 @@ def pointz_list_filters():
     click.echo("=" * 50 + "\n")
 
 
-@pointz_group.command("run", cls=FetchezMainCommand)
+@pointz_group.command("dump", cls=FetchezMainCommand)
 @click.argument("sources", nargs=-1)
 @click.option(
     "-F",
@@ -170,17 +162,17 @@ def pointz_list_filters():
 @click.option(
     "--chunk-size", type=int, default=500000, help="Number of points per memory chunk."
 )
-def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_size):
-    """Stream, filter, and format point cloud data.
+def pointz_dump(sources, global_filters, region, t_srs, data_type, out, chunk_size):
+    """Dump, stream, filter, and format point cloud data.
 
     SOURCES can be local files (data.las), Fetchez modules (mbdb), or '-' for stdin.
     Use the '+' syntax to attach specific arguments and filters directly to a source!
 
     \b
     Examples:
-      globato pointz run data.xyz+rq:threshold=10 -O clean.xyz
-      cat raw.xyz | globato pointz run - -F outlierz > clean.xyz
-      globato pointz run mbdb:want_inf=False+rq:threshold=10 -R loc:"Miami" -T EPSG:3857 > miami.xyz
+      globato pointz dump data.xyz+rq:threshold=10 -O clean.xyz
+      cat raw.xyz | globato pointz dump - -F outlierz > clean.xyz
+      globato pointz dump mbdb:want_inf=False+rq:threshold=10 -R loc:"Miami" -T EPSG:3857 > miami.xyz
     """
 
     if not sources:
@@ -211,6 +203,7 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
 
     for f in active_global_filters:
         if hasattr(f, "setup") and f.setup(dummy_mod, {}) is False:
+            logger.info('ok')
             click.secho(
                 f"Error: Global filter '{f.name}' failed to initialize. It likely requires a --region (-R).",
                 fg="red",
@@ -219,7 +212,6 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
             sys.exit(1)
 
     streams = []
-
     for src_str in sources:
         if src_str == "-":
             streams.append(
@@ -384,7 +376,7 @@ def pointz_run(sources, global_filters, region, t_srs, data_type, out, chunk_siz
                     total_out += len(chunk)
                     np.savetxt(
                         out_port,
-                        chunk[["x", "y", "z", "w", "u"]],
+                        chunk[["x", "y", "z", "w", "u", "classification"]],
                         fmt="%.6f",
                         delimiter=" ",
                     )
@@ -438,15 +430,47 @@ def pointz_info(source):
             meta = e.value
             break
 
-    region = meta.get("minmax", None)
-    click.secho(f"\n--- Point Cloud Info: {source} ---", fg="cyan", bold=True)
-    click.echo(f"Format Reader: {reader.name}")
-    click.echo(f"Total Points : {meta.get('numpts', 0):,}")
+    click.echo(meta)
+    # region = meta.get("minmax", None)
+    # click.secho(f"\n--- Point Cloud Info: {source} ---", fg="cyan", bold=True)
+    # click.echo(f"Format Reader: {reader.name}")
+    # click.echo(f"Total Points : {meta.get('numpts', 0):,}")
 
-    if region is not None:
-        click.echo(f"Bounds (X)   : {region[0]:.6f} to {region[1]:.6f}")
-        click.echo(f"Bounds (Y)   : {region[2]:.6f} to {region[3]:.6f}")
-        click.echo(f"Elevation (Z): {region[4]:.3f} to {region[5]:.3f}")
+    # if region is not None:
+    #     click.echo(f"Bounds (X)   : {region[0]:.6f} to {region[1]:.6f}")
+    #     click.echo(f"Bounds (Y)   : {region[2]:.6f} to {region[3]:.6f}")
+    #     click.echo(f"Elevation (Z): {region[4]:.3f} to {region[5]:.3f}")
 
+
+@pointz_group.command("region", cls=FetchezMainCommand)
+@click.argument("source")
+def pointz_region(source):
+    """Scan a point cloud and return its region."""
+
+    from globato.hooks.metadata.globato_inf import generate_stream_inf
+
+    ReaderRegistry.load_all()
+    ProfileRegistry.load_all()
+
+    term = source.split(".")[-1]
+    reader = ReaderRegistry.get_reader(source, term)
+
+    if not reader:
+        click.secho(
+            f"Error: Could not determine format for {source}", fg="red", err=True
+        )
+        sys.exit(1)
+
+    inf = generate_stream_inf(reader.yield_chunks())
+
+    while True:
+        try:
+            next(inf)
+        except StopIteration as e:
+            meta = e.value
+            break
+
+    region = Region.from_list([*meta.get("minmax", None)])
+    click.echo(region.format('gmt'))
 
 pointz_group.add_command(pointz_cmd)

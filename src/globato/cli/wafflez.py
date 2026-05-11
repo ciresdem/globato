@@ -24,7 +24,7 @@ from fetchez.utils import (
     FetchezMainGroup,
     FetchezMainCommand,
 )
-from globato.utils import parse_source_string, yield_parsed_regions
+from globato.utils import parse_source_string, yield_parsed_regions, compile_sources, globatize_modules
 from fetchez.cli.recipes import recipes_group
 
 logger = logging.getLogger(__name__)
@@ -618,72 +618,7 @@ def wafflez_build(
         )
         sys.exit(1)
 
-    compiled_modules = []
-    for src in sources:
-        if str(src).lower().endswith((".yaml", ".yml")) and os.path.exists(src):
-            try:
-                with open(src, "r") as f:
-                    partial_recipe = yaml.safe_load(f)
-                    if "modules" in partial_recipe:
-                        compiled_modules.extend(partial_recipe["modules"])
-                        click.secho(
-                            f"Imported {len(partial_recipe['modules'])} modules from {src}",
-                            fg="green",
-                        )
-            except Exception as e:
-                click.secho(f"Failed to read modules from {src}: {e}", fg="red")
-                sys.exit(1)
-        else:
-            # Standard CLI string parsing
-            compiled_modules.append(parse_source_string(src))
-
-    abs_cache = os.path.abspath(shared_cache) if shared_cache else None
-
-    # Known hooks that successfully turn files into streams
-    stream_initiators = [
-        "stream_data",
-        "stream-init",
-        "stream_init",
-        "raster_stream",
-        "stream_las",
-        "stream_xyz",
-    ]
-    # Known file-stage filters that MUST run before the stream starts
-    file_stage_hooks = ["filename_filter", "raster_flats", "unzip"]
-
-    for mod in compiled_modules:
-        hooks = mod.setdefault("hooks", [])
-
-        if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
-            mod.setdefault("args", {})["outdir"] = abs_cache
-
-        has_stream = any(h.get("name") in stream_initiators for h in hooks)
-        if not has_stream:
-            # Find the best place to insert `stream-init`.
-            insert_idx = 0
-            for i, h in enumerate(hooks):
-                if h.get("name") in file_stage_hooks:
-                    insert_idx = i + 1
-
-            hooks.insert(insert_idx, {"name": "stream-init"})
-            logger.debug(
-                f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
-            )
-
-        if crs:
-            hooks = mod.setdefault("hooks", [])
-
-            reproject_hook = None
-            for h in hooks:
-                if h.get("name") in ["stream_reproject", "stream-reproject"]:
-                    reproject_hook = h
-                    break
-
-            if reproject_hook:
-                reproject_hook.setdefault("args", {})["dst_srs"] = crs
-
-            else:
-                hooks.append({"name": "stream_reproject", "args": {"dst_srs": crs}})
+    compiled_modules = globatize_modules(compile_sources(sources), shared_cache=shared_cache, crs=crs)
 
     try:
         for t_reg, feat_name in yield_parsed_regions(region):

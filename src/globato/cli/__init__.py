@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
             "gritz",
             "regions",
             "dlim",
-            "transformez",
             "perspecto",
+            "transformez",
         ],
         "Discovery and Management": [
             "modules",

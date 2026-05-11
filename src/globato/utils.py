@@ -11,6 +11,7 @@ Some utility functions for globato. Taken from cudem.utils
 :license: MIT, see LICENSE for more details.
 """
 
+import os
 import sys
 import shutil
 import subprocess
@@ -18,7 +19,6 @@ import logging
 import io
 
 from tqdm import tqdm
-from rasterio.windows import Window
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
@@ -134,13 +134,7 @@ def add_field_to_recarray(rec, name, dtype, default_val):
     return rec
 
 
-def parse_source_string(source_str):
-    """Globato-specific wrapper that guarantees stream_data is injected."""
-
-    # return fetchez_parse_source(source_str, default_hooks=[{"name": "stream_data"}])
-    return fetchez_parse_source(source_str, default_hooks=[{"name": "stream-init"}])
-
-
+# --- Region parsing ---
 def yield_parsed_regions(region_str):
     """Universally parses a region string, location, or geojson file.
 
@@ -166,13 +160,116 @@ def yield_parsed_regions(region_str):
         yield t_reg, feat_name
 
 
+# --- Source and Hook parsing ---
+def parse_source_string(source_str):
+    """Globato-specific wrapper that guarantees stream_data is injected."""
+
+    # return fetchez_parse_source(source_str, default_hooks=[{"name": "stream_data"}])
+    # return fetchez_parse_source(source_str, default_hooks=[{"name": "stream-init"}])
+    return fetchez_parse_source(source_str)#, default_hooks=[{"name": "stream-init"}])
+
+
+def compile_sources(sources, shared_cache=None):
+
+    import yaml
+
+    compiled_modules = []
+    for src in sources:
+        if str(src).lower().endswith((".yaml", ".yml")) and os.path.exists(src):
+            try:
+                with open(src, "r") as f:
+                    partial_recipe = yaml.safe_load(f)
+                    if "modules" in partial_recipe:
+                        compiled_modules.extend(partial_recipe["modules"])
+                        logger.debug(f"Imported {len(partial_recipe['modules'])} modules from {src}")
+            except Exception as e:
+                logger.debug(f"Failed to read modules from {src}: {e}")
+                continue
+        elif src == "-":
+            continue  # TODO: add stdin support
+        else:
+            compiled_modules.append(parse_source_string(src))
+
+    return compiled_modules
+
+
+def globatize_modules(modules, shared_cache=None, crs=None):
+    abs_cache = os.path.abspath(shared_cache) if shared_cache else None
+
+    # We should update the hooks meta entries themselves to indicate such things
+    # as if it's a stream-init or stream-hook or file-hook, etc.
+    # This will do for now.
+    # Known hooks that successfully turn files into streams
+    stream_initiators = [
+        "stream_data",
+        "stream-init",
+        "stream_init",
+        "raster_stream",
+        "stream_las",
+        "stream_xyz",
+    ]
+    # Known file-stage filters that MUST run before the stream starts
+    file_stage_hooks = ["filename_filter", "raster_flats", "unzip", "set_datatype"]
+
+    for mod in modules:
+        hooks = mod.setdefault("hooks", [])
+
+        # -- Shared Cache Directory --
+        if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
+            mod.setdefault("args", {})["outdir"] = abs_cache
+
+        # -- Make sure the source has a stream initiator ---
+        has_stream = any(h.get("name") in stream_initiators for h in hooks)
+        if not has_stream:
+            # Find the best place to insert `stream-init`.
+            insert_idx = 0
+            for i, h in enumerate(hooks):
+                if h.get("name") in file_stage_hooks:
+                    insert_idx = i + 1
+
+            hooks.insert(insert_idx, {"name": "stream-init"})
+            logger.debug(
+                f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
+            )
+
+        # --- Insert the target crs into stream-reproject ---
+        if crs:
+            reproject_hook = None
+            for h in hooks:
+                if h.get("name") in ["stream_reproject", "stream-reproject"]:
+                    reproject_hook = h
+                    break
+
+            if reproject_hook:
+                reproject_hook.setdefault("args", {})["dst_srs"] = crs
+
+            else:
+                hooks.append({"name": "stream_reproject", "args": {"dst_srs": crs}})
+
+    return modules
+
+
+# --- Recipe building ---
+
+def make_recipe(name, r_str, modules, hooks, threads=4):
+    config = {
+        "project": {"name": name},
+        "region": r_str,  # Provide the buffered region to the modules
+        "modules": modules,  # Use our compiled modules list
+        "global_hooks": hooks,  # Use compiled global dem-building hooks
+        "execution": {"threads": threads},
+    }
+
+    return config
+
+
 # -- rasterio helpers ---
-
-
 def is_valid_window(window_tuple):
     """Safeguard against Rasterio's zero-width truncation quirk.
     Accepts a tuple of (col_off, row_off, width, height) or a Rasterio Window.
     """
+
+    from rasterio.windows import Window
 
     if isinstance(window_tuple, Window):
         w, h = window_tuple.width, window_tuple.height
