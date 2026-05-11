@@ -15,7 +15,13 @@ import logging
 import click
 import yaml
 from fetchez.recipe import Recipe
-from fetchez.utils import parse_hook_string, FetchezMainGroup, FetchezMainCommand, str2inc
+from fetchez.utils import (
+    parse_hook_string,
+    FetchezMainGroup,
+    FetchezMainCommand,
+    str2inc,
+    compile_sources,
+)
 from fetchez.registry import (
     HookRegistry,
     # ModuleRegistry,
@@ -24,7 +30,7 @@ from fetchez.registry import (
 )
 from fetchez.spatial import Region
 
-from globato.utils import compile_sources, globatize_modules, make_recipe_config
+from globato.utils import globatize_modules, make_recipe_config
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +88,11 @@ def _yield_stdin_chunks(chunk_size=100000):
     type=click.Path(resolve_path=True),
     help="Centralized directory to cache fetched data.",
 )
-@click.option("--save-only", is_flag=True, help="Save the pipeline as YAML.")
+@click.option("--save-recipe", is_flag=True, help="Save the pipeline as YAML recipe.")
 @click.argument("sources", nargs=-1, required=True)
-def dump(sources, region, inc, t_srs, global_filters, output, shared_cache, save_only):
+def dump(
+    sources, region, inc, t_srs, global_filters, output, shared_cache, save_recipe
+):
     """Process and dump elevation data."""
 
     HookRegistry.load_all()
@@ -96,7 +104,9 @@ def dump(sources, region, inc, t_srs, global_filters, output, shared_cache, save
         )
         sys.exit(1)
 
-    compiled_modules = globatize_modules(compile_sources(sources), shared_cache=shared_cache, crs=t_srs)
+    compiled_modules = globatize_modules(
+        compile_sources(sources), shared_cache=shared_cache, crs=t_srs
+    )
 
     global_hooks = []
 
@@ -116,7 +126,12 @@ def dump(sources, region, inc, t_srs, global_filters, output, shared_cache, save
         global_hooks.append(hook_dict)
 
     if inc and region:
-        global_hooks.append({"name": "points2pixels", "args": {"x_inc": str2inc(inc), "y_inc": str2inc(inc)}})
+        global_hooks.append(
+            {
+                "name": "points2pixels",
+                "args": {"x_inc": str2inc(inc), "y_inc": str2inc(inc)},
+            }
+        )
         global_hooks.append({"name": "pixels2points", "args": {}})
 
     global_hooks.append({"name": "drop_class", "args": {}})
@@ -124,7 +139,7 @@ def dump(sources, region, inc, t_srs, global_filters, output, shared_cache, save
 
     config = make_recipe_config("pointz_dump", region, compiled_modules, global_hooks)
 
-    if save_only:
+    if save_recipe:
         out_yaml = "pointz_recipe.yaml"
         with open(out_yaml, "w") as f:
             yaml.dump(config, f, sort_keys=False)
@@ -144,7 +159,7 @@ def pointz_list_filters():
     click.secho("\n🌪️  Available `point-stream` Filters:\n", fg="cyan", bold=True)
     click.echo("=" * 50)
     for name, meta in sorted(registry.items()):
-        if meta.get("category") in ["stream-filter"]:#, "point-stream"]:
+        if meta.get("category") in ["stream-filter"]:  # , "point-stream"]:
             if name in meta.get("aliases", ""):
                 continue
             desc = meta.get("desc", "No description provided.")
@@ -223,4 +238,4 @@ def pointz_region(source):
             break
 
     region = Region.from_list([*meta.get("minmax", None)])
-    click.echo(region.format('gmt'))
+    click.echo(region.format("gmt"))

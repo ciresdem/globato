@@ -49,9 +49,9 @@ def region_group(ctx, region_str):
     """Generate and manipulate spatial bounding boxes and tilesets."""
 
     ctx.ensure_object(dict)
-    ctx.obj['region_str'] = region_str
+    ctx.obj["region_str"] = region_str
 
-    #pass
+    # pass
 
 
 @region_group.command("echo", cls=FetchezMainCommand)

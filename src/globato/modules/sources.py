@@ -63,7 +63,6 @@ class GlobFabDEM(BaseFabDEM):
         self.weight = 1
 
         self.add_hook(Unzip())
-
         self.add_hook(DataStream())
         self.add_hook(
             ReferenceQuality(

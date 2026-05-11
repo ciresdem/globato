@@ -24,6 +24,7 @@ class NetCDFReader(BaseGlobatoReader):
     def __init__(
         self,
         path,
+        region=None,
         x_var=None,
         y_var=None,
         z_var=None,
@@ -35,6 +36,7 @@ class NetCDFReader(BaseGlobatoReader):
         **kwargs,
     ):
         super().__init__(path, **kwargs)
+        self.region = region
         self.x_var = x_var
         self.y_var = y_var
         self.z_var = z_var
@@ -46,21 +48,16 @@ class NetCDFReader(BaseGlobatoReader):
 
     def _yield_raw_chunks(self):
         try:
-            # from netCDF4 import Dataset
             from h5netcdf.legacyapi import Dataset
         except ImportError:
             logger.error(f"[{self.name}] The 'h5netcdf' python library is required.")
             return
 
-        # =================================================================
-        # READ-AND-CLOSE PHASE (Protected by Thread Lock)
-        # =================================================================
         try:
             with NC_LOCK:
                 with Dataset(self.path, "r") as nc:
                     vars_dict = nc.variables.keys()
 
-                    # Auto-detect coordinates
                     x_col = self.x_var or next(
                         (
                             c
@@ -89,19 +86,54 @@ class NetCDFReader(BaseGlobatoReader):
                         )
                         return
 
-                    x_data = nc.variables[x_col][:]
-                    y_data = nc.variables[y_col][:]
-                    z_data = nc.variables[z_col][:]
+                    x_full = nc.variables[x_col][:]
+                    y_full = nc.variables[y_col][:]
 
-                    opt_data = {}
-                    for v_attr, v_name in [
-                        ("w", self.weight_var),
-                        ("u", self.unc_var),
-                        ("classification", self.class_var),
-                        ("confidence", self.conf_var),
-                    ]:
-                        if v_name and v_name in vars_dict:
-                            opt_data[v_attr] = nc.variables[v_name][:]
+                    if self.region and x_full.ndim == 1 and y_full.ndim == 1:
+                        w, e, s, n = self.region
+
+                        x_mask = (x_full >= w) & (x_full <= e)
+                        y_mask = (y_full >= s) & (y_full <= n)
+
+                        if not np.any(x_mask) or not np.any(y_mask):
+                            logger.debug(
+                                f"[{self.name}] Region {self.region} is entirely outside {self.path}"
+                            )
+                            return
+
+                        x_idx, y_idx = np.where(x_mask)[0], np.where(y_mask)[0]
+
+                        x1, x2 = x_idx[0], x_idx[-1] + 1
+                        y1, y2 = y_idx[0], y_idx[-1] + 1
+
+                        x_data = x_full[x1:x2]
+                        y_data = y_full[y1:y2]
+                        z_data = nc.variables[z_col][y1:y2, x1:x2]
+
+                        opt_data = {}
+                        for v_attr, v_name in [
+                            ("w", self.weight_var),
+                            ("u", self.unc_var),
+                            ("classification", self.class_var),
+                            ("confidence", self.conf_var),
+                        ]:
+                            if v_name and v_name in vars_dict:
+                                opt_data[v_attr] = nc.variables[v_name][y1:y2, x1:x2]
+
+                    else:
+                        x_data = x_full
+                        y_data = y_full
+                        z_data = nc.variables[z_col][:]
+
+                        opt_data = {}
+                        for v_attr, v_name in [
+                            ("w", self.weight_var),
+                            ("u", self.unc_var),
+                            ("classification", self.class_var),
+                            ("confidence", self.conf_var),
+                        ]:
+                            if v_name and v_name in vars_dict:
+                                opt_data[v_attr] = nc.variables[v_name][:]
 
         except Exception as e:
             logger.error(f"[{self.name}] Failed to open/read NetCDF {self.path}: {e}")

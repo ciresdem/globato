@@ -22,7 +22,7 @@ from tqdm import tqdm
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
-from fetchez.utils import parse_source_string as fetchez_parse_source
+# from fetchez.utils import parse_source_string as fetchez_parse_source
 
 from transformez.utils import cmd_exists
 
@@ -161,36 +161,6 @@ def yield_parsed_regions(region_str):
 
 
 # --- Source and Hook parsing ---
-def parse_source_string(source_str):
-    """Globato-specific wrapper that guarantees stream_data is injected."""
-
-    # return fetchez_parse_source(source_str, default_hooks=[{"name": "stream_data"}])
-    # return fetchez_parse_source(source_str, default_hooks=[{"name": "stream-init"}])
-    return fetchez_parse_source(source_str)#, default_hooks=[{"name": "stream-init"}])
-
-
-def compile_sources(sources, shared_cache=None):
-
-    import yaml
-
-    compiled_modules = []
-    for src in sources:
-        if str(src).lower().endswith((".yaml", ".yml")) and os.path.exists(src):
-            try:
-                with open(src, "r") as f:
-                    partial_recipe = yaml.safe_load(f)
-                    if "modules" in partial_recipe:
-                        compiled_modules.extend(partial_recipe["modules"])
-                        logger.debug(f"Imported {len(partial_recipe['modules'])} modules from {src}")
-            except Exception as e:
-                logger.debug(f"Failed to read modules from {src}: {e}")
-                continue
-        elif src == "-":
-            continue  # TODO: add stdin support
-        else:
-            compiled_modules.append(parse_source_string(src))
-
-    return compiled_modules
 
 
 def globatize_modules(modules, shared_cache=None, crs=None):
@@ -203,14 +173,6 @@ def globatize_modules(modules, shared_cache=None, crs=None):
         if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
             mod.setdefault("args", {})["outdir"] = abs_cache
 
-        # # -- Make sure the source has a stream initiator ---
-        # has_stream = any(h.get("name") in stream_initiators for h in hooks)
-        # if not has_stream:
-        #     hooks.append({"name": "stream-init"})
-        #     logger.debug(
-        #         f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
-        #     )
-
         # --- Insert the target crs into stream-reproject ---
         if crs:
             reproject_hook = None
@@ -221,21 +183,31 @@ def globatize_modules(modules, shared_cache=None, crs=None):
 
             if reproject_hook:
                 reproject_hook.setdefault("args", {})["dst_srs"] = crs
-
             else:
-                hooks.append({"name": "stream_reproject", "args": {"dst_srs": crs}})
+                hooks.insert(0, {"name": "stream_reproject", "args": {"dst_srs": crs}})
+        else:
+            # -- Make sure the source has a stream initiator ---
+            has_stream = any(
+                h.get("name") in ["stream-init", "stream_data"] for h in hooks
+            )
+            if not has_stream:
+                hooks.insert(0, {"name": "stream-init"})
+                logger.debug(
+                    f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
+                )
 
     return modules
 
 
 # --- Recipe building ---
 
+
 def make_recipe_config(name, r_str, modules, hooks, threads=4):
     config = {
         "project": {"name": name},
         "region": r_str,  # Provide the buffered region to the modules
         "modules": modules,  # Use our compiled modules list
-        "l_hooks": hooks,  # Use compiled global dem-building hooks
+        "global_hooks": hooks,  # Use compiled global dem-building hooks
         "execution": {"threads": threads},
     }
 

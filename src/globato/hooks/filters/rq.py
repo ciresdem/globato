@@ -63,6 +63,7 @@ class ReferenceQuality(GlobatoFilter):
     """
 
     name = "rq"
+    meta_stage = "stream"
     meta_desc = "Filter points by comparing z values to a reference raster."
 
     def __init__(

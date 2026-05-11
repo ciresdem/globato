@@ -355,7 +355,7 @@ class MultiStackAccumulator:
 
 # MULTI_STACK HOOK
 class MultiStackHook(FetchHook):
-    """Multi_Stack Gridding Hook.
+    """Multi-Stack Gridding Hook.
 
     accumulates streaming data into a multi-band statistical grid.
     Maintains a continuous .sums.tif to prevent duplication.
