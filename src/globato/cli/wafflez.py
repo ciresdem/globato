@@ -41,7 +41,7 @@ WAFFLEZ_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["r
     fetchez_commands=WAFFLEZ_COMMANDS,
 )
 def wafflez_group():
-    """Build and execute Digital Elevation Models."""
+    """Build and execute Digital Elevation Models Recipes."""
 
     pass
 

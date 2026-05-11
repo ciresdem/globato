@@ -10,28 +10,21 @@ Point cloud filtering and manipulation.
 :license: MIT, see LICENSE for more details.
 """
 
+import sys
+import logging
 import click
 import yaml
 from fetchez.recipe import Recipe
 from fetchez.utils import parse_hook_string, FetchezMainGroup, FetchezMainCommand, str2inc
-
-from globato.utils import parse_source_string, compile_sources, globatize_modules, make_recipe_config
-
-import os
-import sys
-import logging
-import numpy as np
-
 from fetchez.registry import (
     HookRegistry,
-    ModuleRegistry,
+    # ModuleRegistry,
     ReaderRegistry,
     ProfileRegistry,
 )
-from fetchez.core import run_fetchez
 from fetchez.spatial import Region
 
-from globato.hooks.transforms.reproject import StreamReproject
+from globato.utils import compile_sources, globatize_modules, make_recipe_config
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +98,6 @@ def dump(sources, region, inc, t_srs, global_filters, output, shared_cache, save
 
     compiled_modules = globatize_modules(compile_sources(sources), shared_cache=shared_cache, crs=t_srs)
 
-    active_global_filters = []
     global_hooks = []
 
     if region:
@@ -121,9 +113,7 @@ def dump(sources, region, inc, t_srs, global_filters, output, shared_cache, save
                 err=True,
             )
             sys.exit(1)
-        print(hook_dict)
         global_hooks.append(hook_dict)
-        # active_global_filters.append(mod_cls(**hook_dict.get("args", {})))
 
     if inc and region:
         global_hooks.append({"name": "points2pixels", "args": {"x_inc": str2inc(inc), "y_inc": str2inc(inc)}})
@@ -234,5 +224,3 @@ def pointz_region(source):
 
     region = Region.from_list([*meta.get("minmax", None)])
     click.echo(region.format('gmt'))
-
-pointz_group.add_command(pointz_cmd)
