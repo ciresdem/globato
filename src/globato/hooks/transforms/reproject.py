@@ -80,7 +80,12 @@ class StreamReproject(FetchHook):
                 if mod_region:
                     try:
                         buffered = mod_region.copy().buffer(pct=5)
-                        safe_region = [buffered.xmin, buffered.xmax, buffered.ymin, buffered.ymax]
+                        safe_region = [
+                            buffered.xmin,
+                            buffered.xmax,
+                            buffered.ymin,
+                            buffered.ymax,
+                        ]
                     except Exception:
                         safe_region = list(mod_region)
 

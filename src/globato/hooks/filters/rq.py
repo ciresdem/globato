@@ -19,8 +19,6 @@ import rasterio
 import threading
 
 import fetchez
-from fetchez.core import run_fetchez
-from fetchez.registry import ModuleRegistry
 
 from .base import GlobatoFilter
 
@@ -117,7 +115,9 @@ class ReferenceQuality(GlobatoFilter):
             files = self._fetch_reference_files(region, outdir)
 
             if not files:
-                logger.error(f"[RQ] No valid reference data found for {region}. Disabling RQ filter to prevent crash!")
+                logger.error(
+                    f"[RQ] No valid reference data found for {region}. Disabling RQ filter to prevent crash!"
+                )
                 return False
 
             if self.builder == "grid" and HAS_GRID_ENGINE:
@@ -126,14 +126,18 @@ class ReferenceQuality(GlobatoFilter):
                 self.ref_fn = self._build_vrt(files, region)
 
             if not self.ref_fn or not os.path.exists(self.ref_fn):
-                logger.error("[RQ] Builder failed to generate a reference surface. Disabling RQ filter.")
+                logger.error(
+                    "[RQ] Builder failed to generate a reference surface. Disabling RQ filter."
+                )
                 return False
 
         try:
             self.src = rasterio.open(self.ref_fn)
             self.ref_data = self.src.read(1)
         except Exception as e:
-            logger.error(f"[RQ] Failed to open generated reference surface: {e}. Disabling RQ filter.")
+            logger.error(
+                f"[RQ] Failed to open generated reference surface: {e}. Disabling RQ filter."
+            )
             return False
 
         if self.target_srs:
@@ -141,7 +145,6 @@ class ReferenceQuality(GlobatoFilter):
                 self._transformer = SRSParser(self.target_srs, self.src_crs).tc
 
         return True
-
 
     def _fetch_reference_files(self, region, outdir):
         """Downloads multiple reference datasets and stacks them by resolution."""
@@ -155,7 +158,9 @@ class ReferenceQuality(GlobatoFilter):
 
             logger.debug(f"[RQ] Fetching reference tier: {source}...")
             try:
-                files = fetchez.get(source, region=region.copy().buffer(pct=5).to_list(), outdir=outdir)
+                files = fetchez.get(
+                    source, region=region.copy().buffer(pct=5).to_list(), outdir=outdir
+                )
                 if files:
                     for f in files:
                         if os.path.exists(f) and os.path.getsize(f) > 2000:
@@ -164,11 +169,19 @@ class ReferenceQuality(GlobatoFilter):
                 logger.warning(f"[RQ] Fetch failed for {source}: {e}")
 
         if not valid_files and "gebco" not in self.ref_sources:
-            logger.warning(f"[RQ] Primary references failed. Falling back to GEBCO...")
+            logger.warning("[RQ] Primary references failed. Falling back to GEBCO...")
             try:
-                fallback = fetchez.get("gebco", region=region.copy().buffer(pct=5).to_list())
+                fallback = fetchez.get(
+                    "gebco", region=region.copy().buffer(pct=5).to_list()
+                )
                 if fallback:
-                    valid_files.extend([f for f in fallback if os.path.exists(f) and os.path.getsize(f) > 2000])
+                    valid_files.extend(
+                        [
+                            f
+                            for f in fallback
+                            if os.path.exists(f) and os.path.getsize(f) > 2000
+                        ]
+                    )
             except Exception as e:
                 logger.error(f"[RQ] Fallback to GEBCO failed: {e}")
 
@@ -186,7 +199,9 @@ class ReferenceQuality(GlobatoFilter):
 
         file_resolutions.sort(key=lambda x: x[0], reverse=True)
         sorted_files = [f[1] for f in file_resolutions]
-        logger.debug(f"[RQ] Stacked {len(sorted_files)} reference files for VRT/Grid engine.")
+        logger.debug(
+            f"[RQ] Stacked {len(sorted_files)} reference files for VRT/Grid engine."
+        )
         return sorted_files
 
     def _build_vrt(self, files, region):

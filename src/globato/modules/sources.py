@@ -11,7 +11,6 @@ These ensure data is unzipped, filtered, and ready for streaming into multi_stac
 
 import os
 import logging
-import rasterio
 
 from fetchez.hooks import FetchHook
 from fetchez.hooks.unzip import Unzip
@@ -25,14 +24,15 @@ from fetchez.registry import ModuleRegistry
 from globato.hooks.filters.rq import ReferenceQuality
 from globato.hooks.filters.rangez import RangeZ
 from globato.hooks.filters.outlierz import OutlierZ
-from globato.hooks.filters.dropclass import DropClass
+
+# from globato.hooks.filters.dropclass import DropClass
 from globato.hooks.filters.spatial_crop import SpatialCrop
 
 logger = logging.getLogger(__name__)
 
 BaseFabDEM = ModuleRegistry.get_class("fabdem") or object
 BaseCopernicus = ModuleRegistry.get_class("copernicus") or object
-BaseMultibeam = ModuleRegistry.get_class("mbdb") or object # Updated to mbdb per yaml
+BaseMultibeam = ModuleRegistry.get_class("mbdb") or object  # Updated to mbdb per yaml
 BaseHydroNOS = ModuleRegistry.get_class("nos_hydro") or object
 
 
@@ -82,7 +82,16 @@ class GlobCopernicus(BaseCopernicus):
 
     name = "glob_copernicus"
     meta_desc = "Copernicus Global/European Digital Elevation Models (COP-30/10)"
-    meta_tags = ["satellite", "dsm", "radar", "global", "europe", "clean", "globato", "glob-stream"]
+    meta_tags = [
+        "satellite",
+        "dsm",
+        "radar",
+        "global",
+        "europe",
+        "clean",
+        "globato",
+        "glob-stream",
+    ]
     meta_category = "Globato"
 
     def __init__(self, datatype=3, weight=1.0, **kwargs):
@@ -106,7 +115,16 @@ class GlobMultibeam(BaseMultibeam):
     """
 
     name = "glob_multibeam"
-    meta_tags = ["bathymetry", "multibeam", "ocean", "sonar", "noaa", "ncei", "globato", "glob-stream"]
+    meta_tags = [
+        "bathymetry",
+        "multibeam",
+        "ocean",
+        "sonar",
+        "noaa",
+        "ncei",
+        "globato",
+        "glob-stream",
+    ]
     meta_category = "Globato"
 
     def __init__(self, weight=1.0, want_inf=False, **kwargs):
@@ -159,7 +177,15 @@ class ValidateBAG(FetchHook):
 
 class GlobBAG(BaseHydroNOS):
     name = "glob_bag"
-    meta_tags = ["bathymetry", "hydrography", "nos", "noaa", "bag", "globato", "glob-stream"]
+    meta_tags = [
+        "bathymetry",
+        "hydrography",
+        "nos",
+        "noaa",
+        "bag",
+        "globato",
+        "glob-stream",
+    ]
     meta_category = "Globato"
 
     def __init__(self, weight=3.0, **kwargs):

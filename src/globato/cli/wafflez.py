@@ -416,8 +416,8 @@ def _list_sources(ctx, param, value):
     count = 0
     for name, meta in sorted(registry.items()):
         tags = meta.get("tags", [])
-        category = meta.get("category", "")
-        mod_path = meta.get("mod", "")
+        # category = meta.get("category", "")
+        # mod_path = meta.get("mod", "")
         # is_globato = (
         #     mod_path.startswith("globato.modules")
         #     or category.lower() == "globato"
