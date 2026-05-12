@@ -105,7 +105,7 @@ class CRMSchema(BaseSchema):
                     f"[Schema: {cls.name}] Changed 'multi-stack' srs to 'EPSG:4326+3855'."
                 )
 
-            if hook.get("name") == ["viz_geoshade", "viz-geoshade"]:
+            if hook.get("name") in ["viz_geoshade", "viz-geoshade"]:
                 hook.setdefault("args", {})
                 hook["args"].update(
                     {

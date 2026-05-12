@@ -34,7 +34,7 @@ class ProvenanceHook(FetchHook):
     """
 
     name = "provenance"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "metadata"
 
     def __init__(self, res="1s", output="provenance.tif", **kwargs):
@@ -179,7 +179,7 @@ class SourceMasks(FetchHook):
     """
 
     name = "source-masks"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "metadata"
     meta_aliases = ["source_masks"]
 

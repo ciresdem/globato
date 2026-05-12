@@ -30,6 +30,7 @@ class BindGrid(FetchHook, RasterSampling):
     """
 
     name = "bind-grid"
+    meta_stage = "stream"
     meta_category = "stream-transform"
     meta_consumes = "point-stream"
     meta_produces = "point-stream"

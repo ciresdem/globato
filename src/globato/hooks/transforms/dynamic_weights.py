@@ -22,6 +22,7 @@ class DynamicWeight(FetchHook):
     """Dynamically calculates point weights based on confidence or uncertainty fields."""
 
     name = "dynamic-weight"
+    meta_stage = "stream"
     meta_category = "stream-transform"
     meta_desc = "Calculate weights dynamically from other stream columns."
 

@@ -13,7 +13,6 @@ modules:
         args: {exclude: "Southern_California_Topobathy_DEM_1m_B_01.tif"}
       - name: filename_filter
         args: {exclude: "Southern_California_Topobathy_DEM_1m_B_02.tif"}
-      - name: stream_data
       - name: range_z
         args: {min_z: -11000, max_z: 9000}  # Trench to Peak range to remove extreme artifacts.
       - name: stream_reproject
@@ -133,14 +132,10 @@ modules:
       max_year: "2025"
       weight: 0.2
     hooks:
-      - name: stream_data
-        args:
-          chunk_size: 100000
       - name: stream_reproject
         args:
           src_srs: "EPSG:4326+5866"
           dst_srs: "EPSG:4326+3855"
-      - name: spatial_crop
       - name: outlierz
 
   # - module: gebco_cog

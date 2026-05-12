@@ -10,25 +10,20 @@ The main command-line interface for the Globato framework.
 import click
 import logging
 
-from .recipe import recipe_group
-# from .hook import hook_group
-# from .bundles import bundle_group
-
-# from .dem import dem_group
-from .raster import raster_group
+# Globato CLI
+from .wafflez import wafflez_group
+from .gritz import gritz_group
+from .pointz import pointz_group
+from .perspecto import perspecto_group
 from .region import region_group
 
-# from .fetch import fetch_group
-from .pointz import pointz_group
-from .viz import viz_group
-
+# Transformez CLI
 from transformez.cli import transformez_cli
 
-# from fetchez.cli import cli as fetchez_cli, setup_logging
+# Fetchez CLI
 from fetchez.cli import setup_logging
 from fetchez.utils import FetchezMainGroup
 
-# from fetchez.cli.bundles import bundles_group
 from fetchez.cli.hooks import hooks_group
 from fetchez.cli.modules import modules_group
 from fetchez.cli.recipes import recipes_group
@@ -49,8 +44,8 @@ logger = logging.getLogger(__name__)
             "gritz",
             "regions",
             "dlim",
-            "transformez",
             "perspecto",
+            "transformez",
         ],
         "Discovery and Management": [
             "modules",
@@ -73,15 +68,12 @@ def cli(verbose, quiet):
     setup_logging(name="globato", quiet=quiet, verbose=verbose)
 
 
-cli.add_command(recipe_group, name="cudem")
+cli.add_command(wafflez_group, name="cudem")
 cli.add_command(pipeline_group, name="fetchez")
-# cli.add_command(hook_group, name="hook")
-# cli.add_command(bundle_group, name="bundles")
-cli.add_command(raster_group, name="gritz")
+cli.add_command(gritz_group, name="gritz")
 cli.add_command(region_group, name="regions")
-# cli.add_command(fetch_group, name="fetch")
 cli.add_command(pointz_group, name="dlim")
-cli.add_command(viz_group, name="perspecto")
+cli.add_command(perspecto_group, name="perspecto")
 cli.add_command(transformez_cli, name="transformez")
 cli.add_command(hooks_group, name="hooks")
 cli.add_command(modules_group, name="modules")

@@ -51,7 +51,7 @@ class RasterMask(FetchHook, RasterSampling):
     """Filter using a raster mask (Non-zero = Keep)."""
 
     name = "raster_mask"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "stream-filter"
 
     def __init__(self, mask_fn=None, invert=False, set_class=7, **kwargs):
@@ -95,7 +95,7 @@ class DiffZ(FetchHook, RasterSampling):
     """Filter based on diff from reference raster."""
 
     name = "diffz"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_desc = "filter points based on a reference raster residuals"
     meta_category = "stream-filter"
 

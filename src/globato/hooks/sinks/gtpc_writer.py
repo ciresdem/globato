@@ -33,7 +33,7 @@ class WriteGTPC(FetchHook):
     """
 
     name = "write_gtpc"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "point-stream"
     meta_desc = "Write a point-stream to GTPC (globato point-cloud)"
     meta_requires = "point-stream"

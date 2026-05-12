@@ -184,9 +184,10 @@ class SimpleStack(FetchHook):
                      the entry with the raster result.
     """
 
-    name = "simple_stack"
-    meta_stage = "file"
+    name = "simple-stack"
+    meta_stage = "stream"
     meta_category = "stream-sink"
+    meta_aliases = ["simple_stack"]
 
     def __init__(
         self,

@@ -76,23 +76,26 @@ def test_recipe_build_save_only(runner):
                 "1s",
                 "-O",
                 "test_dem",
-                "--save-only",
+                "--export",
                 "mbdb+rq:threshold=50",
             ],
         )
 
         assert result.exit_code == 0
-        assert "Recipe saved to test_dem_recipe.yaml" in result.output
-        assert os.path.exists("test_dem_recipe.yaml")
+        assert "Wafflez recipe saved to test_dem_recipe.yaml" in result.output
+        assert os.path.exists("test_dem/test_dem_recipe.yaml")
 
-        with open("test_dem_recipe.yaml", "r") as f:
+        with open("test_dem/test_dem_recipe.yaml", "r") as f:
             config = yaml.safe_load(f)
 
         assert config["project"]["name"] == "test_dem"
         assert config["modules"][0]["module"] == "mbdb"
 
         hooks = config["modules"][0]["hooks"]
-        assert hooks[0]["name"] == "stream-init"
+        print(hooks)
+        # assert hooks[0]["name"] == "stream-init"  # stream-init gets auto-injected by fetchez now
+        assert hooks[0]["name"] == "stream_reproject"
+        assert hooks[0]["args"]["dst_srs"] == "EPSG:4326"
         assert hooks[1]["name"] == "rq"
         assert hooks[1]["args"]["threshold"] == 50
 

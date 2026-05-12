@@ -331,7 +331,7 @@ class PixelsToPoints(FetchHook):
     """Converts an in-memory raster_stream back into an xyz_recarray point stream."""
 
     name = "pixels2points"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "stream-transform"
     meta_aliases = ["pixels_to_points"]
 
@@ -398,7 +398,7 @@ class Point2PixelStream(FetchHook):
     """Base class for streaming point filters."""
 
     name = "points2pixels"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "stream-transform"
     meta_aliases = ["point2pixel", "points_to_pixel"]
 

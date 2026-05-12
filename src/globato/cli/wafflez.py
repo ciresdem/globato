@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-globato.cli.recipe
+globato.cli.wafflez
 ~~~~~~~~~~~~~~~~~~
-The command-line interface for the recipe group.
+The command-line interface for the wafflez group.
 
 list, dump, copy, validate, run, build
 """
@@ -17,94 +17,37 @@ import yaml
 import logging
 
 from fetchez.recipe import Recipe
-from fetchez.registry import RecipeRegistry
+from fetchez.registry import RecipeRegistry, BundleRegistry
 from fetchez.utils import (
-    parse_hook_string,
     str2inc,
+    parse_hook_string,
+    compile_sources,
     FetchezMainGroup,
     FetchezMainCommand,
 )
-from globato.utils import parse_source_string, yield_parsed_regions
+from globato.utils import yield_parsed_regions, globatize_modules, make_recipe_config
 from fetchez.cli.recipes import recipes_group
 
 logger = logging.getLogger(__name__)
 
-RECIPE_COMMANDS = {"Commmands": ["run", "build"], "Discovery & Management": ["recipes"]}
+WAFFLEZ_COMMANDS = {
+    "Commmands": ["run", "build"],
+    "Discovery & Management": ["recipes"],
+}
 
-# RECIPE_COMMANDS = ["run", "build", "recipes"]
-
-
-def validate_dependencies(recipe_obj):
-    """Interrogates all modules and hooks to ensure heavy dependencies exist."""
-
-    errors = []
-
-    # Check all global hooks
-    for hook in getattr(recipe_obj, "global_hooks", []):
-        if hasattr(hook, "_validate_deps"):
-            passed, msg = hook._validate_deps()
-            if not passed:
-                errors.append(f"[{hook.name}] {msg}")
-
-    # Check all streaming hooks inside the modules
-    for mod in getattr(recipe_obj, "modules", []):
-        for hook in getattr(mod, "hooks", []):
-            if hasattr(hook, "_validate_deps"):
-                passed, msg = hook._validate_deps()
-                if not passed:
-                    errors.append(f"[{mod.name} -> {hook.name}] {msg}")
-
-    if errors:
-        click.secho("\n[ DEPENDENCY VALIDATION CHECK FAILED ]", fg="red", bold=True)
-        click.secho(
-            "The following dependencies are missing for this recipe:", fg="yellow"
-        )
-        for error in errors:
-            click.echo(f"   {error}")
-        click.echo(
-            "\nPlease install the required packages or modify the recipe and try again.\n"
-        )
-        sys.exit(1)
+# WAFFLEZ_COMMANDS = ["run", "build", "recipes"]
 
 
 @click.version_option(package_name="globato")
 @click.group(
     cls=FetchezMainGroup,
-    name="recipe",
-    fetchez_commands=RECIPE_COMMANDS,
+    name="wafflez",
+    fetchez_commands=WAFFLEZ_COMMANDS,
 )
-def recipe_group():
-    """Execute and manage YAML DEM recipes."""
+def wafflez_group():
+    """Build and execute Digital Elevation Models Recipes."""
 
     pass
-
-
-# @recipe_group.command("list")
-# @click.option("--search", "-s", help="Filter recipes by name or keyword.")
-# def recipe_list(search):
-#     """List all available curated DEM recipes."""
-
-#     RecipeRegistry.load_all()
-#     registry = RecipeRegistry.get_registry()
-
-#     click.secho("\nAvailable Curated Recipes:", fg="cyan", bold=True)
-#     click.echo("=" * 60)
-
-#     count = 0
-#     for name, meta in sorted(registry.items()):
-#         if (
-#             search
-#             and search.lower() not in name.lower()
-#             and search.lower() not in meta["desc"].lower()
-#         ):
-#             continue
-
-#         click.secho(f"  {name:<25}", fg="green", bold=True, nl=False)
-#         click.echo(f" - {meta['desc']}")
-#         count += 1
-
-#     click.echo("=" * 60)
-#     click.echo(f"Total recipes found: {count}\n")
 
 
 def _load_yaml(target):
@@ -116,7 +59,7 @@ def _load_yaml(target):
         recipe_meta = RecipeRegistry.get_recipe(target)
         if recipe_meta:
             base_config = recipe_meta["config"]
-            click.secho(f"Loaded curated recipe: {target}", fg="cyan")
+            click.secho(f"Loaded recipe: {target}", fg="cyan")
 
     return base_config
 
@@ -146,7 +89,7 @@ def _absolutize_local_sources(config, base_dir):
     return config
 
 
-@recipe_group.command("run", cls=FetchezMainCommand)
+@wafflez_group.command("run", cls=FetchezMainCommand)
 @click.argument("target")
 @click.option(
     "-R",
@@ -174,10 +117,11 @@ def _absolutize_local_sources(config, base_dir):
     type=click.Path(resolve_path=True),
     help="Centralized directory to cache fetched data across all tiles.",
 )
-def recipe_run(
+def wafflez_run(
     target, region, increment, crs, outname, outdir, overwrite, shared_cache
 ):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
+
     import copy
 
     RecipeRegistry.load_all()
@@ -454,14 +398,17 @@ def _parse_source(src_str):
 
 
 def _list_sources(ctx, param, value):
-    """Eager callback to list curated data sources and exit."""
+    """List curated data sources and exit."""
+
     if not value or ctx.resilient_parsing:
         return
 
     from fetchez.registry import ModuleRegistry
 
     ModuleRegistry.load_all()
+    BundleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
+    registry.update(BundleRegistry.get_registry())
 
     click.secho("\nCurated Globato Data Sources & Bundles:", fg="cyan", bold=True)
     click.echo("=" * 60)
@@ -469,16 +416,15 @@ def _list_sources(ctx, param, value):
     count = 0
     for name, meta in sorted(registry.items()):
         tags = meta.get("tags", [])
-        category = meta.get("category", "")
-        mod_path = meta.get("mod", "")
-
-        # ✨ THE FILTER: Only show sources explicitly tagged for Globato DEM use!
-        is_globato = (
-            mod_path.startswith("globato.modules")
-            or category.lower() == "globato"
-            or "globato" in tags
-            or "bundle" in tags
-        )
+        # category = meta.get("category", "")
+        # mod_path = meta.get("mod", "")
+        # is_globato = (
+        #     mod_path.startswith("globato.modules")
+        #     or category.lower() == "globato"
+        #     or "globato" in tags
+        #     or "bundle" in tags
+        # )
+        is_globato = "glob-stream" in tags
 
         if is_globato and name not in meta.get("aliases", []):
             desc = meta.get("desc", "No description provided.").strip().split("\n")[0]
@@ -492,11 +438,11 @@ def _list_sources(ctx, param, value):
     click.echo("  Files will be wrapped in the 'file' module.")
     click.echo("  Directories will be crawled using the 'local_fs' module.")
     click.echo(
-        "  Example: globato recipe build -R ... ./my_data.tif ./my_folder:ext=.xyz"
+        "  Example: globato wafflez build -R ... ./my_data.tif ./my_folder:ext=.xyz"
     )
 
     click.echo(
-        f"\nTry 'globato recipe build --info-source <name>' for details. Total: {count}\n"
+        f"\nTry 'globato wafflez build --info-source <name>' for details. Total: {count}\n"
     )
     ctx.exit()
 
@@ -560,7 +506,7 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
-@recipe_group.command("build", cls=FetchezMainCommand)
+@wafflez_group.command("build", cls=FetchezMainCommand)
 @click.option(
     "--list-sources",
     is_flag=True,
@@ -586,6 +532,12 @@ def _info_source(ctx, param, value):
     "--outname",
     default="globato_dem",
     help="Output Basename (default: globato_dem)",
+)
+@click.option(
+    "--outdir",
+    type=click.Path(resolve_path=True),
+    default=None,
+    help="Base output directory for the DEM(s).",
 )
 @click.option(
     "-F",
@@ -643,15 +595,16 @@ def _info_source(ctx, param, value):
     help="Global tags to inject into the final DEM (e.g., 'Project=CRM,Author=NOAA').",
 )
 @click.option(
-    "--save-only",
+    "--export",
     is_flag=True,
-    help="Save the generated YAML recipe to disk WITHOUT running it.",
+    help="Save the generated YAML recipe to disk without running it.",
 )
 @click.argument("sources", nargs=-1)
-def recipe_build(
+def wafflez_build(
     region,
     increment,
     outname,
+    outdir,
     format,
     crs,
     nodata,
@@ -663,12 +616,14 @@ def recipe_build(
     weights,
     shared_cache,
     metadata,
-    save_only,
+    export,
     sources,
 ):
-    """Build and run a recipe on the fly, mimicking the legacy Waffles CLI."""
+    """Build and run a Digital Elevation Model."""
 
     from fetchez.registry import HookRegistry
+
+    HookRegistry.load_all()
 
     if not sources:
         click.secho(
@@ -677,72 +632,16 @@ def recipe_build(
         )
         sys.exit(1)
 
-    compiled_modules = []
-    for src in sources:
-        if str(src).lower().endswith((".yaml", ".yml")) and os.path.exists(src):
-            try:
-                with open(src, "r") as f:
-                    partial_recipe = yaml.safe_load(f)
-                    if "modules" in partial_recipe:
-                        compiled_modules.extend(partial_recipe["modules"])
-                        click.secho(
-                            f"Imported {len(partial_recipe['modules'])} modules from {src}",
-                            fg="green",
-                        )
-            except Exception as e:
-                click.secho(f"Failed to read modules from {src}: {e}", fg="red")
-                sys.exit(1)
-        else:
-            # Standard CLI string parsing
-            compiled_modules.append(parse_source_string(src))
+    compiled_modules = globatize_modules(
+        compile_sources(sources), shared_cache=shared_cache, crs=crs
+    )
 
-    abs_cache = os.path.abspath(shared_cache) if shared_cache else None
-
-    # Known hooks that successfully turn files into streams
-    stream_initiators = [
-        "stream_data",
-        "stream-init",
-        "stream_init",
-        "raster_stream",
-        "stream_las",
-        "stream_xyz",
-    ]
-    # Known file-stage filters that MUST run before the stream starts
-    file_stage_hooks = ["filename_filter", "raster_flats"]
-
-    for mod in compiled_modules:
-        hooks = mod.setdefault("hooks", [])
-
-        if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
-            mod.setdefault("args", {})["outdir"] = abs_cache
-
-        has_stream = any(h.get("name") in stream_initiators for h in hooks)
-        if not has_stream:
-            # Find the best place to insert `stream-init`.
-            insert_idx = 0
-            for i, h in enumerate(hooks):
-                if h.get("name") in file_stage_hooks:
-                    insert_idx = i + 1
-
-            hooks.insert(insert_idx, {"name": "stream-init"})
-            logger.debug(
-                f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
-            )
-
-        if crs:
-            hooks = mod.setdefault("hooks", [])
-
-            reproject_hook = None
-            for h in hooks:
-                if h.get("name") in ["stream_reproject", "stream-reproject"]:
-                    reproject_hook = h
-                    break
-
-            if reproject_hook:
-                reproject_hook.setdefault("args", {})["dst_srs"] = crs
-
-            else:
-                hooks.append({"name": "stream_reproject", "args": {"dst_srs": crs}})
+    if outdir is None:
+        base_outdir = os.path.abspath(".")
+    else:
+        base_outdir = os.path.abspath(outdir)
+    os.makedirs(base_outdir, exist_ok=True)
+    original_cwd = os.getcwd()
 
     try:
         for t_reg, feat_name in yield_parsed_regions(region):
@@ -773,6 +672,7 @@ def recipe_build(
 
             # --- Base Pipeline Standard Hooks ---
             global_hooks = [
+                {"name": "spatial-crop"},
                 {"name": "audit"},
                 {"name": "enrich"},
                 {"name": "transfer_log"},
@@ -789,7 +689,7 @@ def recipe_build(
             # --- Multi Stack ---
             global_hooks.append(
                 {
-                    "name": "multi_stack",
+                    "name": "multi-stack",
                     "args": {
                         "res": increment,
                         "crs": crs,
@@ -801,7 +701,7 @@ def recipe_build(
                 }
             )
             global_hooks.append(
-                {"name": "focus_sink", "args": {"target": "multi_stack"}}
+                {"name": "focus_sink", "args": {"target": "multi-stack"}}
             )
             global_hooks.append(
                 {
@@ -824,13 +724,13 @@ def recipe_build(
                         "name": "ms_blend",
                         "args": {
                             "weight_threshold": w,
-                            "blend_dist": 20,  # Defaulting to 20, could also make this an option!
+                            "blend_dist": 20,  # Defaulting to 20
                             "random_scale": 0.25,
                         },
                     }
                 )
 
-            # Add requested Filters (-T)
+            # --- Add requested Filters (-T) ---
             for f in filters:
                 global_hooks.append(parse_hook_string(f))
 
@@ -841,18 +741,20 @@ def recipe_build(
 
                 base_res = str2inc(increment)
 
-                # Automatically step the resolutions down by a factor of 3 for each weight tier!
+                # Automatically step the resolutions down by a factor of 3 for each weight tier.
                 step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
 
                 args = algo_hook.setdefault("args", {})
                 args["resolutions"] = step_resolutions
                 args["weights"] = weight_list
                 args["steps"] = len(weight_list)
+                args["barrier"] = "osm"
+                args["algo"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
 
-            # Add Clipping (-C)
+            # --- Add Clipping (-C) ---
             if clip:
                 clip_hook = parse_hook_string(clip, default_name="raster_clip")
                 if clip_hook["name"] != "raster_clip":
@@ -886,47 +788,55 @@ def recipe_build(
 
             for hook in global_hooks:
                 hook_name = hook.get("name")
+                hook_names = hook.get("meta_aliases", [])
+                hook_names.append(hook_name)  #  = [hook_name].extend(hook_aliases)
                 hook_cls = HookRegistry.get_class(hook_name)
 
                 if hook_cls:
-                    # Grab the class's official description
                     desc = getattr(
                         hook_cls, "meta_desc", f"Executes the {hook_name} process."
                     )
 
-                    # We can even append default argument hints if we want!
-                    if hook_name == "multi_stack":
+                    if (
+                        "multi_stack" in hook_names
+                    ):  # in ["multi_stack", "multi-stack"]:
                         desc += " Args define the target resolution and grid math (e.g., mean, idw)."
-                    elif hook_name == "ms_cudem":
+                    elif "ms_cudem" in hook_names:  # == "ms_cudem":
                         desc += " Args define interpolation resolutions and blending distances."
 
-                    # Inject it! (Using 'description' key)
                     hook["description"] = desc
 
-            config = {
-                "project": {"name": tile_outname},
-                "region": proc_r_str,  # Provide the BIG region to the modules
-                "modules": compiled_modules,  # Use our compiled modules list
-                "global_hooks": global_hooks,
-                "execution": {"threads": 4},
-            }
+            # --- Build the recipe ---
+            config = make_recipe_config(
+                tile_outname, proc_r_str, compiled_modules, global_hooks
+            )
+
+            tile_dir = os.path.join(base_outdir, tile_outname)
+            os.makedirs(tile_dir, exist_ok=True)
+            os.chdir(tile_dir)
 
             yaml_str = yaml.dump(config, sort_keys=False)
-
             out_yaml = f"{tile_outname}_recipe.yaml"
             with open(out_yaml, "w") as f:
                 f.write(yaml_str)
-            click.secho(f"Recipe saved to {out_yaml}.", fg="green", bold=True)
+            click.secho(f"Wafflez recipe saved to {out_yaml}.", fg="green", bold=True)
 
-            # if not save_only:
-            #     click.secho(
-            #         f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True
-            #     )
-            #     Recipe.from_file(config).run()
+            if not export:
+                click.secho(
+                    f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True
+                )
+                recipe = Recipe.from_file(config)
+                valid, errors = recipe.validate()
+                if valid:
+                    recipe.run()
+                else:
+                    click.secho(f"Recipe is invalid: {errors}", fg="red", bold=True)
 
     except ValueError as e:
         click.secho(str(e), fg="red")
-        sys.exit(1)
+        # sys.exit(1)
+    finally:
+        os.chdir(original_cwd)
 
 
-recipe_group.add_command(recipes_group, name="recipes")
+wafflez_group.add_command(recipes_group, name="recipes")

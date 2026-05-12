@@ -6,30 +6,33 @@ globato.modules.sources
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 "Smart" wrappers around standard Fetchez modules.
-These ensure data is unzipped, filtered, and ready for merging (GlobDEM).
+These ensure data is unzipped, filtered, and ready for streaming into multi_stack.
 """
 
 import os
 import logging
-import rasterio
 
 from fetchez.hooks import FetchHook
 from fetchez.hooks.unzip import Unzip
 from fetchez.hooks.datatype import SetDataType
+from fetchez.hooks.set_srs import SetSrs
 from fetchez.hooks.fn_filter import FilenameFilter
+from fetchez.hooks.stream_init import DataStream
 from fetchez.registry import ModuleRegistry
 
-from fetchez.hooks.stream_init import DataStream
+# You might need to import your SetSRS or stream_reproject hook here depending on where it lives
 from globato.hooks.filters.rq import ReferenceQuality
 from globato.hooks.filters.rangez import RangeZ
-from globato.hooks.filters.dropclass import DropClass
-from globato.hooks.sinks.simple_stack import SimpleStack
+from globato.hooks.filters.outlierz import OutlierZ
+
+# from globato.hooks.filters.dropclass import DropClass
+from globato.hooks.filters.spatial_crop import SpatialCrop
 
 logger = logging.getLogger(__name__)
 
 BaseFabDEM = ModuleRegistry.get_class("fabdem") or object
 BaseCopernicus = ModuleRegistry.get_class("copernicus") or object
-BaseMultibeam = ModuleRegistry.get_class("multibeam") or object
+BaseMultibeam = ModuleRegistry.get_class("mbdb") or object  # Updated to mbdb per yaml
 BaseHydroNOS = ModuleRegistry.get_class("nos_hydro") or object
 
 
@@ -40,8 +43,6 @@ class GlobFabDEM(BaseFabDEM):
     - Unzip
     - Stream (Load Points)
     - RQ Filter (Flag Coastal Creep)
-    - Drop Class (Remove Noise)
-    - Stack (Save Clean Raster)
     """
 
     name = "glob_fabdem"
@@ -54,6 +55,7 @@ class GlobFabDEM(BaseFabDEM):
         "30m",
         "clean",
         "globato",
+        "glob-stream",
     ]
     meta_category = "Globato"
 
@@ -63,81 +65,90 @@ class GlobFabDEM(BaseFabDEM):
         self.weight = 1
 
         self.add_hook(Unzip())
-
         self.add_hook(DataStream())
         self.add_hook(
             ReferenceQuality(
                 reference="gebco_cog", threshold=50, mode="diff", set_class=7
             )
         )
-        self.add_hook(DropClass(classes="7"))
-        # self.hooks.append(SimpleStack())
-        self.add_hook(SimpleStack(output="_clean.tif", res="1s", mode="mean"))
 
 
 class GlobCopernicus(BaseCopernicus):
     """Cleaned Copernicus DEM.
 
-    - Automatically Unzips.
-    - Filters out water (Copernicus is often valid over ocean as 0 or noisy).
-    - Drop Class (Remove Noise)
-    - Stack (Save Clean Raster)
+    Unzips, filters for .tif, sets rio datatype,
+    initiates stream, and drops anomalous 0-values.
     """
 
     name = "glob_copernicus"
     meta_desc = "Copernicus Global/European Digital Elevation Models (COP-30/10)"
-    meta_tags = ["satellite", "dsm", "radar", "global", "europe", "clean", "globato"]
+    meta_tags = [
+        "satellite",
+        "dsm",
+        "radar",
+        "global",
+        "europe",
+        "clean",
+        "globato",
+        "glob-stream",
+    ]
     meta_category = "Globato"
 
-    def __init__(self, **kwargs):
-        super().__init__(name="glob_copernicus", **kwargs)
+    def __init__(self, datatype=3, weight=1.0, **kwargs):
+        # Pass datatype into the base class to control COP-30 vs COP-90
+        super().__init__(name="glob_copernicus", datatype=datatype, **kwargs)
 
-        self.weight = 1
+        self.weight = weight
+
         self.add_hook(Unzip())
         self.add_hook(FilenameFilter(match=".tif"))
-
-        self.add_hook(DataStream())
+        self.add_hook(SetDataType(data_type="rio"))
+        self.add_hook(DataStream(chunk_size=100000))
         self.add_hook(RangeZ(min_z=0.01))
-        self.add_hook(DropClass(classes="7"))
-        self.add_hook(SimpleStack(output="{base}_clean.tif", res="1s", mode="mean"))
 
 
 class GlobMultibeam(BaseMultibeam):
-    """Cleaned Multibeam
+    """Cleaned NCEI Multibeam (MBDB).
 
-    - Filename_filter
-    - Steam (Load Points)
-    - RQ Filter
-    - drop class
-    - Stack (Save Clean Raster)
+    Mirrors global_bato.yaml: Sets SRS, crops spatially, and runs
+    the Reference Quality filter against GMRT to flag outliers.
     """
 
     name = "glob_multibeam"
-    meta_tags = ["bathymetry", "multibeam", "ocean", "sonar", "noaa", "ncei", "globato"]
+    meta_tags = [
+        "bathymetry",
+        "multibeam",
+        "ocean",
+        "sonar",
+        "noaa",
+        "ncei",
+        "globato",
+        "glob-stream",
+    ]
     meta_category = "Globato"
 
-    def __init__(self, res="1s", **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, weight=1.0, want_inf=False, **kwargs):
+        super().__init__(want_inf=want_inf, **kwargs)
 
-        self.add_hook(FilenameFilter(exclude=".inf", stage="pre"))
+        self.weight = weight
+
+        self.add_hook(SetSrs(srs="EPSG:4326+5866"))
         self.add_hook(DataStream())
+        self.add_hook(SpatialCrop())
         self.add_hook(
             ReferenceQuality(
-                reference="gmrt",
-                threshold=5,
+                reference="gmrt/gebco",
+                threshold=10,
                 mode="percent",
                 builder="grid",
+                res=0.008333,
                 set_class=7,
             )
         )
-        self.add_hook(DropClass(classes="7"))
-        self.add_hook(SimpleStack(output="{base}_clean.tif", res=res, mode="mean"))
 
 
 class ValidateBAG(FetchHook):
-    """Checks if a BAG file is valid HDF5.
-    If invalid, deletes it so Fetchez will retry the download next time.
-    """
+    """Checks if a BAG file is valid HDF5."""
 
     name = "validate_bag"
     meta_stage = "file"
@@ -151,17 +162,10 @@ class ValidateBAG(FetchHook):
             is_valid = False
             try:
                 with open(fn, "rb") as f:
-                    header = f.read(4)
-                    if header == b"\x89HDF":
+                    if f.read(4) == b"\x89HDF":
                         is_valid = True
-
-                if is_valid:
-                    with rasterio.Env(CPL_LOG="/dev/null"):
-                        with rasterio.open(fn) as src:
-                            logger.info(src)
-                            pass
             except Exception:
-                is_valid = False
+                pass
 
             if not is_valid:
                 logger.warning(f"Corrupt file detected: {fn}. Deleting.")
@@ -179,22 +183,25 @@ class GlobBAG(BaseHydroNOS):
         "nos",
         "noaa",
         "bag",
-        "soundings",
         "globato",
+        "glob-stream",
     ]
     meta_category = "Globato"
 
-    def __init__(self, **kwargs):
+    def __init__(self, weight=3.0, **kwargs):
         super().__init__(name="glob_bag", **kwargs)
         self.datatype = "bag"
+        self.weight = weight
 
         self.add_hook(ValidateBAG())
         self.add_hook(FilenameFilter(exclude="_Ellipsoid_", stage="pre"))
+        self.add_hook(DataStream())
+        self.add_hook(SpatialCrop())
 
 
 class GlobNOSXYZ(BaseHydroNOS):
     name = "glob_nos"
-    meta_tags = ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato"]
+    meta_tags = ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato", "glob-stream"]
     meta_category = "Globato"
 
     def __init__(self, **kwargs):
@@ -203,4 +210,6 @@ class GlobNOSXYZ(BaseHydroNOS):
         self.src_srs = "EPSG:4326+1089"
 
         self.add_hook(Unzip())
-        self.add_hook(SetDataType(data_type="nox_xyz"))
+        self.add_hook(SetDataType(data_type="nox-xyz"))
+        self.add_hook(SetSrs(srs="EPSG:4326+5866"))
+        self.add_hook(OutlierZ())

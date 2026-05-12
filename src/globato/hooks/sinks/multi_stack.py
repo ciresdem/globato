@@ -355,15 +355,16 @@ class MultiStackAccumulator:
 
 # MULTI_STACK HOOK
 class MultiStackHook(FetchHook):
-    """Multi_Stack Gridding Hook.
+    """Multi-Stack Gridding Hook.
 
     accumulates streaming data into a multi-band statistical grid.
     Maintains a continuous .sums.tif to prevent duplication.
     """
 
     name = "multi_stack"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_category = "stream-sink"
+    meta_aliases = ["multi-stack"]
 
     def __init__(
         self,

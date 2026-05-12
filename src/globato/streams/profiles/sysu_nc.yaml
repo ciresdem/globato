@@ -1,0 +1,15 @@
+# name: sysu-xyz
+# description: SYSU Marine Gravity-Based bathymetry
+# stream-type: point-stream
+# reader:
+#   name: rasterio-reader
+
+name: sysu-xyz
+description: SYSU Marine Gravity-Based bathymetry
+stream-type: point-stream
+reader:
+  name: netcdf_reader
+  args:
+    x_var: lon
+    y_var: lat
+    z_var: z
