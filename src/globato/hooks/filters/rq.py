@@ -16,7 +16,9 @@ import os
 import logging
 import numpy as np
 import rasterio
+import threading
 
+import fetchez
 from fetchez.core import run_fetchez
 from fetchez.registry import ModuleRegistry
 
@@ -39,6 +41,8 @@ except ImportError:
 from transformez.srs import SRSParser
 
 logger = logging.getLogger(__name__)
+
+T_LOCK = threading.Lock()
 
 
 class ReferenceQuality(GlobatoFilter):
@@ -79,6 +83,7 @@ class ReferenceQuality(GlobatoFilter):
     ):
         super().__init__(**kwargs)
         self.ref_source = reference
+        self.ref_sources = [s.strip().lower() for s in str(reference).split("/")]
         self.threshold = float(threshold)
         self.mode = mode.lower()
         self.builder = builder.lower()
@@ -107,11 +112,12 @@ class ReferenceQuality(GlobatoFilter):
             return False
 
         region = getattr(mod, "region")
+        outdir = getattr(mod, "_outdir")
         if not self.ref_fn:
-            files = self._fetch_reference_files(mod.region)
+            files = self._fetch_reference_files(region, outdir)
+
             if not files:
-                logger.warning("[RQ] No reference data found. Skipping.")
-                # return entries
+                logger.error(f"[RQ] No valid reference data found for {region}. Disabling RQ filter to prevent crash!")
                 return False
 
             if self.builder == "grid" and HAS_GRID_ENGINE:
@@ -119,8 +125,16 @@ class ReferenceQuality(GlobatoFilter):
             else:
                 self.ref_fn = self._build_vrt(files, region)
 
-        self.src = rasterio.open(self.ref_fn)
-        self.ref_data = self.src.read(1)
+            if not self.ref_fn or not os.path.exists(self.ref_fn):
+                logger.error("[RQ] Builder failed to generate a reference surface. Disabling RQ filter.")
+                return False
+
+        try:
+            self.src = rasterio.open(self.ref_fn)
+            self.ref_data = self.src.read(1)
+        except Exception as e:
+            logger.error(f"[RQ] Failed to open generated reference surface: {e}. Disabling RQ filter.")
+            return False
 
         if self.target_srs:
             if self._transformer is None:
@@ -128,29 +142,52 @@ class ReferenceQuality(GlobatoFilter):
 
         return True
 
-    def _fetch_reference_files(self, region):
-        """Downloads reference data and returns list of paths."""
 
-        if os.path.exists(self.ref_source) and os.path.isfile(self.ref_source):
-            return [self.ref_source]
+    def _fetch_reference_files(self, region, outdir):
+        """Downloads multiple reference datasets and stacks them by resolution."""
 
-        ModuleRegistry.load_all()
-        logger.debug(f"[RQ] Fetching reference data: {self.ref_source}...")
-        mod_cls = ModuleRegistry.get_class(self.ref_source)
+        valid_files = []
 
-        if not mod_cls:
-            return None
+        for source in self.ref_sources:
+            if os.path.exists(source) and os.path.isfile(source):
+                valid_files.append(source)
+                continue
 
-        buffered_region = region.copy().buffer(pct=5)
-        fetcher = mod_cls(src_region=buffered_region)
-        fetcher.run()
-        run_fetchez([fetcher])
+            logger.debug(f"[RQ] Fetching reference tier: {source}...")
+            try:
+                files = fetchez.get(source, region=region.copy().buffer(pct=5).to_list(), outdir=outdir)
+                if files:
+                    for f in files:
+                        if os.path.exists(f) and os.path.getsize(f) > 2000:
+                            valid_files.append(f)
+            except Exception as e:
+                logger.warning(f"[RQ] Fetch failed for {source}: {e}")
 
-        files = []
-        for entry in fetcher.results:
-            if fetcher.fetch_entry(entry, check_size=True, verbose=False) == 0:
-                files.append(entry["dst_fn"])
-        return files
+        if not valid_files and "gebco" not in self.ref_sources:
+            logger.warning(f"[RQ] Primary references failed. Falling back to GEBCO...")
+            try:
+                fallback = fetchez.get("gebco", region=region.copy().buffer(pct=5).to_list())
+                if fallback:
+                    valid_files.extend([f for f in fallback if os.path.exists(f) and os.path.getsize(f) > 2000])
+            except Exception as e:
+                logger.error(f"[RQ] Fallback to GEBCO failed: {e}")
+
+        if not valid_files:
+            return []
+
+        file_resolutions = []
+        for f in valid_files:
+            try:
+                with rasterio.open(f) as src:
+                    res = src.res[0]
+                    file_resolutions.append((res, f))
+            except Exception:
+                pass
+
+        file_resolutions.sort(key=lambda x: x[0], reverse=True)
+        sorted_files = [f[1] for f in file_resolutions]
+        logger.debug(f"[RQ] Stacked {len(sorted_files)} reference files for VRT/Grid engine.")
+        return sorted_files
 
     def _build_vrt(self, files, region):
         """Builds a VRT using GDAL."""

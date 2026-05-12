@@ -418,12 +418,13 @@ def _list_sources(ctx, param, value):
         tags = meta.get("tags", [])
         category = meta.get("category", "")
         mod_path = meta.get("mod", "")
-        is_globato = (
-            mod_path.startswith("globato.modules")
-            or category.lower() == "globato"
-            or "globato" in tags
-            or "bundle" in tags
-        )
+        # is_globato = (
+        #     mod_path.startswith("globato.modules")
+        #     or category.lower() == "globato"
+        #     or "globato" in tags
+        #     or "bundle" in tags
+        # )
+        is_globato = "glob-stream" in tags
 
         if is_globato and name not in meta.get("aliases", []):
             desc = meta.get("desc", "No description provided.").strip().split("\n")[0]

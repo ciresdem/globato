@@ -9,6 +9,8 @@ tags:
   - bathymetry
   - topography
   - global
+  - glob-stream
+  - glob-bundle
 modules:
   - module: copernicus
     args: {weight: 1.5, datatype: 3}

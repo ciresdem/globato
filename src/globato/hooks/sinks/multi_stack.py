@@ -361,10 +361,10 @@ class MultiStackHook(FetchHook):
     Maintains a continuous .sums.tif to prevent duplication.
     """
 
-    name = "multi-stack"
+    name = "multi_stack"
     meta_stage = "stream"
     meta_category = "stream-sink"
-    meta_aliases = ["multi_stack"]
+    meta_aliases = ["multi-stack"]
 
     def __init__(
         self,
