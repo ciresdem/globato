@@ -595,7 +595,7 @@ def _info_source(ctx, param, value):
     help="Global tags to inject into the final DEM (e.g., 'Project=CRM,Author=NOAA').",
 )
 @click.option(
-    "--save-recipe",
+    "--export",
     is_flag=True,
     help="Save the generated YAML recipe to disk without running it.",
 )
@@ -616,7 +616,7 @@ def wafflez_build(
     weights,
     shared_cache,
     metadata,
-    save_recipe,
+    export,
     sources,
 ):
     """Build and run a Digital Elevation Model."""
@@ -821,7 +821,7 @@ def wafflez_build(
                 f.write(yaml_str)
             click.secho(f"Wafflez recipe saved to {out_yaml}.", fg="green", bold=True)
 
-            if not save_recipe:
+            if not export:
                 click.secho(
                     f"Executing dynamic recipe: {tile_outname}", fg="cyan", bold=True
                 )

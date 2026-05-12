@@ -53,22 +53,24 @@ def test_globato_imports():
                         )
 
                     # parse_source_string MUST come from globato.utils
-                    if (
-                        imported_name == "parse_source_string"
-                        and module != "globato.utils"
-                    ):
-                        # Allow fetchez/utils.py to be imported in globato/utils.py itself
-                        if not (
-                            (py_file.name == "utils.py" and module == "fetchez.utils")
-                            or py_file.name == "gritz.py"
-                            or py_file.name == "perspecto.py"
-                        ):
-                            errors.append(
-                                f"[{py_file.name}] Violation: 'parse_source_string' imported from '{module}'. "
-                                f"Must be imported from 'globato.utils' (to ensure stream_data injection)."
-                            )
+                    # parse_source_string has been merged into fetchez!
+                    # if (
+                    #     imported_name == "parse_source_string"
+                    #     and module != "globato.utils"
+                    # ):
+                    #     # Allow fetchez/utils.py to be imported in globato/utils.py itself
+                    #     if not (
+                    #         (py_file.name == "utils.py" and module == "fetchez.utils")
+                    #         or py_file.name == "gritz.py"
+                    #         or py_file.name == "perspecto.py"
+                    #     ):
+                    #         errors.append(
+                    #             f"[{py_file.name}] Violation: 'parse_source_string' imported from '{module}'. "
+                    #             f"Must be imported from 'globato.utils' (to ensure stream_data injection)."
+                    #         )
 
                     # Never import the SRS-unaware Region from Fetchez
+                    # fetchez.Region has been merged with TransRegion
                     if imported_name == "TransRegion" and "transformez" in module:
                         errors.append(
                             f"[{py_file.name}] Violation: Imported 'Region' from '{module}'. "
