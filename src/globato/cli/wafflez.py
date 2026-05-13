@@ -689,7 +689,7 @@ def wafflez_build(
             # --- Multi Stack ---
             global_hooks.append(
                 {
-                    "name": "multi-stack",
+                    "name": "multi_stack",
                     "args": {
                         "res": increment,
                         "crs": crs,
@@ -701,7 +701,7 @@ def wafflez_build(
                 }
             )
             global_hooks.append(
-                {"name": "focus_sink", "args": {"target": "multi-stack"}}
+                {"name": "focus_sink", "args": {"target": "multi_stack"}}
             )
             global_hooks.append(
                 {
