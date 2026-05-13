@@ -36,6 +36,9 @@ BaseMultibeam = ModuleRegistry.get_class("mbdb") or object  # Updated to mbdb pe
 BaseHydroNOS = ModuleRegistry.get_class("nos_hydro") or object
 
 
+@cli.cli_opts(
+    help_text="Forest and Building (removed) Copernicus DEMs",
+)
 class GlobFabDEM(BaseFabDEM):
     """Cleaned FABDEM Module.
 
@@ -73,6 +76,9 @@ class GlobFabDEM(BaseFabDEM):
         )
 
 
+@cli.cli_opts(
+    help_text="Copernicus Elevation Data",
+)
 class GlobCopernicus(BaseCopernicus):
     """Cleaned Copernicus DEM.
 
@@ -107,6 +113,9 @@ class GlobCopernicus(BaseCopernicus):
         self.add_hook(RangeZ(min_z=0.01))
 
 
+@cli.cli_opts(
+    help_text="NCEI Multibeam data",
+)
 class GlobMultibeam(BaseMultibeam):
     """Cleaned NCEI Multibeam (MBDB).
 
@@ -175,6 +184,9 @@ class ValidateBAG(FetchHook):
         return entries
 
 
+@cli.cli_opts(
+    help_text="NOAA NOS Hydrographic Surveys (BAG)",
+)
 class GlobBAG(BaseHydroNOS):
     name = "glob_bag"
     meta_tags = [
@@ -211,8 +223,6 @@ class GlobNOSXYZ(BaseHydroNOS):
     def __init__(self, weight=1.0, **kwargs):
         kwargs.pop("datatype")
         super().__init__(datatype="xyz", **kwargs)
-        # self.datatype = "xyz"
-        # self.src_srs = "EPSG:4326+1089"
 
         self.weight = weight
 
