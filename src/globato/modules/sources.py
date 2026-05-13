@@ -19,8 +19,8 @@ from fetchez.hooks.set_srs import SetSrs
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.hooks.stream_init import DataStream
 from fetchez.registry import ModuleRegistry
+from fetchez import cli
 
-# You might need to import your SetSRS or stream_reproject hook here depending on where it lives
 from globato.hooks.filters.rq import ReferenceQuality
 from globato.hooks.filters.rangez import RangeZ
 from globato.hooks.filters.outlierz import OutlierZ
@@ -60,7 +60,7 @@ class GlobFabDEM(BaseFabDEM):
     meta_category = "Globato"
 
     def __init__(self, **kwargs):
-        super().__init__(name="glob_fabdem", **kwargs)
+        super().__init__(**kwargs)
 
         self.weight = 1
 
@@ -96,7 +96,7 @@ class GlobCopernicus(BaseCopernicus):
 
     def __init__(self, datatype=3, weight=1.0, **kwargs):
         # Pass datatype into the base class to control COP-30 vs COP-90
-        super().__init__(name="glob_copernicus", datatype=datatype, **kwargs)
+        super().__init__(datatype=datatype, **kwargs)
 
         self.weight = weight
 
@@ -189,8 +189,9 @@ class GlobBAG(BaseHydroNOS):
     meta_category = "Globato"
 
     def __init__(self, weight=3.0, **kwargs):
-        super().__init__(name="glob_bag", **kwargs)
-        self.datatype = "bag"
+        kwargs.pop("datatype")
+        super().__init__(datatype="bag", weight=weight, **kwargs)
+        # self.datatype = "bag"
         self.weight = weight
 
         self.add_hook(ValidateBAG())
@@ -199,15 +200,21 @@ class GlobBAG(BaseHydroNOS):
         self.add_hook(SpatialCrop())
 
 
+@cli.cli_opts(
+    help_text="NOAA NOS Hydrographic Surveys (XYZ)",
+)
 class GlobNOSXYZ(BaseHydroNOS):
     name = "glob_nos"
     meta_tags = ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato", "glob-stream"]
     meta_category = "Globato"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.datatype = "xyz"
-        self.src_srs = "EPSG:4326+1089"
+    def __init__(self, weight=1.0, **kwargs):
+        kwargs.pop("datatype")
+        super().__init__(datatype="xyz", **kwargs)
+        # self.datatype = "xyz"
+        # self.src_srs = "EPSG:4326+1089"
+
+        self.weight = weight
 
         self.add_hook(Unzip())
         self.add_hook(SetDataType(data_type="nox-xyz"))
