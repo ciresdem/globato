@@ -726,6 +726,7 @@ def wafflez_build(
                             "weight_threshold": w,
                             "blend_dist": 20,  # Defaulting to 20
                             "random_scale": 0.25,
+                            "barrier": "osm",
                         },
                     }
                 )
