@@ -1043,6 +1043,7 @@ class ATL03Reader(IceSat2Reader):
             orientation = f["/orbit_info/sc_orient"][0]
         laser = "gt" + laser_num + self.orientDict[orientation]
         if laser not in f or "heights" not in f[laser]:
+            logger.debug(f"Laser {laser} not found in dataset: {self.fn}")
             return None
 
         try:
