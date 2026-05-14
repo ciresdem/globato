@@ -749,7 +749,7 @@ def wafflez_build(
                 args = algo_hook.setdefault("args", {})
                 args["resolutions"] = step_resolutions
                 args["weights"] = weight_list
-                args["steps"] = len(weight_list)-1
+                args["steps"] = len(weight_list) - 1
                 args["barrier"] = "osm"
                 args["algo"] = "interp_rbf"
 

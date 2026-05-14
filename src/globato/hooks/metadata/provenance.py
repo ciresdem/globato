@@ -254,7 +254,11 @@ class SourceMasks(FetchHook):
                     for k, v in entry["metadata"].items():
                         meta_tags[str(k).upper()] = str(v)
 
-                clean_tags = {k: str(v) for k, v in meta_tags.items() if v not in ["Unknown", "None", "", None]}
+                clean_tags = {
+                    k: str(v)
+                    for k, v in meta_tags.items()
+                    if v not in ["Unknown", "None", "", None]
+                }
 
                 with rasterio.open(tif_path, "w", **self.profile) as dst:
                     dst.write(np.zeros((1, self.ycount, self.xcount), dtype="uint8"))
@@ -355,9 +359,12 @@ class SourceMasks(FetchHook):
 
                 if tif_tags:
                     import xml.sax.saxutils as saxutils
+
                     xml_lines.append("    <Metadata>")
                     for k, v in tif_tags.items():
-                        safe_v = saxutils.escape(str(v)) # Prevents XML breakage from URLs with '&'
+                        safe_v = saxutils.escape(
+                            str(v)
+                        )  # Prevents XML breakage from URLs with '&'
                         xml_lines.append(f'      <MDI key="{k}">{safe_v}</MDI>')
                     xml_lines.append("    </Metadata>")
 

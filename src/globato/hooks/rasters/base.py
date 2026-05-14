@@ -83,7 +83,9 @@ class RasterBaseHook(FetchHook):
                 dst.write(src.read(1), 1)
 
         shutil.move(temp_path, raster_path)
-        logger.debug(f"[{self.name}] Stripped auxiliary bands, retaining only Elevation (Band 1).")
+        logger.debug(
+            f"[{self.name}] Stripped auxiliary bands, retaining only Elevation (Band 1)."
+        )
 
     def _clamp_raster(self, raster_path):
         """Clamp raster values to enforce lower/upper bounds."""
