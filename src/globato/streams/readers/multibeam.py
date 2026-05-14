@@ -151,7 +151,7 @@ class MBSReader(BaseGlobatoReader):
                             else:
                                 endian = ">"
                     else:
-                        logger.warning("Unknown FBT flag. Falling back to mblist.")
+                        logger.debug("Unknown FBT flag. Falling back to mblist.")
                         return None
 
                     # Process Comments
@@ -298,7 +298,7 @@ class MBSReader(BaseGlobatoReader):
                     all_xtrack.append(xtrack)
 
         except Exception as e:
-            logger.error(f"Native Python FBT read failed: {e}. Falling back to mblist.")
+            logger.debug(f"Native Python FBT read failed: {e}. Falling back to mblist.")
             return None
 
         if not all_x:
