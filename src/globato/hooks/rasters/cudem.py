@@ -282,7 +282,7 @@ class CudemStepDown(RasterGlobalHook):
                 from .rbf_interp import RBFInterp
 
                 interp = RBFInterp(
-                    smoothing=2.0,
+                    smoothing=1.0,
                     neighbors=200,
                     epsilon=2.0,
                 )
@@ -329,7 +329,7 @@ class CudemStepDown(RasterGlobalHook):
                     # If moats or small gaps exist, fill them instantly!
                     if not np.all(valid_mask):
                         logger.info(
-                            f"Stitching {current_blend_dist}-pixel blend moats..."
+                            f"--- Stitching {current_blend_dist}-pixel blend moats ---"
                         )
 
                         # Max search distance in pixels. Double the moat size to be safe.
