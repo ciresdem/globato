@@ -64,7 +64,7 @@ def perspecto_group():
 @click.option(
     "--blend",
     type=click.Choice(["multiply", "screen", "overlay", "hard_light", "soft_light"]),
-    default="soft_light",
+    default="multiply",
     help="Blending mode (default: soft_light).",
 )
 @click.option("--alpha", is_flag=True, help="Add an alpha channel to mask NoData.")

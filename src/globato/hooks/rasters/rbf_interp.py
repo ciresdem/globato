@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class RBFInterp(RasterStreamHook):
     """Fills voids using Radial Basis Functions.
+
     Perfect for smooth interpolation of sparse point datasets (like gravity bathy).
     """
 

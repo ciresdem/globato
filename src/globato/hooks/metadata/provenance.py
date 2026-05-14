@@ -241,9 +241,27 @@ class SourceMasks(FetchHook):
                 res_str = inc2str(self.res)
                 tif_path = os.path.join(self.output_dir, f"{base}_{res_str}_mask.tif")
 
+                meta_tags = {
+                    "MODULE": getattr(mod, "name", "Unknown"),
+                    "CATEGORY": getattr(mod, "meta_category", "Unknown"),
+                    "AGENCY": getattr(mod, "meta_agency", "Unknown"),
+                    "DATATYPE": entry.get("data_type", "Unknown"),
+                    "URL": entry.get("url", "Unknown"),
+                    "WEIGHT": str(getattr(mod, "weight", 1.0)),
+                }
+
+                if "metadata" in entry and isinstance(entry["metadata"], dict):
+                    for k, v in entry["metadata"].items():
+                        meta_tags[str(k).upper()] = str(v)
+
+                clean_tags = {k: str(v) for k, v in meta_tags.items() if v not in ["Unknown", "None", "", None]}
+
                 with rasterio.open(tif_path, "w", **self.profile) as dst:
                     dst.write(np.zeros((1, self.ycount, self.xcount), dtype="uint8"))
                     dst.set_band_description(1, base)
+
+                    if clean_tags:
+                        dst.update_tags(**clean_tags)
 
                 with self.lock:
                     self.tifs.append(tif_path)
@@ -319,6 +337,7 @@ class SourceMasks(FetchHook):
 
                 with rasterio.open(tif) as src:
                     tif_stats = src.stats()
+                    tif_tags = src.tags()
 
                 if tif_stats[0].max == 0.0:
                     os.remove(tif)
@@ -331,6 +350,19 @@ class SourceMasks(FetchHook):
                     [
                         f'  <VRTRasterBand dataType="{gdal_dtype}" band="{i}">',
                         f"    <Description>{name}</Description>",
+                    ]
+                )
+
+                if tif_tags:
+                    import xml.sax.saxutils as saxutils
+                    xml_lines.append("    <Metadata>")
+                    for k, v in tif_tags.items():
+                        safe_v = saxutils.escape(str(v)) # Prevents XML breakage from URLs with '&'
+                        xml_lines.append(f'      <MDI key="{k}">{safe_v}</MDI>')
+                    xml_lines.append("    </Metadata>")
+
+                xml_lines.extend(
+                    [
                         "    <SimpleSource>",
                         f'      <SourceFilename relativeToVRT="1">{rel_path}</SourceFilename>',
                         "      <SourceBand>1</SourceBand>",
@@ -340,6 +372,19 @@ class SourceMasks(FetchHook):
                         "  </VRTRasterBand>",
                     ]
                 )
+                # xml_lines.extend(
+                #     [
+                #         f'  <VRTRasterBand dataType="{gdal_dtype}" band="{i}">',
+                #         f"    <Description>{name}</Description>",
+                #         "    <SimpleSource>",
+                #         f'      <SourceFilename relativeToVRT="1">{rel_path}</SourceFilename>',
+                #         "      <SourceBand>1</SourceBand>",
+                #         f'      <SrcRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
+                #         f'      <DstRect xOff="0" yOff="0" xSize="{width}" ySize="{height}"/>',
+                #         "    </SimpleSource>",
+                #         "  </VRTRasterBand>",
+                #     ]
+                # )
 
             xml_lines.append("</VRTDataset>")
 

@@ -14,6 +14,7 @@ Separates Streaming (Local/Chunked) operations from Global (Whole-File) operatio
 
 import os
 import logging
+import shutil
 import numpy as np
 import tempfile
 import rasterio
@@ -46,6 +47,7 @@ class RasterBaseHook(FetchHook):
         output=None,
         upper=None,
         lower=None,
+        strip_bands=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -56,11 +58,32 @@ class RasterBaseHook(FetchHook):
         self.region = parse_region(region)
         self.upper = float_or(upper)
         self.lower = float_or(lower)
+        self.strip_bands = strip_bands
 
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
 
         return profile
+
+    def _strip_to_single_band(self, raster_path):
+        """Removes auxiliary bands from a GeoTIFF, retaining only Band 1."""
+
+        if not self.strip_bands:
+            return
+
+        with rasterio.open(raster_path) as src:
+            if src.count == 1:
+                return
+
+            profile = src.profile.copy()
+            profile.update(count=1)
+
+            temp_path = raster_path + ".strip.tif"
+            with rasterio.open(temp_path, "w", **profile) as dst:
+                dst.write(src.read(1), 1)
+
+        shutil.move(temp_path, raster_path)
+        logger.debug(f"[{self.name}] Stripped auxiliary bands, retaining only Elevation (Band 1).")
 
     def _clamp_raster(self, raster_path):
         """Clamp raster values to enforce lower/upper bounds."""
@@ -120,7 +143,7 @@ class RasterBaseHook(FetchHook):
             #     or os.getcwd()
             # )
 
-            logger.info(f"Generating coastline for {mod} with outdir of {outdir}")
+            logger.info(f"[{self.name}] Generating coastline with outdir of {outdir}")
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
@@ -301,6 +324,7 @@ class RasterStreamHook(RasterBaseHook):
                 success = self._process_file_fallback(src_fn, dst_fn, entry)
                 if success:
                     self._clamp_raster(dst_fn)
+                    self._strip_to_single_band(dst_fn)
 
                     entry["src_fn"] = src_fn
                     entry["dst_fn"] = dst_fn
@@ -409,6 +433,7 @@ class RasterGlobalHook(RasterBaseHook):
                 success = self.process_raster(src_fn, dst_fn, entry)
                 if success:
                     self._clamp_raster(dst_fn)
+                    self._strip_to_single_band(dst_fn)
 
                     entry["src_fn"] = src_fn
                     entry["dst_fn"] = dst_fn
