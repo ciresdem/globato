@@ -18,7 +18,6 @@ from fetchez.hooks.datatype import SetDataType
 from fetchez.hooks.set_srs import SetSrs
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.hooks.stream_init import DataStream
-from fetchez.registry import ModuleRegistry
 from fetchez import cli
 
 from globato.hooks.filters.rq import ReferenceQuality
@@ -30,10 +29,25 @@ from globato.hooks.filters.spatial_crop import SpatialCrop
 
 logger = logging.getLogger(__name__)
 
-BaseFabDEM = ModuleRegistry.get_class("fabdem") or object
-BaseCopernicus = ModuleRegistry.get_class("copernicus") or object
-BaseMultibeam = ModuleRegistry.get_class("mbdb") or object  # Updated to mbdb per yaml
-BaseHydroNOS = ModuleRegistry.get_class("nos_hydro") or object
+try:
+    from fetchez.modules.fabdem import FabDEM as BaseFabDEM
+except ImportError:
+    BaseFabDEM = object
+
+try:
+    from fetchez.modules.copernicus import Copernicus as BaseCopernicus
+except ImportError:
+    BaseCopernicus = object
+
+try:
+    from fetchez.modules.multibeam import MBDB as BaseMultibeam
+except ImportError:
+    BaseMultibeam = object
+
+try:
+    from fetchez.modules.nos_hydro import HydroNOS as BaseHydroNOS
+except ImportError:
+    BaseHydroNOS = object
 
 
 @cli.cli_opts(

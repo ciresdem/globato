@@ -63,7 +63,7 @@ modules:
       - name: spatial_crop
       - name: rq
         args:
-          reference: "gmrt"
+          reference: "gmrt/gebco"
           threshold: 10
           mode: "percent"
           builder: "grid"
@@ -95,6 +95,13 @@ modules:
       - name: range_z
         args:
           max_z: -0.1
+      - name: rq
+        args:
+          reference: "gebco"
+          threshold: 20
+          mode: "percent"
+          builder: "grid"
+          res: 0.008333
 
   #   #  Bathymetry
   # - module: gebco
