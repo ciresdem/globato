@@ -778,7 +778,7 @@ def wafflez_build(
                 args["weights"] = weight_list
                 args["steps"] = len(weight_list) - 1
                 args["barrier"] = "osm"
-                args["algo"] = "raster_fill" # "interp_gmt" # "interp_rbf"
+                args["algo"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
