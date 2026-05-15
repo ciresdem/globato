@@ -337,7 +337,8 @@ def wafflez_run(
 
                 click.secho(
                     f"✨ Successfully completed Wafflez build for {batch_name}!",
-                    fg="green", bold=True
+                    fg="green",
+                    bold=True,
                 )
 
             except Exception as e:
@@ -859,7 +860,8 @@ def wafflez_build(
                     recipe.run()
                     click.secho(
                         f"✨ Successfully completed Wafflez build for {tile_outname}!",
-                        fg="green", bold=True
+                        fg="green",
+                        bold=True,
                     )
                 else:
                     click.secho(f"Recipe is invalid: {errors}", fg="red", bold=True)
