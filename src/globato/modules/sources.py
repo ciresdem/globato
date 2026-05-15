@@ -18,7 +18,6 @@ from fetchez.hooks.datatype import SetDataType
 from fetchez.hooks.set_srs import SetSrs
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.hooks.stream_init import DataStream
-from fetchez.registry import ModuleRegistry
 from fetchez import cli
 
 from globato.hooks.filters.rq import ReferenceQuality
