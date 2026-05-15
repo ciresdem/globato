@@ -45,7 +45,28 @@ WAFFLEZ_COMMANDS = {
     fetchez_commands=WAFFLEZ_COMMANDS,
 )
 def wafflez_group():
-    """Build and execute Digital Elevation Models Recipes."""
+    """Build and execute Digital Elevation Models Recipes.
+
+    \b
+      This is the GLOBATO automated DEM compilation engine. It takes overlapping
+      streams of geospatial data (waffles), seamlessly stacks them based on
+      quality weights, and interpolates the gaps to build continuous Digital
+      Elevation Models (DEMs).
+
+    \b
+    Core Commands:
+      run   : Execute a pre-configured YAML recipe (supports batch generation).
+      build : Dynamically generate a pipeline using Globato's curated data bundles.
+
+    \b
+    Examples:
+      # Build a DEM using the curated global-bathy-topo bundle
+      $ globato wafflez build -R -120/-119/33/34 -E 1s -P EPSG:3857 global-bathy-topo
+
+    \b
+      # Run an existing recipe over a batch of geometries from a Shapefile
+      $ globato wafflez run -R ./coastal_tiles.shp my_custom_recipe.yaml
+    """
 
     pass
 
