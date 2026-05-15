@@ -335,6 +335,12 @@ def wafflez_run(
                 with open(state_file, "w") as f:
                     json.dump(completed_tiles, f, indent=2)
 
+                click.secho(
+                    f"✨ Successfully completed Wafflez build for {batch_name}!",
+                    fg="green",
+                    bold=True,
+                )
+
             except Exception as e:
                 click.secho(f"\n Tile {batch_name} failed: {e}", fg="red", bold=True)
                 click.secho(
@@ -852,6 +858,11 @@ def wafflez_build(
                 valid, errors = recipe.validate()
                 if valid:
                     recipe.run()
+                    click.secho(
+                        f"✨ Successfully completed Wafflez build for {tile_outname}!",
+                        fg="green",
+                        bold=True,
+                    )
                 else:
                     click.secho(f"Recipe is invalid: {errors}", fg="red", bold=True)
 
