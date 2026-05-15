@@ -82,7 +82,7 @@ def test_recipe_build_save_only(runner):
         )
 
         assert result.exit_code == 0
-        assert "Wafflez recipe saved to test_dem_recipe.yaml" in result.output
+        assert "Globato recipe saved to test_dem_recipe.yaml" in result.output
         assert os.path.exists("test_dem/test_dem_recipe.yaml")
 
         with open("test_dem/test_dem_recipe.yaml", "r") as f:
