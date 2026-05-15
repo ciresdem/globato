@@ -267,6 +267,36 @@ class RasterBaseHook(FetchHook):
             )
             yield window, buffered_window
 
+    def _extract_subpixel_coords(
+        self, data_stack, rows, cols, transform, apply_jitter=True
+    ):
+        """Extracts X/Y coordinates from a MultiStack or falls back to cell-centers."""
+
+        # transform = src.transform
+        x_vals, y_vals = transform * (cols + 0.5, rows + 0.5)
+
+        #    is_multi_stack = src.tags().get("GLOBATO_DATATYPE") == "MULTI_STACK"
+
+        # if is_multi_stack and data_stack is not None and data_stack.shape[0] >= 7:
+        if data_stack is not None and data_stack.ndim == 3 and data_stack.shape[0] >= 7:
+            x_band = data_stack[5][rows, cols]
+            y_band = data_stack[6][rows, cols]
+
+            nan_xy = np.isnan(x_band) | np.isnan(y_band)
+            if np.any(nan_xy):
+                x_band[nan_xy] = x_vals[nan_xy]
+                y_band[nan_xy] = y_vals[nan_xy]
+
+            x_vals = x_band
+            y_vals = y_band
+
+        if apply_jitter:
+            rng = np.random.default_rng(seed=42)
+            x_vals = x_vals + rng.uniform(-1e-10, 1e-10, size=len(x_vals))
+            y_vals = y_vals + rng.uniform(-1e-10, 1e-10, size=len(y_vals))
+
+        return x_vals, y_vals
+
 
 # =============================================================================
 # THE STREAMING HOOK

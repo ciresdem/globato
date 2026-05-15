@@ -336,7 +336,7 @@ def wafflez_run(
                     json.dump(completed_tiles, f, indent=2)
 
                 click.secho(
-                    f"✨ Successfully completed Wafflez build for {batch_name}!",
+                    f"✨ Successfully completed globato build for {batch_name}!",
                     fg="green",
                     bold=True,
                 )
@@ -465,11 +465,11 @@ def _list_sources(ctx, param, value):
     click.echo("  Files will be wrapped in the 'file' module.")
     click.echo("  Directories will be crawled using the 'local_fs' module.")
     click.echo(
-        "  Example: globato wafflez build -R ... ./my_data.tif ./my_folder:ext=.xyz"
+        "  Example: globato cudem build -R ... ./my_data.tif ./my_folder:ext=.xyz"
     )
 
     click.echo(
-        f"\nTry 'globato wafflez build --info-source <name>' for details. Total: {count}\n"
+        f"\nTry 'globato cudem build --info-source <name>' for details. Total: {count}\n"
     )
     ctx.exit()
 
@@ -848,7 +848,7 @@ def wafflez_build(
             out_yaml = f"{tile_outname}_recipe.yaml"
             with open(out_yaml, "w") as f:
                 f.write(yaml_str)
-            click.secho(f"Wafflez recipe saved to {out_yaml}.", fg="green", bold=True)
+            click.secho(f"Globato recipe saved to {out_yaml}.", fg="green", bold=True)
 
             if not export:
                 click.secho(
@@ -859,7 +859,7 @@ def wafflez_build(
                 if valid:
                     recipe.run()
                     click.secho(
-                        f"✨ Successfully completed Wafflez build for {tile_outname}!",
+                        f"✨ Successfully completed Globato build for {tile_outname}!",
                         fg="green",
                         bold=True,
                     )

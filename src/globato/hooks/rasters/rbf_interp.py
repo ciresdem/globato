@@ -67,13 +67,24 @@ class RBFInterp(RasterStreamHook):
         if np.all(valid_mask) or not np.any(valid_mask):
             return data
 
-        y_valid, x_valid = np.where(valid_mask)
+        # y_valid, x_valid = np.where(valid_mask)
+        y_valid_idx, x_valid_idx = np.where(valid_mask)
+
+        x_valid, y_valid = self._extract_subpixel_coords(
+            data if is_3d else None,
+            y_valid_idx,
+            x_valid_idx,
+            transform,
+            apply_jitter=True,
+        )
         points = np.column_stack((x_valid, y_valid))
         values = work_data[valid_mask]
 
         missing_mask = ~valid_mask
-        y_missing, x_missing = np.where(missing_mask)
-        query_points = np.column_stack((x_missing, y_missing))
+        y_missing_idx, x_missing_idx = np.where(missing_mask)
+        xq, yq = transform * (x_missing_idx + 0.5, y_missing_idx + 0.5)
+        query_points = np.column_stack((xq, yq))
+        # query_points = np.column_stack((x_missing, y_missing))
 
         if len(query_points) == 0:
             return data

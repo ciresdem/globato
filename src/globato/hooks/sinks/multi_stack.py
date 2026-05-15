@@ -37,6 +37,8 @@ from fetchez.utils import (
 
 from ..transforms.point_pixels import PointPixels
 
+from globato import __version__
+
 logger = logging.getLogger(__name__)
 
 
@@ -333,6 +335,7 @@ class MultiStackAccumulator:
 
                 # Copy the provenance registry over to the final file!
                 dst.update_tags(**src.tags())
+                dst.update_tags(GLOBATO_DATATYPE="MULTI_STACK", VERSION=__version__)
 
         # Generate Statistics on the Finalized TIF
         with rasterio.open(self.output_fn, "r+") as dst:
