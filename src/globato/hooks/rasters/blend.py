@@ -147,7 +147,8 @@ class MultiStackBlend(RasterStreamHook):
             return data
 
         if self.random_scale > 0:
-            rand_arr = np.random.rand(*z.shape)
+            rng = np.random.default_rng(seed=42)
+            rand_arr = rng.random(z.shape)
             rand_keep = rand_arr < self.random_scale
 
             if self.slope_scale > 0:

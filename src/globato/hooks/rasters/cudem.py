@@ -175,7 +175,7 @@ class CudemStepDown(RasterGlobalHook):
                     resampling=Resampling.cubic,
                 )
 
-                for window, _ in self.yield_buffered_windows(fg_src, buffer_size=0):
+                for window, _ in self.yield_buffered_windows(fg_src, buffer_size=20):
                     # Read original Foreground bands
                     fg_z = fg_src.read(1, window=window)
                     fg_count = fg_src.read(2, window=window)
