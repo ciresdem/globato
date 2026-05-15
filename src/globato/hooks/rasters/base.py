@@ -267,7 +267,9 @@ class RasterBaseHook(FetchHook):
             )
             yield window, buffered_window
 
-    def _extract_subpixel_coords(self, data_stack, rows, cols, transform, apply_jitter=True):
+    def _extract_subpixel_coords(
+        self, data_stack, rows, cols, transform, apply_jitter=True
+    ):
         """Extracts X/Y coordinates from a MultiStack or falls back to cell-centers."""
 
         # transform = src.transform
@@ -294,6 +296,7 @@ class RasterBaseHook(FetchHook):
             y_vals = y_vals + rng.uniform(-1e-10, 1e-10, size=len(y_vals))
 
         return x_vals, y_vals
+
 
 # =============================================================================
 # THE STREAMING HOOK

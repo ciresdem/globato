@@ -71,7 +71,11 @@ class RBFInterp(RasterStreamHook):
         y_valid_idx, x_valid_idx = np.where(valid_mask)
 
         x_valid, y_valid = self._extract_subpixel_coords(
-            data if is_3d else None, y_valid_idx, x_valid_idx, transform, apply_jitter=True
+            data if is_3d else None,
+            y_valid_idx,
+            x_valid_idx,
+            transform,
+            apply_jitter=True,
         )
         points = np.column_stack((x_valid, y_valid))
         values = work_data[valid_mask]
