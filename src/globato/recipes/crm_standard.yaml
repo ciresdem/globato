@@ -170,7 +170,7 @@ modules:
     hooks:
       - name: set_datatype
         args:
-          data_type: "csb_csv"
+          data_type: "csb_xyz"
       - name: stream_data
         args:
           chunk_size: 100000
