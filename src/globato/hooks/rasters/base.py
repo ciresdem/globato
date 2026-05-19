@@ -289,6 +289,7 @@ class RasterBaseHook(FetchHook):
 
             x_vals = x_band
             y_vals = y_band
+            logger.debug(f"[{self.name}] Using x/y bands from input")
 
         if apply_jitter:
             rng = np.random.default_rng(seed=42)

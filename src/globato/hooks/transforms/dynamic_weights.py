@@ -76,7 +76,7 @@ class DynamicWeight(FetchHook):
                 new_w = src_arr * self.scale
 
             new_w = np.clip(new_w, 0.0001, None)
-            chunk["w"] = new_w
+            chunk["w"] *= new_w
             yield chunk
 
     def run(self, entries):
