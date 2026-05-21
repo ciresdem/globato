@@ -289,7 +289,7 @@ class MultiStackAccumulator:
             bit_tiers = np.digitize(arrays["weight"], self.wts)
             bits = 1 << bit_tiers
             bitmask = get_band("bitmask")[valid_new].astype(np.uint16)
-            bitmask  |= bits[valid_new].astype(np.uint16)
+            bitmask |= bits[valid_new].astype(np.uint16)
             get_band("bitmask")[valid_new] = bitmask.astype(np.float64)
 
             # dst.write(current_data, window=window)
