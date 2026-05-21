@@ -171,7 +171,7 @@ class Diff_Z(FetchHook, RasterSampling):
     """Filter based on diff from reference raster."""
 
     name = "diff-z"
-    meta_stage = "file"
+    meta_stage = "stream"
     meta_desc = "Output the z difference based on a reference raster residuals"
     meta_category = "stream-filter"
 
@@ -187,6 +187,7 @@ class Diff_Z(FetchHook, RasterSampling):
     def run(self, entries):
         for mod, entry in entries:
             stream = entry.get("stream")
+            logger.info(stream)
             if not stream:
                 continue
 

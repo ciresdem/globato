@@ -54,6 +54,7 @@ class MultiStackAccumulator:
         "src_uncertainty": 5,
         "x": 6,
         "y": 7,
+        "bitmask": 8,
     }
 
     def __init__(
@@ -121,7 +122,7 @@ class MultiStackAccumulator:
             "nodata": -9999,
             "width": self.xcount,
             "height": self.ycount,
-            "count": 7,
+            "count": 8,
             "crs": CRS.from_string(self.crs) if self.crs else None,
             "transform": self.transform,
             "tiled": True,
@@ -283,6 +284,13 @@ class MultiStackAccumulator:
                 update_mask = valid_new & (arrays["z"] > cur_z)
                 get_band("z")[update_mask] = arrays["z"][update_mask]
                 get_band("count")[update_mask] = 1
+
+            # Determine the tier (0, 1, 2) based on the incoming point weights
+            bit_tiers = np.digitize(arrays["weight"], self.wts)
+            bits = 1 << bit_tiers
+            bitmask = get_band("bitmask")[valid_new].astype(np.uint16)
+            bitmask  |= bits[valid_new].astype(np.uint16)
+            get_band("bitmask")[valid_new] = bitmask.astype(np.float64)
 
             # dst.write(current_data, window=window)
             self.dataset.write(current_data, window=window)
