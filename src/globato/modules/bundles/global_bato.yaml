@@ -69,17 +69,17 @@ modules:
           builder: "grid"
           res: 0.008333
 
-  # Global Marine Gravity Bathymetry
-  - module: sysu
-    args:
-      weight: .1
-    hooks:
-      - name: set-datatype
-        args:
-          data_type: sysu-xyz
-      - name: set-srs
-        args:
-          srs: "EPSG:4326+9003"
+  # # Global Marine Gravity Bathymetry
+  # - module: sysu
+  #   args:
+  #     weight: .1
+  #   hooks:
+  #     - name: set-datatype
+  #       args:
+  #         data_type: sysu-xyz
+  #     - name: set-srs
+  #       args:
+  #         srs: "EPSG:4326+9003"
 
   # Global Marine Gravity Bathymetry
   - module: margrav

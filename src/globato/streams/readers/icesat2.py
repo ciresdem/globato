@@ -267,11 +267,12 @@ class ATL03Reader(IceSat2Reader):
                     return matches[0]
 
         try:
+            print(self.cache_dir)
             for filt in [atlxx_filter, atlxx_filter_no_ver]:
                 fetcher = earthdata.IceSat2(
                     src_region=None,
                     verbose=self.verbose,
-                    outdir=os.path.dirname(os.path.abspath(self.cache_dir)),
+                    outdir=os.path.abspath(self.cache_dir),
                     short_name=short_name,
                     filename_filter=filt,
                     version="",

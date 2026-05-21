@@ -132,6 +132,7 @@ class CudemStepDown(RasterGlobalHook):
 
             with rasterio.open(dst_path, "w", **kwargs) as dst:
                 for i in range(1, src.count + 1):
+                    resamp_algo = Resampling.mode if i == 8 else Resampling.average
                     reproject(
                         source=rasterio.band(src, i),
                         destination=rasterio.band(dst, i),
@@ -139,7 +140,7 @@ class CudemStepDown(RasterGlobalHook):
                         src_crs=src.crs,
                         dst_transform=transform,
                         dst_crs=src.crs,
-                        resampling=Resampling.average,
+                        resampling=resamp_algo,
                     )
 
     def _blend_background(
@@ -282,7 +283,7 @@ class CudemStepDown(RasterGlobalHook):
                 from .rbf_interp import RBFInterp
 
                 interp = RBFInterp(
-                    smoothing=1.0,
+                    smoothing=20.0,
                     neighbors=200,
                     epsilon=2.0,
                 )
