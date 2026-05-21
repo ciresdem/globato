@@ -1218,9 +1218,6 @@ class ATL03Reader(IceSat2Reader):
         bldg_tree = None
         if self.use_external_masks:
             bldg_tree = self._get_bldg_tree(source="gba")
-            logger.warning(
-                "External mask fetching (Bing/OSM) disabled. Need fetches.osm/bingbfp module."
-            )
 
         # Fetch Aux ATLXX Data
         atl08_fn = self.fetch_atlxx(self.fn, "ATL08") if self.classes else None
