@@ -24,6 +24,7 @@ from shapely.geometry import shape
 
 import fetchez
 from fetchez import utils
+from fetchez import spatial
 
 # from fetchez.core import run_fetchez
 from globato.streams import BaseGlobatoReader
@@ -221,7 +222,10 @@ class ATL03Reader(IceSat2Reader):
             if confidence_levels is not None
             else []
         )
-        self.region = region
+        if isinstance(region, str):
+            self.region = spatial.parse_region(region)[0]
+        else:
+            self.region = region
 
         self.reject_failed_qa = reject_failed_qa
         self.append_atl24 = append_atl24
