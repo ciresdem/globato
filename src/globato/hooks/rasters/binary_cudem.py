@@ -108,11 +108,13 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         # Algos
         while len(self.algos) < self.steps:
-            #if len(self.algos) == 0:
+            # if len(self.algos) == 0:
             self.algos.append("raster_fill")
-            #else:
+            # else:
             #    # self.algos.append(self.algos[-1])
-        self.algos.append(f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=100,degree=6")
+        self.algos.append(
+            f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=100,degree=6"
+        )
 
         # Blend Dists
         while len(self.blend_dists) <= self.steps:

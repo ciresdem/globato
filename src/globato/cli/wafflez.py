@@ -354,8 +354,9 @@ def wafflez_run(
         finally:
             os.chdir(original_cwd)
 
+            # --- Build command ---
 
-# --- Build command ---
+
 def _parse_source(src_str):
     """Parses 'module:key=val+hook:k=v' or local paths into a dictionary for the recipe."""
 
