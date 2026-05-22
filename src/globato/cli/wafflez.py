@@ -743,20 +743,24 @@ def wafflez_build(
 
             # --- Dynamic Blending Tiers ---
             # Parse the weights to generate the correct number of blend/cudem steps
-            weight_list = [float(w) for w in str(weights).split("/")]
+            weight_list = sorted(
+                [float(w) for w in str(weights).split("/")], reverse=True
+            )
+            if weight_list[-1] > 0:
+                weight_list.append(0)
 
-            for w in weight_list:
-                global_hooks.append(
-                    {
-                        "name": "ms_blend",
-                        "args": {
-                            "weight_threshold": w,
-                            "blend_dist": 20,  # Defaulting to 20
-                            "random_scale": 0.25,
-                            "barrier": "osm",
-                        },
-                    }
-                )
+            # for w in weight_list:
+            #     global_hooks.append(
+            #         {
+            #             "name": "ms_blend",
+            #             "args": {
+            #                 "weight_threshold": w,
+            #                 "blend_dist": 20,  # Defaulting to 20
+            #                 "random_scale": 0.25,
+            #                 "barrier": "osm",
+            #             },
+            #         }
+            #     )
 
             # --- Add requested Filters (-T) ---
             for f in filters:
@@ -779,6 +783,22 @@ def wafflez_build(
                 args["steps"] = len(weight_list) - 1
                 args["barrier"] = "osm"
                 args["algo"] = "interp_rbf"
+
+            # elif algo_hook["name"] == "ms_binary_cudem":
+            #     from fetchez.utils import str2inc
+
+            #     base_res = str2inc(increment)
+
+            #     # Automatically step the resolutions down by a factor of 3 for each weight tier.
+            #     step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
+            #     logger.info(weight_list)
+            #     logger.info(step_resolutions)
+            #     args = algo_hook.setdefault("args", {})
+            #     args["resolutions"] = step_resolutions
+            #     args["weights"] = weight_list
+            #     args["steps"] = len(weight_list) - 1
+            #     args["barrier"] = "osm"
+            #     args["algos"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
