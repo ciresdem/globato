@@ -581,7 +581,7 @@ def _info_source(ctx, param, value):
 @click.option(
     "-M",
     "--algo",
-    default="ms_binary_cudem",
+    default="ms_binary_cudem:barrier=coastline",
     help="Interpolation algorithm and options (e.g., interp_gmt:tension=0.35)",
 )
 @click.option(

@@ -108,10 +108,21 @@ class MultiStackAccumulator:
         """Create the zero-filled accumulation file or load existing."""
 
         if os.path.exists(self.sums_fn):
-            logger.info(
-                f"Found existing sums file: {os.path.basename(self.sums_fn)}. Operating in UPDATE mode."
-            )
-            return
+            with rasterio.open(self.sums_fn, "r") as existing:
+                if existing.width != self.xcount or existing.height != self.ycount:
+                    logger.warning(
+                        f"Existing sums file dimensions ({existing.width}x{existing.height}) "
+                        f"do not match current settings ({self.xcount}x{self.ycount}). "
+                        "Overwriting old file to prevent dimension errors."
+                    )
+                    pass
+                else:
+                    logger.info(
+                        f"Found existing sums file: {os.path.basename(self.sums_fn)}. Operating in UPDATE mode."
+                    )
+                    return
+
+            os.remove(self.sums_fn)
 
         if not os.path.exists(os.path.dirname(os.path.abspath(self.sums_fn))):
             os.makedirs(os.path.dirname(os.path.abspath(self.sums_fn)))
@@ -431,6 +442,11 @@ class MultiStackHook(FetchHook):
                 (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
             )
             if region:
+                region_str = region.format("fn")
+                base, ext = os.path.splitext(self.output)
+
+                if region_str not in base:
+                    self.output = f"{base}_{region_str}{ext}"
                 self._init_accumulator(region)
             else:
                 return entries
