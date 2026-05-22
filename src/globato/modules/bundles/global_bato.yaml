@@ -39,7 +39,7 @@ modules:
   # Copernicus marine SDB data
   - module: copernicus_marine
     args:
-      weight: .65
+      weight: 1.2
     hooks:
       - name: set-datatype
         args:
@@ -52,6 +52,8 @@ modules:
           source_field: confidence
           method: inverse
           offset: 1.2
+      - name: range_z
+        args: {max_z: -0.01}
 
   # NCEI Multibeam
   - module: mbdb
@@ -69,17 +71,24 @@ modules:
           builder: "grid"
           res: 0.008333
 
-  # # Global Marine Gravity Bathymetry
-  # - module: sysu
-  #   args:
-  #     weight: .1
-  #   hooks:
-  #     - name: set-datatype
-  #       args:
-  #         data_type: sysu-xyz
-  #     - name: set-srs
-  #       args:
-  #         srs: "EPSG:4326+9003"
+  # Global Marine Gravity Bathymetry
+  - module: sysu
+    args:
+      weight: .1
+    hooks:
+      - name: set-datatype
+        args:
+          data_type: sysu-xyz
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+9003"
+      - name: rq
+        args:
+          reference: "gebco"
+          threshold: 20
+          mode: "percent"
+          builder: "grid"
+          res: 0.008333
 
   # Global Marine Gravity Bathymetry
   - module: margrav
