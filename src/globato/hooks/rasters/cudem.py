@@ -50,7 +50,7 @@ class CudemStepDown(RasterGlobalHook):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
         self.algo = algo
 
-        # --- Helper to parse Lists OR Legacy Strings ---
+        # --- Helper to parse Lists or Strings ---
         def _parse_arg(val, cast_type):
             if isinstance(val, list):
                 return [cast_type(v) for v in val]
@@ -132,7 +132,7 @@ class CudemStepDown(RasterGlobalHook):
 
             with rasterio.open(dst_path, "w", **kwargs) as dst:
                 for i in range(1, src.count + 1):
-                    resamp_algo = Resampling.mode if i == 8 else Resampling.average
+                    resamp_algo = Resampling.mode if i in [2, 3] else Resampling.average
                     reproject(
                         source=rasterio.band(src, i),
                         destination=rasterio.band(dst, i),

@@ -185,7 +185,22 @@ class ATL03Reader(IceSat2Reader):
     name = "atl03-point-reader"
     meta_category = "point-stream"
     meta_dtype = "icesat-atl03"
-    meta_desc = "Read icesat2 ATL03 data into a point stream"
+    meta_desc = """
+    Read icesat2 ATL03 data into a point stream
+
+    Classes:
+      0: Noise (if enabled)
+      1: Ground (ATL08)
+      2: Canopy (ATL08)
+      3: Top Canopy (ATL08)
+      6: Land Ice (ATL06)
+      7: Buildings (Dynamic Algo / Bing Mask)
+      40: Bathymetry (ATL24 / Dynamic Algo)
+      41: Coastline / Nearshore Water (ATL24 / Dynamic Algo)
+      42: Inland Water (ATL13 / Dynamic Algo)
+      44: Open Ocean (ATL12 / Geoid Fallback)
+      -1: Unclassified
+    """
     meta_extensions = ["h5"]
 
     def __init__(
@@ -1203,9 +1218,6 @@ class ATL03Reader(IceSat2Reader):
         bldg_tree = None
         if self.use_external_masks:
             bldg_tree = self._get_bldg_tree(source="gba")
-            logger.warning(
-                "External mask fetching (Bing/OSM) disabled. Need fetches.osm/bingbfp module."
-            )
 
         # Fetch Aux ATLXX Data
         atl08_fn = self.fetch_atlxx(self.fn, "ATL08") if self.classes else None

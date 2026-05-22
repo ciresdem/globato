@@ -187,7 +187,6 @@ class Diff_Z(FetchHook, RasterSampling):
     def run(self, entries):
         for mod, entry in entries:
             stream = entry.get("stream")
-            logger.info(stream)
             if not stream:
                 continue
 
