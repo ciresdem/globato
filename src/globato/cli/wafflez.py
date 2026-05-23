@@ -536,8 +536,11 @@ def _info_source(ctx, param, value):
 
 CONTEXT_SETTINGS = dict(max_content_width=120)
 
+
 # @click.command(context_settings=CONTEXT_SETTINGS)
-@wafflez_group.command("build", cls=FetchezMainCommand, context_settings=CONTEXT_SETTINGS)
+@wafflez_group.command(
+    "build", cls=FetchezMainCommand, context_settings=CONTEXT_SETTINGS
+)
 @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
 @click.option(
     "-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)"
@@ -599,6 +602,7 @@ CONTEXT_SETTINGS = dict(max_content_width=120)
     "-L",
     "--blend",
     type=str,
+    default=None,
     help="Blend between weighted data in the generated MultiStack (e.g. 10/20/60).",
 )
 @click.option(
@@ -652,6 +656,7 @@ def wafflez_build(
     clip,
     buffer,
     weights,
+    blend,
     shared_cache,
     metadata,
     export,
@@ -760,8 +765,8 @@ def wafflez_build(
             if weight_list[-1] > 0:
                 weight_list.append(0)
 
-            blend_list = [int_or(b, 10) for b in str(blend).split("/")]
-            if len(blend) > 0:
+            if blend:
+                blend_list = [int_or(b, 10) for b in str(blend).split("/")]
                 while len(blend_list) <= len(weight_list):
                     blend_list.append(blend_list[-1])
                 for i, w in enumerate(weight_list):
