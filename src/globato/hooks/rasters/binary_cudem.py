@@ -6,7 +6,7 @@ globato.hooks.rasters.binary_cudem
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Binary CUDEM: Morphological Multi-Resolution Step-Down.
-Uses weight-based bitmasks to route specific datasets to specific resolutions
+Uses weights to route specific datasets to specific resolutions
 and interpolator settings, bridging gaps in sparse data without
 degrading the high-frequency fidelity of dense coastal data.
 """
@@ -41,8 +41,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
         weights=None,  # [1.0, 0.5, 0],
         resolutions=None,  # ["3s", "9s", "15s"],  # E.g., 1s=Dense, 3s=Med, 9s=Sparse
         algos=None,  # ,["raster_fill", "raster_fill", "interp_rbf"],
-        sparse_smoothing=120.0,
-        dense_smoothing=0.1,
         blend_dists=None,  # 20,
         barrier=None,
         **kwargs,
@@ -65,9 +63,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.resolutions = _parse_arg(resolutions, str2inc)
         self.blend_dists = _parse_arg(blend_dists, int)
         self.algos = _parse_arg(algos, str)
-
-        self.sparse_smoothing = float(sparse_smoothing)
-        self.dense_smoothing = float(dense_smoothing)
 
     def _setup_steps(self, src_path):
         # Steps
