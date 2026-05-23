@@ -43,14 +43,13 @@ class BinaryCudemStepDown(RasterGlobalHook):
         algos=None,  # ,["raster_fill", "raster_fill", "interp_rbf"],
         sparse_smoothing=120.0,
         dense_smoothing=0.1,
-        blend_dist=None,  # 20,
+        blend_dists=None,  # 20,
         barrier=None,
         **kwargs,
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
 
         self.valid_algos = ["interp_gmt", "interp_rbf", "raster_fill"]
-
         self.steps = int_or(steps)
 
         def _parse_arg(val, cast_type):
@@ -64,12 +63,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         self.weights = _parse_arg(weights, float)
         self.resolutions = _parse_arg(resolutions, str2inc)
-        self.blend_dists = _parse_arg(blend_dist, int)
+        self.blend_dists = _parse_arg(blend_dists, int)
         self.algos = _parse_arg(algos, str)
 
         self.sparse_smoothing = float(sparse_smoothing)
         self.dense_smoothing = float(dense_smoothing)
-        # self.blend_dist = int(blend_dist)
 
     def _setup_steps(self, src_path):
         # Steps
@@ -85,6 +83,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         )
 
         # Weights
+        # TODO: use src to determine defaults by percentile
         self.weights = sorted(self.weights, reverse=True)
         while len(self.weights) < self.steps:
             if len(self.weights) == 0:
@@ -127,7 +126,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         )
 
     def _get_interp_hook(self, parsed_algo_hook):
-        """Dynamically loads and instantiates the requested interpolation hook."""
+        """Dynamically loads the requested interpolation hook."""
 
         from fetchez.registry import HookRegistry
 
@@ -146,7 +145,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
             return HookRegistry.get_class("interp_rbf")
 
     def _decimate_raster(self, src_path, dst_path, target_res):
-        """Custom decimation: Averages Z, etc., but uses MAX for the bitmask"""
+        """Custom decimation: Averages Z, etc., but uses max for the bitmask"""
 
         with rasterio.open(src_path) as src:
             transform, width, height = calculate_default_transform(
@@ -179,9 +178,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
         step_stack,
         previous_surface,
         current_weight,
-        is_coarsest,
         current_algo,
         current_blend_dist,
+        is_coarsest,
     ):
         with rasterio.open(step_stack, "r+") as src:
             data = src.read()
@@ -211,24 +210,23 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 )
 
                 # Create isolated temporary files for the hook
-                temp_in = step_stack.replace(".tif", f"_{current_algo}_in.tif")
-                temp_out = step_stack.replace(".tif", f"_{current_algo}_out.tif")
+                temp_in = step_stack.replace(".tif", f"_{current_weight}_in.tif")
+                temp_out = step_stack.replace(".tif", f"_{current_weight}_out.tif")
 
                 shutil.copy(step_stack, temp_in)
 
-                # Scrub the temp file so the hook ONLY sees the relevant tiers
-                with rasterio.open(temp_in, "r+") as tmp_src:
-                    tmp_z = tmp_src.read(1)
-                    tmp_z[~core_mask] = ndv
-                    tmp_src.write(tmp_z, 1)
+                # # Scrub the temp file so the hook only sees the relevant tiers
+                # with rasterio.open(temp_in, "r+") as tmp_src:
+                #     tmp_z = tmp_src.read(1)
+                #     tmp_z[~core_mask] = ndv
+                #     tmp_src.write(tmp_z, 1)
 
-                # Dispatch to the chosen algorithm!
                 current_algo_hook = parse_hook_string(current_algo)
                 interp_hook = self._get_interp_hook(current_algo_hook)
                 # success = interp_hook.process_raster(temp_in, temp_out, entry={})
                 success = interp_hook.process_raster(step_stack, temp_out, entry={})
 
-                # Extract ONLY the targeted voids and bring them back into our main array
+                # Extract only the targeted voids and bring them back into our main array
                 if success and os.path.exists(temp_out):
                     with rasterio.open(temp_out) as filled_src:
                         filled_z = filled_src.read(1)
@@ -239,7 +237,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 if os.path.exists(temp_out):
                     os.remove(temp_out)
 
-            # Cross-fade with the Upsampled Background
+            # Cross-fade with the upsampled background
             if previous_surface:
                 bg_aligned = np.full(z.shape, ndv, dtype=z.dtype)
                 with rasterio.open(previous_surface) as bg_src:
@@ -264,7 +262,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
                     bg_only_mask = dist >= current_blend_dist
                     trans_mask = (dist > 0) & (dist < current_blend_dist)
                 else:
-                    # Hard cut: Anything outside the core mask is 100% background
+                    # Anything outside the core mask is 100% background
                     weights = np.ones_like(dist)
                     bg_only_mask = dist > 0
                     trans_mask = np.zeros_like(dist, dtype=bool)
@@ -304,9 +302,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 step_stack,
                 previous_surface,
                 current_weight,
-                is_coarsest,
                 current_algo,
                 current_blend_dist,
+                is_coarsest,
             )
 
             previous_surface = step_stack
