@@ -100,6 +100,7 @@ globato_stream_profiles = "globato.streams.profiles"
 
 [project.scripts]
 globato = "globato.cli:cli"
+wafflez = "globato.cli.wafflez:wafflez_build"
 
 # --- Build configuration ---
 

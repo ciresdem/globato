@@ -19,6 +19,7 @@ import logging
 from fetchez.recipe import Recipe
 from fetchez.registry import RecipeRegistry, BundleRegistry
 from fetchez.utils import (
+    int_or,
     str2inc,
     parse_hook_string,
     compile_sources,
@@ -533,23 +534,10 @@ def _info_source(ctx, param, value):
     ctx.exit()
 
 
-@wafflez_group.command("build", cls=FetchezMainCommand)
-@click.option(
-    "--list-sources",
-    is_flag=True,
-    is_eager=True,
-    expose_value=False,
-    callback=_list_sources,
-    help="List available data sources and exit.",
-)
-@click.option(
-    "--info-source",
-    metavar="NAME",
-    is_eager=True,
-    expose_value=False,
-    callback=_info_source,
-    help="Show details for a specific data source and exit.",
-)
+CONTEXT_SETTINGS = dict(max_content_width=120)
+
+# @click.command(context_settings=CONTEXT_SETTINGS)
+@wafflez_group.command("build", cls=FetchezMainCommand, context_settings=CONTEXT_SETTINGS)
 @click.option("-R", "--region", required=True, help="Bounding box: W/E/S/N")
 @click.option(
     "-E", "--increment", required=True, help="Gridding Increment (e.g., 1s, 30m)"
@@ -561,6 +549,7 @@ def _info_source(ctx, param, value):
     help="Output Basename (default: globato_dem)",
 )
 @click.option(
+    "-D",
     "--outdir",
     type=click.Path(resolve_path=True),
     default=None,
@@ -607,6 +596,12 @@ def _info_source(ctx, param, value):
     help="Buffer the processing region by N cells to prevent edge artifacts. The final DEM will be cropped back to the strict -R region.",
 )
 @click.option(
+    "-L",
+    "--blend",
+    type=str,
+    help="Blend between weighted data in the generated MultiStack (e.g. 10/20/60).",
+)
+@click.option(
     "-W",
     "--weights",
     default="1.0/0.5",
@@ -625,6 +620,22 @@ def _info_source(ctx, param, value):
     "--export",
     is_flag=True,
     help="Save the generated YAML recipe to disk without running it.",
+)
+@click.option(
+    "--list-sources",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_list_sources,
+    help="List available data sources and exit.",
+)
+@click.option(
+    "--info-source",
+    metavar="NAME",
+    is_eager=True,
+    expose_value=False,
+    callback=_info_source,
+    help="Show details for a specific data source and exit.",
 )
 @click.argument("sources", nargs=-1)
 def wafflez_build(
@@ -713,7 +724,7 @@ def wafflez_build(
                 },
             ]
 
-            # --- Multi Stack ---
+            # --- Multi Stack and Raster Stream ---
             global_hooks.append(
                 {
                     "name": "multi_stack",
@@ -749,18 +760,22 @@ def wafflez_build(
             if weight_list[-1] > 0:
                 weight_list.append(0)
 
-            # for w in weight_list:
-            #     global_hooks.append(
-            #         {
-            #             "name": "ms_blend",
-            #             "args": {
-            #                 "weight_threshold": w,
-            #                 "blend_dist": 20,  # Defaulting to 20
-            #                 "random_scale": 0.25,
-            #                 "barrier": "osm",
-            #             },
-            #         }
-            #     )
+            blend_list = [int_or(b, 10) for b in str(blend).split("/")]
+            if len(blend) > 0:
+                while len(blend_list) <= len(weight_list):
+                    blend_list.append(blend_list[-1])
+                for i, w in enumerate(weight_list):
+                    global_hooks.append(
+                        {
+                            "name": "ms_blend",
+                            "args": {
+                                "weight_threshold": w,
+                                "blend_dist": blend_list[i],
+                                "random_scale": 0.25,
+                                "barrier": "osm",
+                            },
+                        }
+                    )
 
             # --- Add requested Filters (-T) ---
             for f in filters:
@@ -783,22 +798,6 @@ def wafflez_build(
                 args["steps"] = len(weight_list) - 1
                 args["barrier"] = "osm"
                 args["algo"] = "interp_rbf"
-
-            # elif algo_hook["name"] == "ms_binary_cudem":
-            #     from fetchez.utils import str2inc
-
-            #     base_res = str2inc(increment)
-
-            #     # Automatically step the resolutions down by a factor of 3 for each weight tier.
-            #     step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
-            #     logger.info(weight_list)
-            #     logger.info(step_resolutions)
-            #     args = algo_hook.setdefault("args", {})
-            #     args["resolutions"] = step_resolutions
-            #     args["weights"] = weight_list
-            #     args["steps"] = len(weight_list) - 1
-            #     args["barrier"] = "osm"
-            #     args["algos"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
@@ -835,6 +834,7 @@ def wafflez_build(
                     }
                 )
 
+            # Add some hook descriptions for the recipe yaml
             for hook in global_hooks:
                 hook_name = hook.get("name")
                 hook_names = hook.get("meta_aliases", [])
@@ -888,7 +888,6 @@ def wafflez_build(
 
     except ValueError as e:
         click.secho(str(e), fg="red")
-        # sys.exit(1)
     finally:
         os.chdir(original_cwd)
 
