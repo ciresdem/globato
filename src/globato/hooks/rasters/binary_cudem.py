@@ -19,7 +19,7 @@ import rasterio
 import scipy.ndimage
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 
-from fetchez.utils import remove_glob2, str2inc, int_or, parse_hook_string
+from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string
 
 from .base import RasterGlobalHook
 
@@ -290,7 +290,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
             current_blend_dist = self.blend_dists[::-1][i]
             is_coarsest = i == 0
 
-            step_stack = f"{src_path}.step_{res_str}.tif"
+            step_stack = src_path.replace(".tif", f"_step_{inc2str(res_str)}.tif")
             self._decimate_raster(src_path, step_stack, target_res=res_str)
 
             self._process_tier(
