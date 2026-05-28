@@ -71,12 +71,11 @@ class RasterWrite(FetchHook):
     def run(self, entries):
         for mod, entry in entries:
             stream = entry.get("stream")
+            base = os.path.splitext(entry.get("dst_fn", "out"))[0]
+            dst_fn = self.output_path or f"{base}{self.suffix}.tif"
 
             if self.is_raster_stream(entry):
                 # It's an active stream. Write it chunk by chunk!
-                base = os.path.splitext(entry.get("dst_fn", "out"))[0]
-                dst_fn = self.output_path or f"{base}{self.suffix}.tif"
-
                 writer_generator = self._write_stream(stream, dst_fn)
 
                 if self.inline:
@@ -91,12 +90,10 @@ class RasterWrite(FetchHook):
             else:
                 # The stream was drained by a global hook!
                 src_fn = entry.get("dst_fn")
-                base = os.path.basename(entry.get("dst_fn", "out"))
-                self.output_path = self.output_path or base
-                if self.output_path and src_fn and src_fn != self.output_path:
-                    logger.info(f"Promoting final artifact to: {self.output_path}")
-                    shutil.copy2(src_fn, self.output_path)
-                    entry["dst_fn"] = self.output_path
+                if dst_fn and src_fn and src_fn != dst_fn:
+                    logger.info(f"Promoting final artifact to: {dst_fn}")
+                    shutil.copy2(src_fn, dst_fn)
+                    entry["dst_fn"] = dst_fn
 
             entry.setdefault("artifacts", {})[self.artifact_id] = entry.get("dst_fn")
 

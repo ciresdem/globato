@@ -34,6 +34,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
     name = "ms_binary_cudem"
     default_suffix = "_binary_cudem"
     meta_category = "multi-stack"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(
         self,
@@ -47,7 +48,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
 
-        self.valid_algos = ["interp_gmt", "interp_rbf", "raster_fill"]
+        self.valid_algos = ["interp_gmt", "interp_rbf", "raster_fill", "interp_nn", "interp_idw", "interp_scipy"]
         self.steps = int_or(steps)
 
         def _parse_arg(val, cast_type):
@@ -106,9 +107,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
             self.algos.append("raster_fill")
             # else:
             #    # self.algos.append(self.algos[-1])
-        self.algos.append(
-            f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=100,degree=6"
-        )
+        # self.algos.append(
+        #     f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=500,degree=1"
+        # )
+        #self.algos.append("interp_gmt:tension=1")
+        self.algos.append("interp_scipy")
 
         # Blend Dists
         while len(self.blend_dists) <= self.steps:
@@ -137,7 +140,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
             logger.warning(
                 f"[{self.name}] Unknown algo '{algo_name}'. Falling back to RBF."
             )
-            return HookRegistry.get_class("interp_rbf")
+            return HookRegistry.get_class("interp_rbf")()
 
     def _decimate_raster(self, src_path, dst_path, target_res):
         """Custom decimation: Averages Z, etc., but uses max for the bitmask"""
@@ -183,7 +186,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
             z = data[0].astype("float64")
             w = data[2].astype("float64")
-
             valid_mask = (z != ndv) & (~np.isnan(z))
             core_mask = w >= current_weight
 
@@ -210,7 +212,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
                 shutil.copy(step_stack, temp_in)
 
-                # # Scrub the temp file so the hook only sees the relevant tiers
+                # Scrub the temp file so the hook only sees the relevant tiers
                 # with rasterio.open(temp_in, "r+") as tmp_src:
                 #     tmp_z = tmp_src.read(1)
                 #     tmp_z[~core_mask] = ndv
@@ -231,6 +233,8 @@ class BinaryCudemStepDown(RasterGlobalHook):
                     os.remove(temp_in)
                 if os.path.exists(temp_out):
                     os.remove(temp_out)
+            else:
+                logger.info(f"no points in tier {current_weight}")
 
             # Cross-fade with the upsampled background
             if previous_surface:
@@ -249,27 +253,30 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         num_threads=1,
                     )
 
-                dist = scipy.ndimage.distance_transform_cdt(
-                    ~core_mask, metric="taxicab"
-                )
-                if current_blend_dist > 0:
-                    weights = np.clip(dist / float(current_blend_dist), 0.0, 1.0)
-                    bg_only_mask = dist >= current_blend_dist
-                    trans_mask = (dist > 0) & (dist < current_blend_dist)
+                if not np.any(core_mask):
+                    z[:] = bg_aligned[:]
                 else:
-                    # Anything outside the core mask is 100% background
-                    weights = np.ones_like(dist)
-                    bg_only_mask = dist > 0
-                    trans_mask = np.zeros_like(dist, dtype=bool)
+                    dist = scipy.ndimage.distance_transform_cdt(
+                        ~core_mask, metric="taxicab"
+                    )
+                    if current_blend_dist > 0:
+                        weights = np.clip(dist / float(current_blend_dist), 0.0, 1.0)
+                        bg_only_mask = dist >= current_blend_dist
+                        trans_mask = (dist > 0) & (dist < current_blend_dist)
+                    else:
+                        # Anything outside the core mask is 100% background
+                        weights = np.ones_like(dist)
+                        bg_only_mask = dist > 0
+                        trans_mask = np.zeros_like(dist, dtype=bool)
 
-                z[bg_only_mask] = bg_aligned[bg_only_mask]
+                    z[bg_only_mask] = bg_aligned[bg_only_mask]
 
-                if np.any(trans_mask):
-                    valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
-                    blend_active = trans_mask & valid_bg
-                    z[blend_active] = (
-                        (1.0 - weights[blend_active]) * z[blend_active]
-                    ) + (weights[blend_active] * bg_aligned[blend_active])
+                    if np.any(trans_mask):
+                        valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
+                        blend_active = trans_mask & valid_bg
+                        z[blend_active] = (
+                            (1.0 - weights[blend_active]) * z[blend_active]
+                        ) + (weights[blend_active] * bg_aligned[blend_active])
 
                 barrier_mask = self._create_barrier_mask(z.shape, src.transform)
                 if barrier_mask is not None:
@@ -306,7 +313,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         if previous_surface:
             shutil.move(previous_surface, dst_path)
-            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
+            #remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
             logger.info(f"--- Successfully built Binary CUDEM DEM: {dst_path} ---")
             return True
 
