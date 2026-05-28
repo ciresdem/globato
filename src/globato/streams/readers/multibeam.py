@@ -320,56 +320,56 @@ class MBSReader(BaseGlobatoReader):
         if not self.want_flagged:
             df = df[df["beamflag"] == 0]
 
-        # if self.auto_uncertainty:
-        #     u_depth = df["z"].abs() * 0.01  # 1% of depth
-        #     u_xtrack = df["xtrack"].abs() * 0.05 if "xtrack" in df.columns else 0.0
-        #     u_speed = df["speed"] * 0.51 if "speed" in df.columns else 0.0
+        if self.auto_uncertainty:
+            u_depth = df["z"].abs() * 0.01  # 1% of depth
+            u_xtrack = df["xtrack"].abs() * 0.05 if "xtrack" in df.columns else 0.0
+            u_speed = df["speed"] * 0.51 if "speed" in df.columns else 0.0
 
-        #     df["u"] = np.sqrt(u_depth**2 + u_xtrack**2 + u_speed**2)
-        # else:
-        #     df["u"] = 0.0
-
-        # df["w"] = self.weight if self.weight else 1.0
-        # if self.auto_weight:
-        #     src_inf = self.src_fn.replace('.fbt', '.inf')#f"{self.src_fn}.inf"
-        #     meta = self._get_mbs_meta(src_inf)
-        #     # xtrack_weight = 1.0
-        #     # xtrack = min( 0.99, max(0.01, 1 - df.get("crosstrack_distance", 0).abs() * 0.05))
-        #     xtrack = df["crosstrack_distance"].abs()
-        #     xtrack_scaled = .5 - ((xtrack - xtrack.min()) / (xtrack.max() - xtrack.min()) *.5)
-        #     #xtrack = df.get("crosstrack_distance", 1).abs() * 0.05
-        #     # xtrack_weight = np.where(xtrack_scaled > 0, 1.0 / xtrack_scaled, 0.01)
-        #     # print(xtrack_weight.min(), xtrack_scaled.min())
-        #     # print(xtrack_weight.max(), xtrack_scaled.max())
-        #     age_weight = 1.0
-        #     if meta.get("date"):
-        #         age_weight = min(
-        #             0.99, max(0.01, 1 - ((2024 - int(meta["date"])) / (2024 - 1980)))
-        #         )
-        #     #df["w"] = (self.weight if self.weight else 1.0) * age_weight * (1/(df["crosstrack_distance"].abs() * 0.05)**2)
-        #     # print(xtrack)
-        #     # print(age_weight)
-        #     # df["w"] = (self.weight if self.weight else 1.0) * age_weight * xtrack
-        #     df["w"] *= age_weight
-        #     df["w"] *= xtrack_scaled
-        #     df["w"] += 1e-5
+            df["u"] = np.sqrt(u_depth**2 + u_xtrack**2 + u_speed**2)
+        else:
+            df["u"] = 0.0
 
         df["w"] = self.weight if self.weight else 1.0
         if self.auto_weight:
-            src_inf = f"{self.src_fn}.inf"
+            src_inf = self.src_fn.replace('.fbt', '.inf')#f"{self.src_fn}.inf"
             meta = self._get_mbs_meta(src_inf)
+            # xtrack_weight = 1.0
+            # xtrack = min( 0.99, max(0.01, 1 - df.get("crosstrack_distance", 0).abs() * 0.05))
+            xtrack = df["crosstrack_distance"].abs()
+            xtrack_scaled = 1 - ((xtrack - xtrack.min()) / (xtrack.max() - xtrack.min()))
+            #xtrack = df.get("crosstrack_distance", 1).abs() * 0.05
+            # xtrack_weight = np.where(xtrack_scaled > 0, 1.0 / xtrack_scaled, 0.01)
+            # print(xtrack_weight.min(), xtrack_scaled.min())
+            # print(xtrack_weight.max(), xtrack_scaled.max())
             age_weight = 1.0
             if meta.get("date"):
                 age_weight = min(
                     0.99, max(0.01, 1 - ((2024 - int(meta["date"])) / (2024 - 1980)))
                 )
+            #df["w"] = (self.weight if self.weight else 1.0) * age_weight * (1/(df["crosstrack_distance"].abs() * 0.05)**2)
+            # print(xtrack)
+            # print(age_weight)
+            # df["w"] = (self.weight if self.weight else 1.0) * age_weight * xtrack
+            df["w"] *= age_weight * xtrack_scaled + 1e-5
+            #df["w"] *= xtrack_scaled
+            #df["w"] += 1e-5
 
-            df["u"] = 0.25 + (0.01 * df["z"].abs())
-            # df["w"] = np.where(df["u"] > 0, 1.0 / df["u"], 1.0) * age_weight
-            df["w"] *= np.where(df["u"] > 0, 1.0 / df["u"], 1.0) * age_weight
-        else:
-            df["u"] = 0.0
-            df["w"] = self.weight
+        # df["w"] = self.weight if self.weight else 1.0
+        # if self.auto_weight:
+        #     src_inf = f"{self.src_fn}.inf"
+        #     meta = self._get_mbs_meta(src_inf)
+        #     age_weight = 1.0
+        #     if meta.get("date"):
+        #         age_weight = min(
+        #             0.99, max(0.01, 1 - ((2024 - int(meta["date"])) / (2024 - 1980)))
+        #         )
+
+        #     df["u"] = 0.25 + (0.01 * df["z"].abs())
+        #     # df["w"] = np.where(df["u"] > 0, 1.0 / df["u"], 1.0) * age_weight
+        #     df["w"] *= np.where(df["u"] > 0, 1.0 / df["u"], 1.0) * age_weight
+        # else:
+        #     df["u"] = 0.0
+        #     df["w"] = self.weight
 
         return df
 

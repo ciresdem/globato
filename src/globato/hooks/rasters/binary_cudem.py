@@ -20,6 +20,7 @@ import scipy.ndimage
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 
 from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string
+from fetchez.spatial import Region
 
 from .base import RasterGlobalHook
 
@@ -44,6 +45,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         algos=None,  # ,["raster_fill", "raster_fill", "interp_rbf"],
         blend_dists=None,  # 20,
         barrier=None,
+        decimation_mode="weighted_mean",
         **kwargs,
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
@@ -64,6 +66,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.resolutions = _parse_arg(resolutions, str2inc)
         self.blend_dists = _parse_arg(blend_dists, int)
         self.algos = _parse_arg(algos, str)
+        self.decimation_mode = decimation_mode
 
     def _setup_steps(self, src_path):
         # Steps
@@ -143,33 +146,31 @@ class BinaryCudemStepDown(RasterGlobalHook):
             return HookRegistry.get_class("interp_rbf")()
 
     def _decimate_raster(self, src_path, dst_path, target_res):
-        """Custom decimation: Averages Z, etc., but uses max for the bitmask"""
+        """Decimates by converting the high-res grid back to a point cloud
+        and re-binning it through the Multi-Stack Accumulator to preserve weights
+        """
+
+        import fetchez
+
+        logger.info(f"[{self.name}] Decimating to {target_res} using '{self.decimation_mode}'...")
 
         with rasterio.open(src_path) as src:
-            transform, width, height = calculate_default_transform(
-                src.crs,
-                src.crs,
-                src.width,
-                src.height,
-                *src.bounds,
-                resolution=str2inc(target_res),
-            )
-            kwargs = src.profile.copy()
-            kwargs.update(transform=transform, width=width, height=height)
+            bounds = src.bounds
+            region = [bounds.left, bounds.right, bounds.bottom, bounds.top]
+            src_crs = src.crs.to_string() if src.crs else None
 
-            with rasterio.open(dst_path, "w", **kwargs) as dst:
-                for i in range(1, src.count + 1):
-                    resamp_algo = Resampling.max if i in [2, 3] else Resampling.average
-                    reproject(
-                        source=rasterio.band(src, i),
-                        destination=rasterio.band(dst, i),
-                        src_transform=src.transform,
-                        src_crs=src.crs,
-                        dst_transform=transform,
-                        dst_crs=src.crs,
-                        resampling=resamp_algo,
-                        num_threads=1,
-                    )
+        decimated_stack = fetchez.get(
+            "file",
+            region=region,
+            path=src_path,
+            hooks=[
+                "set_datatype:datatype=multi-stack"
+                "stream-init",
+                f"multi_stack:res={target_res},output={dst_path},crs={src_crs}",
+                "focus_sink:target=multi_stack",
+            ]
+        )
+        return decimated_stack
 
     def _process_tier(
         self,
