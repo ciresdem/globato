@@ -17,7 +17,7 @@ import logging
 import numpy as np
 import rasterio
 import scipy.ndimage
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.warp import reproject, Resampling
 
 from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string
 
@@ -34,6 +34,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
     name = "ms_binary_cudem"
     default_suffix = "_binary_cudem"
     meta_category = "multi-stack"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(
         self,
@@ -43,11 +44,19 @@ class BinaryCudemStepDown(RasterGlobalHook):
         algos=None,  # ,["raster_fill", "raster_fill", "interp_rbf"],
         blend_dists=None,  # 20,
         barrier=None,
+        decimation_mode="weighted_mean",
         **kwargs,
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
 
-        self.valid_algos = ["interp_gmt", "interp_rbf", "raster_fill"]
+        self.valid_algos = [
+            "interp_gmt",
+            "interp_rbf",
+            "raster_fill",
+            "interp_nn",
+            "interp_idw",
+            "interp_scipy",
+        ]
         self.steps = int_or(steps)
 
         def _parse_arg(val, cast_type):
@@ -63,6 +72,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.resolutions = _parse_arg(resolutions, str2inc)
         self.blend_dists = _parse_arg(blend_dists, int)
         self.algos = _parse_arg(algos, str)
+        self.decimation_mode = decimation_mode
 
     def _setup_steps(self, src_path):
         # Steps
@@ -106,9 +116,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
             self.algos.append("raster_fill")
             # else:
             #    # self.algos.append(self.algos[-1])
-        self.algos.append(
-            f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=100,degree=6"
-        )
+        # self.algos.append(
+        #     f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=500,degree=1"
+        # )
+        # self.algos.append("interp_gmt:tension=1")
+        self.algos.append("interp_scipy")
 
         # Blend Dists
         while len(self.blend_dists) <= self.steps:
@@ -137,36 +149,36 @@ class BinaryCudemStepDown(RasterGlobalHook):
             logger.warning(
                 f"[{self.name}] Unknown algo '{algo_name}'. Falling back to RBF."
             )
-            return HookRegistry.get_class("interp_rbf")
+            return HookRegistry.get_class("interp_rbf")()
 
     def _decimate_raster(self, src_path, dst_path, target_res):
-        """Custom decimation: Averages Z, etc., but uses max for the bitmask"""
+        """Decimates by converting the high-res grid back to a point cloud
+        and re-binning it through the Multi-Stack Accumulator to preserve weights
+        """
+
+        import fetchez
+
+        logger.info(
+            f"[{self.name}] Decimating to {target_res} using '{self.decimation_mode}'..."
+        )
 
         with rasterio.open(src_path) as src:
-            transform, width, height = calculate_default_transform(
-                src.crs,
-                src.crs,
-                src.width,
-                src.height,
-                *src.bounds,
-                resolution=str2inc(target_res),
-            )
-            kwargs = src.profile.copy()
-            kwargs.update(transform=transform, width=width, height=height)
+            bounds = src.bounds
+            region = [bounds.left, bounds.right, bounds.bottom, bounds.top]
+            src_crs = src.crs.to_string() if src.crs else None
 
-            with rasterio.open(dst_path, "w", **kwargs) as dst:
-                for i in range(1, src.count + 1):
-                    resamp_algo = Resampling.max if i in [2, 3] else Resampling.average
-                    reproject(
-                        source=rasterio.band(src, i),
-                        destination=rasterio.band(dst, i),
-                        src_transform=src.transform,
-                        src_crs=src.crs,
-                        dst_transform=transform,
-                        dst_crs=src.crs,
-                        resampling=resamp_algo,
-                        num_threads=1,
-                    )
+        decimated_stack = fetchez.get(
+            "file",
+            region=region,
+            path=src_path,
+            hooks=[
+                "set_datatype:data_type=multi-stack",
+                "stream-init",
+                f"multi_stack:res={target_res},output={dst_path},crs={src_crs},overwrite=True",
+                "focus_sink:target=multi_stack",
+            ],
+        )
+        return decimated_stack
 
     def _process_tier(
         self,
@@ -183,7 +195,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
             z = data[0].astype("float64")
             w = data[2].astype("float64")
-
             valid_mask = (z != ndv) & (~np.isnan(z))
             core_mask = w >= current_weight
 
@@ -210,7 +221,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
                 shutil.copy(step_stack, temp_in)
 
-                # # Scrub the temp file so the hook only sees the relevant tiers
+                # Scrub the temp file so the hook only sees the relevant tiers
                 # with rasterio.open(temp_in, "r+") as tmp_src:
                 #     tmp_z = tmp_src.read(1)
                 #     tmp_z[~core_mask] = ndv
@@ -231,6 +242,8 @@ class BinaryCudemStepDown(RasterGlobalHook):
                     os.remove(temp_in)
                 if os.path.exists(temp_out):
                     os.remove(temp_out)
+            else:
+                logger.info(f"no points in tier {current_weight}")
 
             # Cross-fade with the upsampled background
             if previous_surface:
@@ -249,27 +262,30 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         num_threads=1,
                     )
 
-                dist = scipy.ndimage.distance_transform_cdt(
-                    ~core_mask, metric="taxicab"
-                )
-                if current_blend_dist > 0:
-                    weights = np.clip(dist / float(current_blend_dist), 0.0, 1.0)
-                    bg_only_mask = dist >= current_blend_dist
-                    trans_mask = (dist > 0) & (dist < current_blend_dist)
+                if not np.any(core_mask):
+                    z[:] = bg_aligned[:]
                 else:
-                    # Anything outside the core mask is 100% background
-                    weights = np.ones_like(dist)
-                    bg_only_mask = dist > 0
-                    trans_mask = np.zeros_like(dist, dtype=bool)
+                    dist = scipy.ndimage.distance_transform_cdt(
+                        ~core_mask, metric="taxicab"
+                    )
+                    if current_blend_dist > 0:
+                        weights = np.clip(dist / float(current_blend_dist), 0.0, 1.0)
+                        bg_only_mask = dist >= current_blend_dist
+                        trans_mask = (dist > 0) & (dist < current_blend_dist)
+                    else:
+                        # Anything outside the core mask is 100% background
+                        weights = np.ones_like(dist)
+                        bg_only_mask = dist > 0
+                        trans_mask = np.zeros_like(dist, dtype=bool)
 
-                z[bg_only_mask] = bg_aligned[bg_only_mask]
+                    z[bg_only_mask] = bg_aligned[bg_only_mask]
 
-                if np.any(trans_mask):
-                    valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
-                    blend_active = trans_mask & valid_bg
-                    z[blend_active] = (
-                        (1.0 - weights[blend_active]) * z[blend_active]
-                    ) + (weights[blend_active] * bg_aligned[blend_active])
+                    if np.any(trans_mask):
+                        valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
+                        blend_active = trans_mask & valid_bg
+                        z[blend_active] = (
+                            (1.0 - weights[blend_active]) * z[blend_active]
+                        ) + (weights[blend_active] * bg_aligned[blend_active])
 
                 barrier_mask = self._create_barrier_mask(z.shape, src.transform)
                 if barrier_mask is not None:
@@ -277,6 +293,21 @@ class BinaryCudemStepDown(RasterGlobalHook):
                     z[water_mask] = np.minimum(z[water_mask], -0.01)
 
             src.write(z.astype(rasterio.float32), 1)
+
+        # from globato.hooks.rasters.blend import MultiStackBlend
+
+        # MultiStackBlend(
+        #     weight_threshold=current_weight, blend_dist=100, core_dist=50
+        # ).process_raster(step_stack, "test.tif", {})
+        # import fetchez
+        # blended_stack = fetchez.get(
+        #     "file",
+        #     region=self.region,
+        #     path=step_stack,
+        #     hooks=[
+        #         f"ms_blend:core_dist=40,blend_dist=60,weight_threshold={current_weight},random_scale=.5"
+        #     ]
+        # )
 
     def process_raster(self, src_path, dst_path, entry):
         previous_surface = None

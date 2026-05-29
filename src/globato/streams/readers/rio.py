@@ -18,6 +18,8 @@ from rasterio.windows import Window, from_bounds
 from rasterio.warp import transform_bounds
 from rasterio.errors import WindowError
 
+from fetchez.utils import int_or
+
 from globato.streams import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,10 @@ class RasterioReader(BaseGlobatoReader):
         region=None,
         path_prefix="",
         path_suffix="",
+        w_band=None,
+        u_band=None,
+        x_band=None,
+        y_band=None,
         **kwargs,
     ):
         super().__init__(path, **kwargs)
@@ -54,6 +60,10 @@ class RasterioReader(BaseGlobatoReader):
         self.band_no = band_no
         self.chunk_size = chunk_size
         self.region = region
+        self.u_band = int_or(u_band)
+        self.w_band = int_or(w_band)
+        self.x_band = int_or(x_band)
+        self.y_band = int_or(y_band)
         self.kwargs = kwargs
 
     def get_srs(self):
@@ -123,8 +133,28 @@ class RasterioReader(BaseGlobatoReader):
 
                             window = Window(x, y, cols, rows)
                             z = src.read(self.band_no, window=window)
-                            # u = np.zeros_like(z)
-                            # w = np.ones_like(z)
+                            u = (
+                                src.read(self.u_band, window=window)
+                                if self.u_band
+                                else np.zeros_like(z)
+                            )
+                            w = (
+                                src.read(self.w_band, window=window)
+                                if self.w_band
+                                else np.ones_like(z)
+                            )
+
+                            x_arr = (
+                                src.read(self.x_band, window=window)
+                                if self.x_band
+                                else None
+                            )
+                            y_arr = (
+                                src.read(self.y_band, window=window)
+                                if self.y_band
+                                else None
+                            )
+                            # w_iv = src.read(self.w_iv_band, window=window) if self.w_iv_band else np.ones_like(z)
 
                             if not np.issubdtype(z.dtype, np.floating):
                                 z = z.astype(np.float32)
@@ -142,17 +172,24 @@ class RasterioReader(BaseGlobatoReader):
                                 continue
 
                             z_valid = z[mask]
-                            # w_valid = w[mask]
-                            # u_valid = u[mask]
+                            w_valid = w[mask]
+                            u_valid = u[mask]
 
-                            local_rows, local_cols = np.where(mask)
+                            if x_arr is not None and y_arr is not None:
+                                xs = x_arr[mask]
+                                ys = y_arr[mask]
+                            else:
+                                local_rows, local_cols = np.where(mask)
 
-                            global_rows = local_rows + window.row_off
-                            global_cols = local_cols + window.col_off
+                                global_rows = local_rows + window.row_off
+                                global_cols = local_cols + window.col_off
 
-                            xs, ys = rasterio.transform.xy(
-                                src.transform, global_rows, global_cols, offset="center"
-                            )
+                                xs, ys = rasterio.transform.xy(
+                                    src.transform,
+                                    global_rows,
+                                    global_cols,
+                                    offset="center",
+                                )
                             count = len(z_valid)
                             chunk = np.zeros(
                                 count,
@@ -160,17 +197,16 @@ class RasterioReader(BaseGlobatoReader):
                                     ("x", "f8"),
                                     ("y", "f8"),
                                     ("z", "f4"),
-                                    # ("w", "f4"),
-                                    # ("u", "f4"),
+                                    ("w", "f4"),
+                                    ("u", "f4"),
                                 ],
                             )
 
                             chunk["x"] = xs
                             chunk["y"] = ys
                             chunk["z"] = z_valid
-                            # chunk["u"] = u_valid
-                            # chunk["w"] = w_valid
-
+                            chunk["u"] = u_valid
+                            chunk["w"] = w_valid
                             yield chunk
 
         except Exception as e:

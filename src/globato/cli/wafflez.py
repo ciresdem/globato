@@ -27,13 +27,11 @@ from fetchez.utils import (
     FetchezMainCommand,
 )
 from globato.utils import yield_parsed_regions, globatize_modules, make_recipe_config
-from fetchez.cli.recipes import recipes_group
 
 logger = logging.getLogger(__name__)
 
 WAFFLEZ_COMMANDS = {
     "Commmands": ["run", "build"],
-    "Discovery & Management": ["recipes"],
 }
 
 # WAFFLEZ_COMMANDS = ["run", "build", "recipes"]
@@ -727,6 +725,10 @@ def wafflez_build(
                         "output": f"{tile_outname}_provenance.tif",
                     },
                 },
+                {
+                    "name": "source_masks",
+                    "args": {"res": "1s", "output": f"{tile_outname}_sources.vrt"},
+                },
             ]
 
             # --- Multi Stack and Raster Stream ---
@@ -770,17 +772,34 @@ def wafflez_build(
                 while len(blend_list) <= len(weight_list):
                     blend_list.append(blend_list[-1])
                 for i, w in enumerate(weight_list):
-                    global_hooks.append(
-                        {
-                            "name": "ms_blend",
-                            "args": {
-                                "weight_threshold": w,
-                                "blend_dist": blend_list[i],
-                                "random_scale": 0.25,
-                                "barrier": "osm",
-                            },
-                        }
-                    )
+                    if w > 0:
+                        global_hooks.append(
+                            {
+                                "name": "ms_blend",
+                                "args": {
+                                    "weight_threshold": w,
+                                    "blend_dist": blend_list[i],
+                                    "random_scale": 0.5,
+                                    # "barrier": "osm",
+                                },
+                            }
+                        )
+                # Writes the blended data to disk without breaking the stream
+                global_hooks.append(
+                    {
+                        "name": "raster_write",
+                        "args": {
+                            "suffix": "_final_blend",
+                            "artifact_id": "blended_checkpoint",
+                        },
+                    }
+                )
+                global_hooks.append(
+                    {
+                        "name": "focus_sink",
+                        "args": {"target": "blended_checkpoint"},
+                    }
+                )
 
             # --- Add requested Filters (-T) ---
             for f in filters:
@@ -839,6 +858,14 @@ def wafflez_build(
                     }
                 )
 
+            # Re-format the tif for COG compatibility
+            global_hooks.append(
+                {
+                    "name": "format_cog",
+                    "args": {"overviews": "2/4/8/16/32", "resampling": "average"},
+                }
+            )
+
             # Add some hook descriptions for the recipe yaml
             for hook in global_hooks:
                 hook_name = hook.get("name")
@@ -895,6 +922,3 @@ def wafflez_build(
         click.secho(str(e), fg="red")
     finally:
         os.chdir(original_cwd)
-
-
-wafflez_group.add_command(recipes_group, name="recipes")
