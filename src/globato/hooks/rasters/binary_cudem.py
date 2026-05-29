@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class BinaryCudemStepDown(RasterGlobalHook):
-    """
-    Multi-Resolution Morphological step-down using Binary Coding.
-    """
+    """Multi-Resolution Morphological step-down using Binary Coding."""
 
     name = "ms_binary_cudem"
     default_suffix = "_binary_cudem"
@@ -111,7 +109,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
             self.resolutions.append(self.resolutions[-1] * 3)
 
         # Algos
-        while len(self.algos) < self.steps:
+        while len(self.algos) <= self.steps:
             # if len(self.algos) == 0:
             self.algos.append("raster_fill")
             # else:
@@ -120,7 +118,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         #     f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=500,degree=1"
         # )
         # self.algos.append("interp_gmt:tension=1")
-        self.algos.append("interp_scipy")
+        # self.algos.append("interp_scipy")
 
         # Blend Dists
         while len(self.blend_dists) <= self.steps:
