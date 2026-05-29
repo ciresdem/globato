@@ -22,7 +22,7 @@ from rasterio.windows import Window
 import fiona
 from fetchez.spatial import parse_region
 from fetchez.hooks import FetchHook
-from fetchez.utils import float_or
+from fetchez.utils import float_or, parse_arg_to_list
 
 logger = logging.getLogger(__name__)
 
@@ -494,11 +494,10 @@ class RasterCOG(RasterGlobalHook):
 
     name = "format_cog"
     default_suffix = "_cog"
-    meta_category = "raster-global"
 
-    def __init__(self, overviews="2/4/8/16/32", resampling="average", **kwargs):
+    def __init__(self, overviews=[2, 4, 8, 16, 32], resampling="average", **kwargs):
         super().__init__(**kwargs)
-        self.overviews = [int(x) for x in str(overviews).split("/")]
+        self.overviews = parse_arg_to_list(overviews, int)
         self.resampling = resampling
 
     def process_raster(self, src_path, dst_path, entry):

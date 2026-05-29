@@ -19,7 +19,7 @@ import rasterio
 import scipy.ndimage
 from rasterio.warp import reproject, Resampling
 
-from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string
+from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string, parse_arg_to_list
 
 from .base import RasterGlobalHook
 
@@ -55,20 +55,10 @@ class BinaryCudemStepDown(RasterGlobalHook):
             "interp_scipy",
         ]
         self.steps = int_or(steps)
-
-        def _parse_arg(val, cast_type):
-            if val is None:
-                return []
-            if isinstance(val, list):
-                return [cast_type(v) for v in val]
-            if isinstance(val, str) and "/" in val:
-                return [cast_type(v) for v in val.split("/")]
-            return [cast_type(val)]
-
-        self.weights = _parse_arg(weights, float)
-        self.resolutions = _parse_arg(resolutions, str2inc)
-        self.blend_dists = _parse_arg(blend_dists, int)
-        self.algos = _parse_arg(algos, str)
+        self.weights = parse_arg_to_list(weights, float)
+        self.resolutions = parse_arg_to_list(resolutions, str2inc)
+        self.blend_dists = parse_arg_to_list(blend_dists, int)
+        self.algos = parse_arg_to_list(algos, str)
         self.decimation_mode = decimation_mode
 
     def _setup_steps(self, src_path):
