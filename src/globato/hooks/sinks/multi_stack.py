@@ -67,6 +67,7 @@ class MultiStackAccumulator:
         weight_threshold="1",
         crs="EPSG:4326",
         verbose=False,
+        overwrite=False,
     ):
         self.region = Region.from_list(region)
         self.x_inc = abs(float(x_inc))
@@ -78,6 +79,7 @@ class MultiStackAccumulator:
         self.crs = crs
         self.verbose = verbose
         self.lock = threading.Lock()
+        self.overwrite = overwrite
 
         base, ext = os.path.splitext(self.output_fn)
         self.sums_fn = f"{base}.sums{ext}"
@@ -108,19 +110,20 @@ class MultiStackAccumulator:
         """Create the zero-filled accumulation file or load existing."""
 
         if os.path.exists(self.sums_fn):
-            with rasterio.open(self.sums_fn, "r") as existing:
-                if existing.width != self.xcount or existing.height != self.ycount:
-                    logger.warning(
-                        f"Existing sums file dimensions ({existing.width}x{existing.height}) "
-                        f"do not match current settings ({self.xcount}x{self.ycount}). "
-                        "Overwriting old file to prevent dimension errors."
-                    )
-                    pass
-                else:
-                    logger.info(
-                        f"Found existing sums file: {os.path.basename(self.sums_fn)}. Operating in UPDATE mode."
-                    )
-                    return
+            if not self.overwrite:
+                with rasterio.open(self.sums_fn, "r") as existing:
+                    if existing.width != self.xcount or existing.height != self.ycount:
+                        logger.warning(
+                            f"Existing sums file dimensions ({existing.width}x{existing.height}) "
+                            f"do not match current settings ({self.xcount}x{self.ycount}). "
+                            "Overwriting old file to prevent dimension errors."
+                        )
+                        pass
+                    else:
+                        logger.info(
+                            f"Found existing sums file: {os.path.basename(self.sums_fn)}. Operating in UPDATE mode."
+                        )
+                        return
 
             os.remove(self.sums_fn)
 
@@ -396,6 +399,7 @@ class MultiStackHook(FetchHook):
         weight_threshold="1",
         crs=None,
         drop_classes=None,
+        overwrite=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -408,6 +412,7 @@ class MultiStackHook(FetchHook):
         self.drop_classes = (
             [int(x) for x in str(drop_classes).split("/")] if drop_classes else []
         )
+        self.overwrite = overwrite
 
     def _init_accumulator(self, region):
         if self._accumulator:
@@ -434,6 +439,7 @@ class MultiStackHook(FetchHook):
             weight_threshold=self.weight_threshold,
             crs=self.crs,
             verbose=True,
+            overwrite=self.overwrite,
         )
 
     def run(self, entries):

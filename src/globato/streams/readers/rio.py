@@ -188,7 +188,6 @@ class RasterioReader(BaseGlobatoReader):
                             chunk["z"] = z_valid
                             chunk["u"] = u_valid
                             chunk["w"] = w_valid
-
                             yield chunk
 
         except Exception as e:

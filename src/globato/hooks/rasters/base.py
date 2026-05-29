@@ -63,6 +63,14 @@ class RasterBaseHook(FetchHook):
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
 
+        profile.update(
+            tiled=True,
+            blockxsize=256,
+            blockysize=256,
+            compress="deflate",
+            predictor=3,
+            bigtiff="YES"
+        )
         return profile
 
     def _strip_to_single_band(self, raster_path):
@@ -477,3 +485,44 @@ class RasterGlobalHook(RasterBaseHook):
             new_entries.append((mod, entry))
 
         return new_entries
+
+
+class RasterCOG(RasterGlobalHook):
+    """Converts a standard GeoTIFF into a strict Cloud-Optimized GeoTIFF (COG).
+    Builds overviews (2, 4, 8, 16, 32) and aligns the byte structure for HTTP streaming.
+    """
+
+    name = "format_cog"
+    default_suffix = "_cog"
+    meta_category = "raster-global"
+
+    def __init__(self, overviews="2/4/8/16/32", resampling="average", **kwargs):
+        super().__init__(**kwargs)
+        self.overviews = [int(x) for x in str(overviews).split("/")]
+        self.resampling = resampling
+
+    def process_raster(self, src_path, dst_path, entry):
+        from rasterio.shutil import copy
+        from rasterio.enums import Resampling
+
+        logger.info(f"[{self.name}] Building {self.overviews} overviews and aligning COG...")
+
+        resampling_enum = getattr(Resampling, self.resampling.lower(), Resampling.average)
+        with rasterio.open(src_path, 'r+') as src:
+            src.build_overviews(self.overviews, resampling_enum)
+            src.update_tags(ns='rio_overview', resampling=self.resampling.lower())
+
+        with rasterio.Env(GDAL_TIFF_OVR_BLOCKSIZE=256):
+            copy(
+                src_path,
+                dst_path,
+                copy_src_overviews=True,
+                driver='COG',
+                compress='deflate',
+                predictor=3,
+                blockxsize=256,
+                blockysize=256,
+                bigtiff="YES"
+            )
+
+        return True

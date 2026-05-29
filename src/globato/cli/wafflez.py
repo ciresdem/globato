@@ -863,6 +863,17 @@ def wafflez_build(
                     }
                 )
 
+            # Re-format the tif for COG compatibility
+            global_hooks.append(
+                {
+                    "name": "format_cog",
+                    "args": {
+                        "overviews": "2/4/8/16/32",
+                        "resampling": "average"
+                    }
+                }
+            )
+
             # Add some hook descriptions for the recipe yaml
             for hook in global_hooks:
                 hook_name = hook.get("name")

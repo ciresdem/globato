@@ -164,9 +164,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
             region=region,
             path=src_path,
             hooks=[
-                "set_datatype:datatype=multi-stack"
+                "set_datatype:data_type=multi-stack",
                 "stream-init",
-                f"multi_stack:res={target_res},output={dst_path},crs={src_crs}",
+                f"multi_stack:res={target_res},output={dst_path},crs={src_crs},overwrite=True",
                 "focus_sink:target=multi_stack",
             ]
         )
@@ -285,6 +285,18 @@ class BinaryCudemStepDown(RasterGlobalHook):
                     z[water_mask] = np.minimum(z[water_mask], -0.01)
 
             src.write(z.astype(rasterio.float32), 1)
+
+        from globato.hooks.rasters.blend import MultiStackBlend
+        MultiStackBlend(weight_threshold=current_weight, blend_dist=100, core_dist=50).process_raster(step_stack, "test.tif", {})
+        # import fetchez
+        # blended_stack = fetchez.get(
+        #     "file",
+        #     region=self.region,
+        #     path=step_stack,
+        #     hooks=[
+        #         f"ms_blend:core_dist=40,blend_dist=60,weight_threshold={current_weight},random_scale=.5"
+        #     ]
+        # )
 
     def process_raster(self, src_path, dst_path, entry):
         previous_surface = None
