@@ -45,6 +45,7 @@ class GmtSurface(RasterGlobalHook):
 
     name = "interp_gmt"
     default_suffix = "_gmt"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(
         self,

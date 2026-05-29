@@ -31,7 +31,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
     name = "ms_binary_cudem"
     default_suffix = "_binary_cudem"
-    meta_category = "multi-stack"
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(

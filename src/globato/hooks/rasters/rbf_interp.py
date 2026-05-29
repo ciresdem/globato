@@ -31,6 +31,7 @@ class RBFInterp(RasterStreamHook):
     default_suffix = "_rbf"
     meta_consumes = "raster-stream"
     meta_produces = "raster-stream"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(
         self,

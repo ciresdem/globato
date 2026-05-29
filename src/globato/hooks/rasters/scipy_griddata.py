@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class ScipyInterp(RasterStreamHook):
     name = "interp_scipy"
     default_suffix = "_interp"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(self, method="linear", **kwargs):
         super().__init__(**kwargs)
