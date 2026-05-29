@@ -17,10 +17,9 @@ import logging
 import numpy as np
 import rasterio
 import scipy.ndimage
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.warp import reproject, Resampling
 
 from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string
-from fetchez.spatial import Region
 
 from .base import RasterGlobalHook
 
@@ -50,7 +49,14 @@ class BinaryCudemStepDown(RasterGlobalHook):
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
 
-        self.valid_algos = ["interp_gmt", "interp_rbf", "raster_fill", "interp_nn", "interp_idw", "interp_scipy"]
+        self.valid_algos = [
+            "interp_gmt",
+            "interp_rbf",
+            "raster_fill",
+            "interp_nn",
+            "interp_idw",
+            "interp_scipy",
+        ]
         self.steps = int_or(steps)
 
         def _parse_arg(val, cast_type):
@@ -113,7 +119,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         # self.algos.append(
         #     f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=500,degree=1"
         # )
-        #self.algos.append("interp_gmt:tension=1")
+        # self.algos.append("interp_gmt:tension=1")
         self.algos.append("interp_scipy")
 
         # Blend Dists
@@ -152,7 +158,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         import fetchez
 
-        logger.info(f"[{self.name}] Decimating to {target_res} using '{self.decimation_mode}'...")
+        logger.info(
+            f"[{self.name}] Decimating to {target_res} using '{self.decimation_mode}'..."
+        )
 
         with rasterio.open(src_path) as src:
             bounds = src.bounds
@@ -168,7 +176,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 "stream-init",
                 f"multi_stack:res={target_res},output={dst_path},crs={src_crs},overwrite=True",
                 "focus_sink:target=multi_stack",
-            ]
+            ],
         )
         return decimated_stack
 
@@ -286,8 +294,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
             src.write(z.astype(rasterio.float32), 1)
 
-        from globato.hooks.rasters.blend import MultiStackBlend
-        MultiStackBlend(weight_threshold=current_weight, blend_dist=100, core_dist=50).process_raster(step_stack, "test.tif", {})
+        # from globato.hooks.rasters.blend import MultiStackBlend
+
+        # MultiStackBlend(
+        #     weight_threshold=current_weight, blend_dist=100, core_dist=50
+        # ).process_raster(step_stack, "test.tif", {})
         # import fetchez
         # blended_stack = fetchez.get(
         #     "file",
@@ -326,7 +337,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         if previous_surface:
             shutil.move(previous_surface, dst_path)
-            #remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
+            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
             logger.info(f"--- Successfully built Binary CUDEM DEM: {dst_path} ---")
             return True
 

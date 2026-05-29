@@ -69,7 +69,7 @@ class RasterBaseHook(FetchHook):
             blockysize=256,
             compress="deflate",
             predictor=3,
-            bigtiff="YES"
+            bigtiff="YES",
         )
         return profile
 
@@ -505,24 +505,28 @@ class RasterCOG(RasterGlobalHook):
         from rasterio.shutil import copy
         from rasterio.enums import Resampling
 
-        logger.info(f"[{self.name}] Building {self.overviews} overviews and aligning COG...")
+        logger.info(
+            f"[{self.name}] Building {self.overviews} overviews and aligning COG..."
+        )
 
-        resampling_enum = getattr(Resampling, self.resampling.lower(), Resampling.average)
-        with rasterio.open(src_path, 'r+') as src:
+        resampling_enum = getattr(
+            Resampling, self.resampling.lower(), Resampling.average
+        )
+        with rasterio.open(src_path, "r+") as src:
             src.build_overviews(self.overviews, resampling_enum)
-            src.update_tags(ns='rio_overview', resampling=self.resampling.lower())
+            src.update_tags(ns="rio_overview", resampling=self.resampling.lower())
 
         with rasterio.Env(GDAL_TIFF_OVR_BLOCKSIZE=256):
             copy(
                 src_path,
                 dst_path,
                 copy_src_overviews=True,
-                driver='COG',
-                compress='deflate',
+                driver="COG",
+                compress="deflate",
                 predictor=3,
                 blockxsize=256,
                 blockysize=256,
-                bigtiff="YES"
+                bigtiff="YES",
             )
 
         return True

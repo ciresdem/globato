@@ -133,11 +133,27 @@ class RasterioReader(BaseGlobatoReader):
 
                             window = Window(x, y, cols, rows)
                             z = src.read(self.band_no, window=window)
-                            u = src.read(self.u_band, window=window) if self.u_band else np.zeros_like(z)
-                            w = src.read(self.w_band, window=window) if self.w_band else np.ones_like(z)
+                            u = (
+                                src.read(self.u_band, window=window)
+                                if self.u_band
+                                else np.zeros_like(z)
+                            )
+                            w = (
+                                src.read(self.w_band, window=window)
+                                if self.w_band
+                                else np.ones_like(z)
+                            )
 
-                            x_arr = src.read(self.x_band, window=window) if self.x_band else None
-                            y_arr = src.read(self.y_band, window=window) if self.y_band else None
+                            x_arr = (
+                                src.read(self.x_band, window=window)
+                                if self.x_band
+                                else None
+                            )
+                            y_arr = (
+                                src.read(self.y_band, window=window)
+                                if self.y_band
+                                else None
+                            )
                             # w_iv = src.read(self.w_iv_band, window=window) if self.w_iv_band else np.ones_like(z)
 
                             if not np.issubdtype(z.dtype, np.floating):
@@ -169,7 +185,10 @@ class RasterioReader(BaseGlobatoReader):
                                 global_cols = local_cols + window.col_off
 
                                 xs, ys = rasterio.transform.xy(
-                                    src.transform, global_rows, global_cols, offset="center"
+                                    src.transform,
+                                    global_rows,
+                                    global_cols,
+                                    offset="center",
                                 )
                             count = len(z_valid)
                             chunk = np.zeros(

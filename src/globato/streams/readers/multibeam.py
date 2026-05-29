@@ -96,7 +96,7 @@ class MBSReader(BaseGlobatoReader):
                         p = line.split(":")
                         if p[0].strip() == "Number of Good Beams":
                             meta["perc_good"] = p[1].split()[-1].split("%")[0]
-        except Exception as e:
+        except Exception:
             pass
 
         return meta
@@ -322,29 +322,37 @@ class MBSReader(BaseGlobatoReader):
 
         if self.auto_uncertainty:
             u_depth = df["z"].abs() * 0.01  # 1% of depth
-            #u_xtrack = df["xtrack"].abs() * 0.05 if "xtrack" in df.columns else 0.0
-            u_xtrack = df["crosstrack_distance"].abs() * 0.05 if "crosstrack_distance" in df.columns else 0.0
+            # u_xtrack = df["xtrack"].abs() * 0.05 if "xtrack" in df.columns else 0.0
+            u_xtrack = (
+                df["crosstrack_distance"].abs() * 0.05
+                if "crosstrack_distance" in df.columns
+                else 0.0
+            )
             # print(u_xtrack)
             # u_speed = df["speed"] * 0.51 if "speed" in df.columns else 0.0
 
-            df["u"] = np.sqrt(u_depth**2 + u_xtrack**2)# + u_speed**2)
+            df["u"] = np.sqrt(u_depth**2 + u_xtrack**2)  # + u_speed**2)
         else:
             df["u"] = 0.0
 
         df["w"] = self.weight if self.weight else 1.0
         if self.auto_weight:
-            src_inf = self.src_fn.replace('.fbt', '.inf')#f"{self.src_fn}.inf"
+            src_inf = self.src_fn.replace(".fbt", ".inf")  # f"{self.src_fn}.inf"
             meta = self._get_mbs_meta(src_inf)
 
-            xtrack = df["crosstrack_distance"].abs() * .05
-            xtrack_scaled = 1 - ((xtrack - xtrack.min()) / (xtrack.max() - xtrack.min()) * 1)
+            xtrack = df["crosstrack_distance"].abs() * 0.05
+            xtrack_scaled = 1 - (
+                (xtrack - xtrack.min()) / (xtrack.max() - xtrack.min()) * 1
+            )
             age_weight = 1.0
             if meta.get("date"):
                 age_weight = max(0.01, 1 - ((2024 - int(meta["date"])) / (2024 - 1980)))
             good_weight = 1
             if meta.get("perc_good"):
-                good_weight = float(meta.get("perc_good"))/100
-            df["w"] *= np.sqrt((age_weight**2) + (xtrack_scaled**2) + (good_weight**2)) # + 1e-5
+                good_weight = float(meta.get("perc_good")) / 100
+            df["w"] *= np.sqrt(
+                (age_weight**2) + (xtrack_scaled**2) + (good_weight**2)
+            )  # + 1e-5
             # df["w"] *= xtrack_scaled #age_weight * good_weight * xtrack_scaled# * xtrack_scaled * good_weight + 1e-5
 
         # df["w"] = self.weight if self.weight else 1.0

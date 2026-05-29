@@ -727,10 +727,7 @@ def wafflez_build(
                 },
                 {
                     "name": "source_masks",
-                    "args": {
-                        "res": "1s",
-                        "output": f"{tile_outname}_sources.vrt"
-                    },
+                    "args": {"res": "1s", "output": f"{tile_outname}_sources.vrt"},
                 },
             ]
 
@@ -793,16 +790,14 @@ def wafflez_build(
                         "name": "raster_write",
                         "args": {
                             "suffix": "_final_blend",
-                            "artifact_id": "blended_checkpoint"
+                            "artifact_id": "blended_checkpoint",
                         },
                     }
                 )
                 global_hooks.append(
                     {
                         "name": "focus_sink",
-                        "args": {
-                            "target": "blended_checkpoint"
-                        },
+                        "args": {"target": "blended_checkpoint"},
                     }
                 )
 
@@ -867,10 +862,7 @@ def wafflez_build(
             global_hooks.append(
                 {
                     "name": "format_cog",
-                    "args": {
-                        "overviews": "2/4/8/16/32",
-                        "resampling": "average"
-                    }
+                    "args": {"overviews": "2/4/8/16/32", "resampling": "average"},
                 }
             )
 
