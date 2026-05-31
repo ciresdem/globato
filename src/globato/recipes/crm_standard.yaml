@@ -210,7 +210,7 @@ global_hooks:
   - name: source_masks
     args:
       res: "1s"
-      output: "crm_standard_provenance.tif"
+      output: "crm_standard_sources.vrt"
 
   - name: provenance
     args:
@@ -281,20 +281,20 @@ global_hooks:
       output: "crm_standard_dem_hillshade.tif"
 
   # --- PREPARE THE SOURCE MASKS DELIVERY ---
-  - name: restore_entries
-    args: {key: "clean_raw_data"}
+  # - name: restore_entries
+  #   args: {key: "clean_raw_data"}
 
-  - name: source_masks
+  # - name: source_masks
 
-  - name: focus_sink
-    args: {target: "source_masks"}
+  # - name: focus_sink
+  #   args: {target: "source_masks"}
 
-  - name: build_multiband
-    args: {output: "crm_standard_provenance_bands.tif"}
+  # - name: build_multiband
+  #   args: {output: "crm_standard_provenance_bands.tif"}
 
-  - name: focus_sink
-    args: {target: "build_multiband"}
+  # - name: focus_sink
+  #   args: {target: "build_multiband"}
 
-  - name: raster_metadata
-    args:
-      tags: "Project=Coastal Relief Model,Description=Source Contribution Masks"
+  # - name: raster_metadata
+  #   args:
+  #     tags: "Project=Coastal Relief Model,Description=Source Contribution Masks"
