@@ -36,6 +36,10 @@ modules:
       - name: stream_reproject
         args: {dst_srs: "EPSG:4326+3855"}
       - name: spatial_crop
+      - name: raster_clip
+        args:
+          barrier: "coastline"
+          invert: False
 
   - module: copernicus
     args: {weight: 1.0, datatype: 3}
