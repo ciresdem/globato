@@ -30,6 +30,8 @@ class RasterClipHook(RasterStreamHook):
 
         self.invert = str(invert).lower() == "true"
 
+        logger.debug(f"Clipping {self.name} with {self.barrier}")
+
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         """Process individual windows/chunks passed by RasterHook."""
 

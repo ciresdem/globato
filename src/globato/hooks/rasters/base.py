@@ -153,13 +153,13 @@ class RasterBaseHook(FetchHook):
             #     or os.getcwd()
             # )
 
-            logger.info(f"[{self.name}] Generating coastline with outdir of {outdir}")
+            logger.debug(f"[{self.name}] Generating coastline with outdir of {outdir}")
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
             )
 
-            logger.info(
+            logger.debug(
                 f"[{self.name}] Auto-generating barrier using {target_mod_name}..."
             )
             from fetchez.registry import ModuleRegistry
@@ -360,7 +360,7 @@ class RasterStreamHook(RasterBaseHook):
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
                 dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
 
-            logger.debug(f"Running local {self.name} on {os.path.basename(src_fn)}")
+            logger.info(f"Running local {self.name} on {os.path.basename(src_fn)}")
             try:
                 success = self._process_file_fallback(src_fn, dst_fn, entry)
                 if success:
