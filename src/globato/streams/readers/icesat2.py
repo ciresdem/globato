@@ -13,6 +13,7 @@ ICESat-2 Data Parser (ATL03, ATL24) ported from CUDEM for Fetchez-Globato.
 
 import os
 import glob
+import traceback
 import numpy as np
 import h5py as h5
 import pandas as pd
@@ -300,10 +301,13 @@ class ATL03Reader(IceSat2Reader):
                 # run_fetchez([fetcher])
 
                 if fetcher.results:
+                    # Sort descending by filename so the highest algorithm
+                    # version/revision (e.g. _002_01 > _001_01) is first.
+                    fetcher.results.sort(key=lambda e: e.get("dst_fn", ""), reverse=True)
                     fetcher.fetch_entry(fetcher.results[0], check_size=True)
                     return fetcher.results[0]["dst_fn"]
         except Exception as e:
-            logger.debug(f"Aux fetch failed: {e}")
+            logger.debug(f"Aux fetch failed: {e}\n{traceback.format_exc()}")
 
         return None
 
@@ -472,47 +476,36 @@ class ATL03Reader(IceSat2Reader):
                 grp = f[laser]
                 try:
                     atl24_class = grp["class_ph"][...]
-                    atl24_seg = grp["index_seg"][...]
-                    atl24_idx = grp["index_ph"][...]
-                    atl24_conf = grp["confidence"][...]
-                    atl24_lat = grp["lat_ph"][...]
-                    atl24_lon = grp["lon_ph"][...]
-                    atl24_z = grp["ortho_h"][...]
+                    atl24_dt    = grp["delta_time"][...]
+                    atl24_conf  = grp["confidence"][...]
+                    atl24_lat   = grp["lat_ph"][...]
+                    atl24_lon   = grp["lon_ph"][...]
+                    atl24_z     = grp["ortho_h"][...]
                 except KeyError:
                     return df
 
-                orig_segs = np.arange(geoseg_beg, geoseg_end + 1)
-                try:
-                    atl24_real_seg_ids = orig_segs[atl24_seg]
-                except IndexError:
-                    return df
-
+                # Join ATL24 → ATL03 by delta_time: both products reference the
+                # same physical photon events, so timestamps are exact matches.
                 atl24_df = pd.DataFrame(
                     {
-                        "ph_segment_id": atl24_real_seg_ids,
-                        "ph_index_within_seg": atl24_idx,
-                        "atl24_class": atl24_class,
-                        "atl24_conf": atl24_conf,
-                        "atl24_lat": atl24_lat,
-                        "atl24_lon": atl24_lon,
-                        "atl24_z": atl24_z,
+                        "delta_time":   atl24_dt,
+                        "atl24_class":  atl24_class,
+                        "atl24_conf":   atl24_conf,
+                        "atl24_lat":    atl24_lat,
+                        "atl24_lon":    atl24_lon,
+                        "atl24_z":      atl24_z,
                     }
                 )
-
-                atl24_df = atl24_df[
-                    atl24_df["ph_segment_id"].isin(df["ph_segment_id"].unique())
-                ]
-                if atl24_df.empty:
-                    return df
 
                 is_bathy = atl24_df["atl24_class"] == 40
                 if self.min_bathy_confidence is not None:
                     is_bathy &= atl24_df["atl24_conf"] >= self.min_bathy_confidence
                 atl24_df = atl24_df[is_bathy]
 
-                merged = df.merge(
-                    atl24_df, on=["ph_segment_id", "ph_index_within_seg"], how="left"
-                )
+                if atl24_df.empty:
+                    return df
+
+                merged = df.merge(atl24_df, on="delta_time", how="left")
                 mask = merged["atl24_class"].notna()
                 if np.any(mask):
                     df.loc[mask, "ph_h_classed"] = merged.loc[
@@ -520,9 +513,9 @@ class ATL03Reader(IceSat2Reader):
                     ].astype(int)
                     df.loc[mask, "bathy_confidence"] = merged.loc[
                         mask, "atl24_conf"
-                    ].astype(int)
-                    df.loc[mask, "latitude"] = merged.loc[mask, "atl24_lat"]
-                    df.loc[mask, "longitude"] = merged.loc[mask, "atl24_lon"]
+                    ]
+                    df.loc[mask, "latitude"]      = merged.loc[mask, "atl24_lat"]
+                    df.loc[mask, "longitude"]     = merged.loc[mask, "atl24_lon"]
                     df.loc[mask, "photon_height"] = merged.loc[mask, "atl24_z"]
         except Exception as e:
             logger.warning(f"Failed to apply ATL24 data: {e}")
@@ -1149,7 +1142,7 @@ class ATL03Reader(IceSat2Reader):
                 "photon_h_dem": h_dem,
                 "photon_meantide": h_meantide,
                 "ph_h_classed": -1,
-                "bathy_confidence": -1,
+                "bathy_confidence": -1.0,
                 "ph_segment_id": ph_seg_ids,
                 "ph_index_within_seg": ph_index_counters,
             }
