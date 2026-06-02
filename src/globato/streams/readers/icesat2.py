@@ -303,7 +303,9 @@ class ATL03Reader(IceSat2Reader):
                 if fetcher.results:
                     # Sort descending by filename so the highest algorithm
                     # version/revision (e.g. _002_01 > _001_01) is first.
-                    fetcher.results.sort(key=lambda e: e.get("dst_fn", ""), reverse=True)
+                    fetcher.results.sort(
+                        key=lambda e: e.get("dst_fn", ""), reverse=True
+                    )
                     fetcher.fetch_entry(fetcher.results[0], check_size=True)
                     return fetcher.results[0]["dst_fn"]
         except Exception as e:
@@ -476,11 +478,11 @@ class ATL03Reader(IceSat2Reader):
                 grp = f[laser]
                 try:
                     atl24_class = grp["class_ph"][...]
-                    atl24_dt    = grp["delta_time"][...]
-                    atl24_conf  = grp["confidence"][...]
-                    atl24_lat   = grp["lat_ph"][...]
-                    atl24_lon   = grp["lon_ph"][...]
-                    atl24_z     = grp["ortho_h"][...]
+                    atl24_dt = grp["delta_time"][...]
+                    atl24_conf = grp["confidence"][...]
+                    atl24_lat = grp["lat_ph"][...]
+                    atl24_lon = grp["lon_ph"][...]
+                    atl24_z = grp["ortho_h"][...]
                 except KeyError:
                     return df
 
@@ -488,12 +490,12 @@ class ATL03Reader(IceSat2Reader):
                 # same physical photon events, so timestamps are exact matches.
                 atl24_df = pd.DataFrame(
                     {
-                        "delta_time":   atl24_dt,
-                        "atl24_class":  atl24_class,
-                        "atl24_conf":   atl24_conf,
-                        "atl24_lat":    atl24_lat,
-                        "atl24_lon":    atl24_lon,
-                        "atl24_z":      atl24_z,
+                        "delta_time": atl24_dt,
+                        "atl24_class": atl24_class,
+                        "atl24_conf": atl24_conf,
+                        "atl24_lat": atl24_lat,
+                        "atl24_lon": atl24_lon,
+                        "atl24_z": atl24_z,
                     }
                 )
 
@@ -511,11 +513,9 @@ class ATL03Reader(IceSat2Reader):
                     df.loc[mask, "ph_h_classed"] = merged.loc[
                         mask, "atl24_class"
                     ].astype(int)
-                    df.loc[mask, "bathy_confidence"] = merged.loc[
-                        mask, "atl24_conf"
-                    ]
-                    df.loc[mask, "latitude"]      = merged.loc[mask, "atl24_lat"]
-                    df.loc[mask, "longitude"]     = merged.loc[mask, "atl24_lon"]
+                    df.loc[mask, "bathy_confidence"] = merged.loc[mask, "atl24_conf"]
+                    df.loc[mask, "latitude"] = merged.loc[mask, "atl24_lat"]
+                    df.loc[mask, "longitude"] = merged.loc[mask, "atl24_lon"]
                     df.loc[mask, "photon_height"] = merged.loc[mask, "atl24_z"]
         except Exception as e:
             logger.warning(f"Failed to apply ATL24 data: {e}")
