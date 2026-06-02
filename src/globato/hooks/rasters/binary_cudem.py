@@ -19,7 +19,14 @@ import rasterio
 import scipy.ndimage
 from rasterio.warp import reproject, Resampling
 
-from fetchez.utils import remove_glob2, str2inc, inc2str, int_or, parse_hook_string, parse_arg_to_list
+from fetchez.utils import (
+    remove_glob2,
+    str2inc,
+    inc2str,
+    int_or,
+    parse_hook_string,
+    parse_arg_to_list,
+)
 
 from .base import RasterGlobalHook
 
