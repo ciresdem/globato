@@ -22,7 +22,7 @@ from rasterio.windows import Window
 import fiona
 from fetchez.spatial import parse_region
 from fetchez.hooks import FetchHook
-from fetchez.utils import float_or
+from fetchez.utils import float_or, parse_arg_to_list
 
 logger = logging.getLogger(__name__)
 
@@ -153,13 +153,13 @@ class RasterBaseHook(FetchHook):
             #     or os.getcwd()
             # )
 
-            logger.info(f"[{self.name}] Generating coastline with outdir of {outdir}")
+            logger.debug(f"[{self.name}] Generating coastline with outdir of {outdir}")
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
             )
 
-            logger.info(
+            logger.debug(
                 f"[{self.name}] Auto-generating barrier using {target_mod_name}..."
             )
             from fetchez.registry import ModuleRegistry
@@ -360,7 +360,7 @@ class RasterStreamHook(RasterBaseHook):
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
                 dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
 
-            logger.debug(f"Running local {self.name} on {os.path.basename(src_fn)}")
+            logger.info(f"Running local {self.name} on {os.path.basename(src_fn)}")
             try:
                 success = self._process_file_fallback(src_fn, dst_fn, entry)
                 if success:
@@ -494,11 +494,10 @@ class RasterCOG(RasterGlobalHook):
 
     name = "format_cog"
     default_suffix = "_cog"
-    meta_category = "raster-global"
 
-    def __init__(self, overviews="2/4/8/16/32", resampling="average", **kwargs):
+    def __init__(self, overviews=[2, 4, 8, 16, 32], resampling="average", **kwargs):
         super().__init__(**kwargs)
-        self.overviews = [int(x) for x in str(overviews).split("/")]
+        self.overviews = parse_arg_to_list(overviews, int)
         self.resampling = resampling
 
     def process_raster(self, src_path, dst_path, entry):

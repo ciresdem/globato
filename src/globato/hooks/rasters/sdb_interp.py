@@ -36,6 +36,7 @@ class SDBInterpolation(RasterGlobalHook):
 
     name = "interp_sdb"
     default_suffix = "_sdb"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(
         self, sat_image=None, n_trees=100, max_depth=-0.5, cloud_cover=10, **kwargs

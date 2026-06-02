@@ -44,6 +44,7 @@ class VerdeSurface(RasterGlobalHook):
 
     name = "interp_verde"
     default_suffix = "_verde"
+    meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(self, damping=1e-4, mindist=1e-5, **kwargs):
         super().__init__(**kwargs)

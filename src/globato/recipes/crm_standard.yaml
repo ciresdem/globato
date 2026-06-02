@@ -32,10 +32,17 @@ modules:
     hooks:
       - name: raster_flats
         args: {stage: "file"}
+      - name: raster_clip
+        args:
+          barrier: "osm"
+          invert: False
+          stage: file
       - name: stream_data
       - name: stream_reproject
         args: {dst_srs: "EPSG:4326+3855"}
       - name: spatial_crop
+      - name: range_z
+        args: {min_z: 0.01}
 
   - module: copernicus
     args: {weight: 1.0, datatype: 3}
@@ -206,7 +213,7 @@ global_hooks:
   - name: source_masks
     args:
       res: "1s"
-      output: "crm_standard_provenance.tif"
+      output: "crm_standard_sources.vrt"
 
   - name: provenance
     args:
@@ -277,20 +284,20 @@ global_hooks:
       output: "crm_standard_dem_hillshade.tif"
 
   # --- PREPARE THE SOURCE MASKS DELIVERY ---
-  - name: restore_entries
-    args: {key: "clean_raw_data"}
+  # - name: restore_entries
+  #   args: {key: "clean_raw_data"}
 
-  - name: source_masks
+  # - name: source_masks
 
-  - name: focus_sink
-    args: {target: "source_masks"}
+  # - name: focus_sink
+  #   args: {target: "source_masks"}
 
-  - name: build_multiband
-    args: {output: "crm_standard_provenance_bands.tif"}
+  # - name: build_multiband
+  #   args: {output: "crm_standard_provenance_bands.tif"}
 
-  - name: focus_sink
-    args: {target: "build_multiband"}
+  # - name: focus_sink
+  #   args: {target: "build_multiband"}
 
-  - name: raster_metadata
-    args:
-      tags: "Project=Coastal Relief Model,Description=Source Contribution Masks"
+  # - name: raster_metadata
+  #   args:
+  #     tags: "Project=Coastal Relief Model,Description=Source Contribution Masks"

@@ -304,7 +304,7 @@ class SourceMasks(FetchHook):
             return
 
         # vrt_path = os.path.join(self.output_dir, self.vrt_name)
-        logger.debug(f"Building master VRT mask: {self.output}")
+        logger.info(f"Building master VRT mask: {self.output}")
 
         try:
             with rasterio.open(self.tifs[0]) as src:
