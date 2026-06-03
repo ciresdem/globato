@@ -287,7 +287,6 @@ class ATL03Reader(IceSat2Reader):
                     return matches[0]
 
         try:
-            print(self.cache_dir)
             for filt in [atlxx_filter, atlxx_filter_no_ver]:
                 fetcher = earthdata.IceSat2(
                     src_region=None,
