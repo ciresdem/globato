@@ -81,21 +81,20 @@ class BAGReader(RasterioReader):
                 yield from self._process_rio_dataset()
                 return
 
+            elif is_vr:
+                logger.debug(
+                    f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}"
+                )
+                vr_opts = {"MODE": "RESAMPLED_GRID", "RES_STRATEGY": "MIN"}
+
+                try:
+                    with rasterio.Env(**env_opts):
+                        self.u_band = 2
+                        with rasterio.open(self.src_fn, **vr_opts) as src:
+                            self.weight = self._calculate_bag_weight(src.transform)
+                        yield from self._process_rio_dataset()
+                except Exception as e:
+                    logger.error(f"Failed to read VR-BAG {self.src_fn}: {e}")
         except Exception as e:
             logger.error(f"Failed to probe BAG {self.src_fn}: {e}")
             return
-
-        elif is_vr:
-            logger.debug(
-                f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}"
-            )
-            vr_opts = {"MODE": "RESAMPLED_GRID", "RES_STRATEGY": "MIN"}
-
-            try:
-                with rasterio.Env(**env_opts):
-                    self.u_band = 2
-                    with rasterio.open(self.src_fn, **vr_opts) as src:
-                        self.weight = self._calculate_bag_weight(src.transform)
-                    yield from self._process_rio_dataset()
-            except Exception as e:
-                logger.error(f"Failed to read VR-BAG {self.src_fn}: {e}")
