@@ -852,11 +852,16 @@ class ATL03Reader(IceSat2Reader):
         if source.lower() == "bing":
             # Bing Buildings -> Class 7 (Buildings/Noise)
             bldg_results = fetchez.get(
-                "bing", region=self.region.to_list(), outdir=self.cache_dir, hooks=["unzip"]
+                "bing",
+                region=self.region.to_list(),
+                outdir=self.cache_dir,
+                hooks=["unzip"],
             )
         elif source.lower() == "gba":
             # Global Building Atlas -> Class 7 (Buildings/Noise)
-            bldg_results = fetchez.get("gba", region=self.region.to_list(), outdir=self.cache_dir)
+            bldg_results = fetchez.get(
+                "gba", region=self.region.to_list(), outdir=self.cache_dir
+            )
 
         if not bldg_results:
             return None
