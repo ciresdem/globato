@@ -77,6 +77,10 @@ class RasterioReader(BaseGlobatoReader):
             return "EPSG:4326"
 
     def _yield_raw_chunks(self):
+        yield from self._process_rio_dataset()
+        return
+
+    def _process_rio_dataset(self):
         """Yield chunks using Rasterio Windows."""
 
         try:

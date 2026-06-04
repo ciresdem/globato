@@ -326,7 +326,6 @@ class MultiStackAccumulator:
 
             with rasterio.open(self.output_fn, "w", **profile) as dst:
                 dst.colorinterp = [ColorInterp.undefined] * dst.count
-
                 for _, window in src.block_windows(1):
                     data = src.read(window=window)
 
