@@ -13,12 +13,8 @@ Handles VR-BAGs, standard BAGs, uncertainty bands, and corrupt XML metadata.
 """
 
 import logging
-import numpy as np
 
 import rasterio
-from rasterio.windows import Window, from_bounds
-from rasterio.warp import transform_bounds
-from rasterio.errors import WindowError
 
 from fetchez.utils import float_or
 

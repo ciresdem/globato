@@ -174,11 +174,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         "res": target_res,
                         "output": dst_path,
                         "crs": src_crs,
-                        "mode": self.decimation_mode
-                    }
+                        "mode": self.decimation_mode,
+                    },
                 },
                 "focus_sink:target=multi_stack",
-            ]
+            ],
         )
         # decimated_stack = fetchez.get(
         #     "file",
