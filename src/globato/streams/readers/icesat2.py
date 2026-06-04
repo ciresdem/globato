@@ -287,7 +287,6 @@ class ATL03Reader(IceSat2Reader):
                     return matches[0]
 
         try:
-            print(self.cache_dir)
             for filt in [atlxx_filter, atlxx_filter_no_ver]:
                 fetcher = earthdata.IceSat2(
                     src_region=None,
@@ -853,11 +852,16 @@ class ATL03Reader(IceSat2Reader):
         if source.lower() == "bing":
             # Bing Buildings -> Class 7 (Buildings/Noise)
             bldg_results = fetchez.get(
-                "bing", region=self.region.to_list(), hooks=["unzip"]
+                "bing",
+                region=self.region.to_list(),
+                outdir=self.cache_dir,
+                hooks=["unzip"],
             )
         elif source.lower() == "gba":
             # Global Building Atlas -> Class 7 (Buildings/Noise)
-            bldg_results = fetchez.get("gba", region=self.region.to_list())
+            bldg_results = fetchez.get(
+                "gba", region=self.region.to_list(), outdir=self.cache_dir
+            )
 
         if not bldg_results:
             return None
