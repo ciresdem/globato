@@ -168,10 +168,29 @@ class BinaryCudemStepDown(RasterGlobalHook):
             hooks=[
                 "set_datatype:data_type=multi-stack",
                 "stream-init",
-                f"multi_stack:res={target_res},output={dst_path},crs={src_crs},overwrite=True",
+                {
+                    "name": "multi_stack",
+                    "args": {
+                        "res": target_res,
+                        "output": dst_path,
+                        "crs": src_crs,
+                        "mode": self.decimation_mode
+                    }
+                },
                 "focus_sink:target=multi_stack",
-            ],
+            ]
         )
+        # decimated_stack = fetchez.get(
+        #     "file",
+        #     region=region,
+        #     path=src_path,
+        #     hooks=[
+        #         "set_datatype:data_type=multi-stack",
+        #         "stream-init",
+        #         f"multi_stack:res={target_res},output={dst_path},crs={src_crs},overwrite=True",
+        #         "focus_sink:target=multi_stack",
+        #     ],
+        # )
         return decimated_stack
 
     def _process_tier(
