@@ -1091,6 +1091,10 @@ class ATL03Reader(IceSat2Reader):
             geoid = geophys_grp["geoid"][...]
             geoid_f2m = geophys_grp["geoid_free2mean"][...]
             dem_h = geophys_grp["dem_h"][...]
+            tide_earth = geophys_grp["tide_earth"][...]
+            tide_ocean = geophys_grp["tide_ocean"][...]
+            tide_load = geophys_grp["tide_load"][...]
+            tide_pole = geophys_grp["tide_pole"][...]
         except KeyError as e:
             logger.debug(f"Could not parse h5 keys: {e}")
             return None
@@ -1123,14 +1127,34 @@ class ATL03Reader(IceSat2Reader):
         p_f2m = np.array([h_f2m_map.get(s, 0) for s in ph_seg_ids])
         p_dem = np.array([h_dem_map.get(s, 0) for s in ph_seg_ids])
 
-        h_ortho = h_ph - p_geoid
-        h_meantide = h_ph - (p_geoid + p_f2m)
+        def map_geophys(array):
+            array[array > 1e30] = 0.0
+            _map = dict(zip(seg_id, array))
+            return np.array([_map.get(s, 0) for s in ph_seg_ids])
+
+        p_tide_earth = map_geophys(tide_earth)
+        p_tide_ocean = map_geophys(tide_ocean)
+        p_tide_load = map_geophys(tide_load)
+        p_tide_pole = map_geophys(tide_pole)
+
+        total_tide_corr = p_tide_earth + p_tide_ocean + p_tide_load + p_tide_pole
+        h_ph_corrected = h_ph - total_tide_corr
+
+        h_ortho = h_ph_corrected - p_geoid
+        h_meantide = h_ph_corrected - (p_geoid + p_f2m)
+
+        h_ellipsoid = h_ph_corrected
+
+        # h_ortho = h_ph - p_geoid
+        # h_meantide = h_ph - (p_geoid + p_f2m)
         h_dem = p_dem - (p_geoid + p_f2m)
 
         if self.water_surface == "mean_tide":
             z_out = h_meantide
         elif self.water_surface == "geoid":
             z_out = h_ortho
+        elif self.water_surface == "ellipsoid":
+            z_out = h_ellipsoid
         else:
             z_out = h_ph
 
