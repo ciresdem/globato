@@ -15,7 +15,7 @@ import logging
 import numpy as np
 
 from fetchez.hooks import FetchHook
-from fetchez.utils import int_or, float_or
+from fetchez.utils import int_or, float_or, str2inc
 from fetchez.spatial import Region
 
 import rasterio
@@ -404,8 +404,8 @@ class Point2PixelStream(FetchHook):
 
     def __init__(self, x_inc=None, y_inc=None, want_sums=True, **kwargs):
         super().__init__(**kwargs)
-        self.x_inc = float_or(x_inc)
-        self.y_inc = float_or(y_inc)
+        self.x_inc = float_or(str2inc(x_inc))
+        self.y_inc = float_or(str2inc(y_inc))
         self.want_sums = want_sums
 
     def process_chunk(self, chunk, region=None):
