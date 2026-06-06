@@ -207,7 +207,7 @@ class ATL03Reader(IceSat2Reader):
     def __init__(
         self,
         path,
-        water_surface="ellipsoid",
+        water_surface="geoid",
         classes=None,
         confidence_levels="2/3/4",
         region=None,
