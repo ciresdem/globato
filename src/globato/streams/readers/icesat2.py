@@ -1131,9 +1131,9 @@ class ATL03Reader(IceSat2Reader):
 
         p_tide_earth_f2m = map_geophys(tide_earth_f2m)
 
-        h_ellipsoid = h_ph - p_tide_earth_f2m  # mean-tide wgs84 ellipsoid
+        h_ellipsoid = h_ph + p_tide_earth_f2m  # mean-tide wgs84 ellipsoid
         h_ortho = h_ph - p_geoid  # tide-free egm2008
-        h_meantide = h_ph - (p_geoid + p_f2m)  # mean-tide egm2008
+        h_meantide = h_ellipsoid - (p_geoid + p_f2m)  # mean-tide egm2008
         h_dem = p_dem - (p_geoid + p_f2m)
 
         if self.water_surface == "mean_tide":
