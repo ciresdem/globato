@@ -207,7 +207,7 @@ class ATL03Reader(IceSat2Reader):
     def __init__(
         self,
         path,
-        water_surface="geoid",
+        vertical_datum="geoid",
         classes=None,
         confidence_levels="2/3/4",
         region=None,
@@ -225,10 +225,11 @@ class ATL03Reader(IceSat2Reader):
 
         super().__init__(path, **kwargs)
 
-        self.water_surface = (
-            water_surface
-            if water_surface in ["mean_tide", "geoid", "ellipsoid"]
-            else "mean_tide"
+        self.vertical_datum = (
+            vertical_datum
+            if vertical_datum
+            in ["ellipsoid", "ellipsoid-mean-tide", "geoid", "geoid-mean-tide"]
+            else "ellipsoid"
         )
         self.classes = (
             [int(x) for x in str(classes).split("/")] if classes is not None else []
@@ -1136,11 +1137,11 @@ class ATL03Reader(IceSat2Reader):
         h_meantide = h_ellipsoid - (p_geoid + p_f2m)  # mean-tide egm2008
         h_dem = p_dem - (p_geoid + p_f2m)
 
-        if self.water_surface == "mean_tide":
+        if self.vertical_datum == "geoid-mean-tide":
             z_out = h_meantide
-        elif self.water_surface == "geoid":
+        elif self.vertical_datum == "geoid":
             z_out = h_ortho
-        elif self.water_surface == "ellipsoid":
+        elif self.vertical_datum == "ellipsoid-mean-tide":
             z_out = h_ellipsoid  # h_ph - p_tide_earth_f2m
         else:
             z_out = h_ph
