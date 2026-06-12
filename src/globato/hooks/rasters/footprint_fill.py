@@ -20,6 +20,7 @@ from globato.hooks.rasters.base import RasterStreamHook
 
 logger = logging.getLogger(__name__)
 
+
 class RasterFootprintFill(RasterStreamHook):
     """Interpolates internal gaps within a dataset's footprint.
 
@@ -55,7 +56,7 @@ class RasterFootprintFill(RasterStreamHook):
             z_data,
             mask=valid_mask,
             max_search_distance=self.max_gap * 1.5,
-            smoothing_iterations=1
+            smoothing_iterations=1,
         )
 
         filled_z[~footprint_mask] = ndv
