@@ -22,7 +22,7 @@ from rasterio.windows import Window
 import fiona
 from fetchez.spatial import parse_region
 from fetchez.hooks import FetchHook
-from fetchez.utils import float_or, parse_arg_to_list
+from fetchez.utils import float_or, parse_arg_to_list  # , inc2str
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class RasterBaseHook(FetchHook):
                 )
                 src.write(data, 1)
 
-    def _get_barrier_geometries(self):
+    def _get_barrier_geometries(self, profile=None):
         if not self.barrier:
             return None
 
@@ -147,13 +147,15 @@ class RasterBaseHook(FetchHook):
                 outdir = os.path.dirname(self.output)
             else:
                 outdir = os.getcwd()
-            # (
-            #     getattr(mod, "_outdir", None)
-            #     or getattr(mod, "outdir", None)
-            #     or os.getcwd()
-            # )
 
             logger.debug(f"[{self.name}] Generating coastline with outdir of {outdir}")
+
+            target_res = "1s"
+            # if transform is not None:
+            #     #try:
+            #     target_res = inc2str(abs(transform[0]))
+            #     #except ImportError:
+            #     #    target_res = abs(transform[0])
 
             target_mod_name = (
                 "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
@@ -173,7 +175,7 @@ class RasterBaseHook(FetchHook):
             gen_instance = generator_mod(
                 src_region=mod.region,
                 outdir=os.path.join(outdir, "auto_barriers"),
-                res="1s",  # Ignored by osm_landmask, used by glob_coast
+                res=target_res,  # Ignored by osm_landmask, used by glob_coast
                 include_water=True,  # Ignored by glob_coast, used by osm_landmask
             )
 
@@ -217,7 +219,7 @@ class RasterBaseHook(FetchHook):
 
         # _get_barrier_geometries fetches the data if not provided
         if not self.barrier_geoms:
-            self.barrier_geoms = self._get_barrier_geometries()
+            self.barrier_geoms = self._get_barrier_geometries(transform)
 
         # If fetching failed or returned nothing, abort
         if not self.barrier_geoms:
@@ -322,11 +324,12 @@ class RasterStreamHook(RasterBaseHook):
 
     def _stream_wrapper(self, input_stream, entry):
         """Pass-through generator for in-memory stream pipelines."""
+
         profile = next(input_stream)
         profile = self.modify_profile(profile)
         yield profile
 
-        self.barrier_geoms = self._get_barrier_geometries()
+        self.barrier_geoms = self._get_barrier_geometries(profile.get("transform"))
         for window, buff_win, data, ndv, transform in input_stream:
             processed_data = self.process_chunk(data, ndv, entry, transform, buff_win)
             yield window, buff_win, processed_data, ndv, transform
@@ -378,9 +381,8 @@ class RasterStreamHook(RasterBaseHook):
         return new_entries
 
     def _process_file_fallback(self, src_path, dst_path, entry):
-        self.barrier_geoms = self._get_barrier_geometries()
-
         with rasterio.open(src_path) as src:
+            self.barrier_geoms = self._get_barrier_geometries(src.transform)
             profile = src.profile.copy()
             profile = self.modify_profile(profile)
 

@@ -271,7 +271,7 @@ class SimpleStack(FetchHook):
 
                     entry["stream"] = None
                     entry["dst_fn"] = out_fn
-                    entry["data_type"] = "raster"
+                    entry["data_type"] = "rasterio"
                     new_entries.append((mod, entry))
                 else:
                     entry["stream"] = self._intercept_per_file(stream, acc)
