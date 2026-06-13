@@ -11,7 +11,7 @@ SDB generation
 import os
 import logging
 
-from fetchez.hooks.datatype import SetDataType
+from fetchez.hooks.set_datatype import SetDatatype
 from fetchez.modules import FetchModule
 
 
@@ -44,7 +44,7 @@ class GlobSDB(FetchModule):
         self.max_depth = max_depth
         self.datatype = "raster"
 
-        self.add_hook(SetDataType(datatype="raster"))
+        self.add_hook(SetDatatype(datatype="raster"))
 
     def run(self):
         from globato.hooks.rasters.sdb_interp import SDBInterpolation

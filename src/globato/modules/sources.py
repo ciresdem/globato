@@ -14,7 +14,7 @@ import logging
 
 from fetchez.hooks import FetchHook
 from fetchez.hooks.unzip import Unzip
-from fetchez.hooks.datatype import SetDataType
+from fetchez.hooks.set_datatype import SetDatatype
 from fetchez.hooks.set_srs import SetSrs
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.hooks.stream_init import DataStream
@@ -122,7 +122,7 @@ class GlobCopernicus(BaseCopernicus):
 
         self.add_hook(Unzip())
         self.add_hook(FilenameFilter(match=".tif"))
-        self.add_hook(SetDataType(data_type="rio"))
+        self.add_hook(SetDatatype(data_type="rio"))
         self.add_hook(DataStream(chunk_size=100000))
         self.add_hook(RangeZ(min_z=0.01))
 
@@ -241,6 +241,6 @@ class GlobNOSXYZ(BaseHydroNOS):
         self.weight = weight
 
         self.add_hook(Unzip())
-        self.add_hook(SetDataType(data_type="nox-xyz"))
+        self.add_hook(SetDatatype(data_type="nox-xyz"))
         self.add_hook(SetSrs(srs="EPSG:4326+5866"))
         self.add_hook(OutlierZ())
