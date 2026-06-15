@@ -34,66 +34,6 @@ _VECTOR_EXTS = {".shp", ".gpkg", ".geojson", ".json"}
 _RASTER_EXTS = {".tif", ".nc", ".vrt"}
 
 
-def _ensure_shp_spatial_index(shp_path):
-    """Build a GDAL .qix spatial index alongside *shp_path* if one is not present.
-
-    Without a .qix index, GDAL's shapefile driver must read every record's
-    bounding box sequentially when filtering by bbox.  For a global file like
-    HydroLAKES (1.4 M polygons, 1.1 GB) that scan takes ~15 s even though
-    nearly zero features intersect a typical DEM tile.  With a .qix index the
-    same query completes in milliseconds.
-
-    The index is written once next to the .shp file; subsequent calls return
-    immediately.
-    """
-    qix_path = os.path.splitext(shp_path)[0] + ".qix"
-    if os.path.exists(qix_path):
-        return
-    try:
-        from osgeo import ogr
-
-        ds = ogr.Open(shp_path, 1)  # 1 = update / write mode
-        if ds is None:
-            logger.debug(
-                "Cannot open %s in write mode; skipping .qix creation.", shp_path
-            )
-            return
-        layer = ds.GetLayer(0)
-        layer_name = layer.GetName()
-        logger.info(
-            "Building spatial index for %s (one-time) …", os.path.basename(shp_path)
-        )
-        ds.ExecuteSQL(f"CREATE SPATIAL INDEX ON {layer_name}")
-        ds = None
-        logger.info("Spatial index ready.")
-    except Exception as exc:
-        logger.debug("Could not build spatial index for %s: %s", shp_path, exc)
-
-
-def _scan_source_dir(source_dir):
-    """Return paths of already-extracted data files under *source_dir*.
-
-    Skips the `.fetchez_cache` metadata subdirectory and does not recurse
-    into `.gdb` directories (they are returned as a single path instead).
-    """
-    found = []
-    if not os.path.exists(source_dir):
-        return found
-    for dirpath, dirnames, filenames in os.walk(source_dir):
-        # Skip fetchez metadata cache
-        dirnames[:] = [d for d in dirnames if d != ".fetchez_cache"]
-        for fn in filenames:
-            ext = os.path.splitext(fn)[1].lower()
-            if ext in _VECTOR_EXTS or ext in _RASTER_EXTS:
-                found.append(os.path.join(dirpath, fn))
-        # Treat .gdb directories as single processable paths; don't recurse in
-        gdb_dirs = [d for d in dirnames if d.lower().endswith(".gdb")]
-        for gdb in gdb_dirs:
-            found.append(os.path.join(dirpath, gdb))
-            dirnames.remove(gdb)
-    return found
-
-
 @cli.cli_opts(
     help_text="Generate a High-Resolution Coastline Mask raster.",
     res="Target resolution (e.g. '1s', '30m')",
@@ -199,18 +139,12 @@ class GlobCoast(FetchModule):
             return
 
         w, e, s, n = self.region
-        _SHP_INDEX_THRESHOLD = 50 * 1024 * 1024  # 50 MB
 
         all_geoms = []
         raster_files = []
         for f_path in valid_files:
             ext = os.path.splitext(f_path)[1].lower()
             if ext in _VECTOR_EXTS or f_path.lower().endswith(".gdb"):
-                if (
-                    f_path.lower().endswith(".shp")
-                    and os.path.getsize(f_path) > _SHP_INDEX_THRESHOLD
-                ):
-                    _ensure_shp_spatial_index(f_path)
                 try:
                     # NOTE: bbox must be passed to src.filter(), NOT to fiona.open().
                     # fiona.open() does not accept a bbox parameter; passing it there
@@ -328,56 +262,44 @@ class GlobCoast(FetchModule):
             #         fetched_files.append(landmask_fn)
 
             if mod_name == "nhd":
-                # NHD GDB tiles cover entire HU-4/HU-8 hydrologic units — much
-                # larger than any single DEM tile.  Once the tiles are on disk
-                # for any DEM in the region, they are valid for all adjacent
-                # DEMs.  Skip the TNM API call (which fires per-DEM because the
-                # cache key includes the bbox) and reuse whatever is already in
-                # the source directory.
-                nhd_src_dir = os.path.join(self._outdir, "sources", mod_name, "tnm")
-                existing = _scan_source_dir(nhd_src_dir)
-                if existing:
-                    logger.info(f"[NHD] Using {len(existing)} cached dataset(s).")
-                    fetched_files.extend(existing)
-                else:
-                    mod_cls = ModuleRegistry.get_class("tnm")
-                    mod_instance = mod_cls(
-                        src_region=fetch_region,
-                        datasets="14",
-                        extents="'HU-8 Subbasin,HU-4 Subregion'",
-                        outdir=os.path.join(self._outdir, "sources", mod_name),
-                    )
-                    mod_instance.add_hook(FilenameFilter(match="GDB", stage="pre"))
-                    mod_instance.add_hook(Unzip())
+                mod_cls = ModuleRegistry.get_class("tnm")
+                mod_instance = mod_cls(
+                    src_region=fetch_region,
+                    datasets="14",
+                    extents="'HU-8 Subbasin,HU-4 Subregion'",
+                    outdir=os.path.join(self._outdir, "sources", mod_name),
+                )
+                mod_instance.add_hook(FilenameFilter(match="GDB", stage="pre"))
+                mod_instance.add_hook(Unzip())
 
-                    try:
-                        logger.info(
-                            "[NHD] Querying USGS National Map for NHD hydrography data..."
+                try:
+                    logger.info(
+                        "[NHD] Querying USGS National Map for NHD hydrography data..."
+                    )
+                    mod_instance.run()
+                    n_found = len(mod_instance.results)
+                    logger.info(f"[NHD] Found {n_found} dataset(s). Fetching...")
+                    final = core.run_fetchez([mod_instance])
+                    if final:
+                        fetched_files.extend(
+                            [
+                                e.get("dst_fn")
+                                for _, e in final
+                                if isinstance(e, dict) and e.get("dst_fn")
+                            ]
                         )
-                        mod_instance.run()
-                        n_found = len(mod_instance.results)
-                        logger.info(f"[NHD] Found {n_found} dataset(s). Fetching...")
-                        final = core.run_fetchez([mod_instance])
-                        if final:
-                            fetched_files.extend(
-                                [
-                                    e.get("dst_fn")
-                                    for _, e in final
-                                    if isinstance(e, dict) and e.get("dst_fn")
-                                ]
-                            )
-                        else:
-                            fetched_files.extend(
-                                [
-                                    entry.get("dst_fn")
-                                    if isinstance(entry, dict)
-                                    else entry[1]
-                                    for entry in mod_instance.results
-                                ]
-                            )
-                        logger.info(f"[NHD] {n_found} dataset(s) ready.")
-                    except Exception as e:
-                        logger.error(f"[NHD] Failed to fetch NHD data: {e}")
+                    else:
+                        fetched_files.extend(
+                            [
+                                entry.get("dst_fn")
+                                if isinstance(entry, dict)
+                                else entry[1]
+                                for entry in mod_instance.results
+                            ]
+                        )
+                    logger.info(f"[NHD] {n_found} dataset(s) ready.")
+                except Exception as e:
+                    logger.error(f"[NHD] Failed to fetch NHD data: {e}")
 
             else:
                 # osm_water reuses the osm_landmask module with include_water=True.
@@ -406,19 +328,13 @@ class GlobCoast(FetchModule):
                     mod_instance.run()
                     n_found = len(mod_instance.results)
 
-                    new_fetch = False
                     if log_progress:
                         if n_found == 0:
                             logger.info(f"[{tag}] No datasets found for region.")
                         else:
-                            source_dir = os.path.join(self._outdir, "sources", mod_name)
-                            if _scan_source_dir(source_dir):
-                                logger.info(f"[{tag}] Using existing dataset(s).")
-                            else:
-                                new_fetch = True
-                                logger.info(
-                                    f"[{tag}] Found {n_found} dataset(s). Fetching..."
-                                )
+                            logger.info(
+                                f"[{tag}] Found {n_found} dataset(s). Fetching..."
+                            )
 
                     final = core.run_fetchez([mod_instance])
                     if final:
@@ -439,7 +355,7 @@ class GlobCoast(FetchModule):
                             ]
                         )
 
-                    if new_fetch:
+                    if log_progress and n_found > 0:
                         logger.info(f"[{tag}] {n_found} dataset(s) ready.")
                 except Exception as e:
                     logger.error(f"[{tag}] Failed to fetch {mod_name} data: {e}")
