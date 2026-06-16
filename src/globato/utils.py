@@ -109,7 +109,7 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd="."):
     while p.poll() is None:
         err_line = io_reader.readline()
         if verbose and err_line:
-            pbar.write(err_line.rstrip())
+            logger.error(err_line.rstrip())
             sys.stderr.flush()
 
         line = p.stdout.readline().decode("utf-8")
