@@ -94,6 +94,7 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd="."):
         shell=True,
         stdin=pipe_stdin,
         stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         close_fds=True,
         cwd=cwd,
     )
@@ -104,13 +105,20 @@ def yield_cmd(cmd, data_fun=None, verbose=False, cwd="."):
         data_fun(p.stdin)
         p.stdin.close()
 
+    io_reader = io.TextIOWrapper(p.stderr, encoding="utf-8")
     while p.poll() is None:
+        err_line = io_reader.readline()
+        if verbose and err_line:
+            pbar.write(err_line.rstrip())
+            sys.stderr.flush()
+
         line = p.stdout.readline().decode("utf-8")
         if not line:
             break
         yield line
 
     p.stdout.close()
+    p.stderr.close()
     if verbose:
         logger.info(f"Ran cmd {cmd.rstrip()}, returned {p.returncode}.")
 
