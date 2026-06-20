@@ -6,7 +6,7 @@ globato.streams.readers.bag
 ~~~~~~~~~~~~~~~~~~~
 
 Dedicated BAG (Bathymetric Attributed Grid) Reader.
-Handles VR-BAGs, standard BAGs, uncertainty bands, and corrupt XML metadata.
+Handles VR-BAGs, standard BAGs, uncertainty bands, etc.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
