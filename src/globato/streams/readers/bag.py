@@ -6,7 +6,7 @@ globato.streams.readers.bag
 ~~~~~~~~~~~~~~~~~~~
 
 Dedicated BAG (Bathymetric Attributed Grid) Reader.
-Handles VR-BAGs, standard BAGs, uncertainty bands, and corrupt XML metadata.
+Handles VR-BAGs, standard BAGs, uncertainty bands, etc.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
@@ -29,6 +29,7 @@ class BAGReader(RasterioReader):
     - Automatically handles Variable Resolution (VR) via GDAL Open Options.
     - Reads Band 2 as Uncertainty ('u').
     - Calculates weight based on resolution.
+    - MODE=[LOW_RES_GRID​/​LIST_SUPERGRIDS​/​RESAMPLED_GRID​/​INTERPOLATED​/​AUTO]: Defaults to AUTO.
     """
 
     name = "bag-point-reader"
@@ -37,9 +38,16 @@ class BAGReader(RasterioReader):
     meta_desc = "Read BAG data through rasterio into a point stream"
     meta_extensions = ["bag"]
 
-    def __init__(self, path, mode="resampled", min_weight=0, **kwargs):
+    def __init__(self, path, mode="RESAMPLED_GRID", min_weight=0, **kwargs):
         super().__init__(path, **kwargs)
-        self.mode = mode
+        self.modes = [
+            "LOW_RES_GRID​",
+            "​LIST_SUPERGRIDS​",
+            "​RESAMPLED_GRID​",
+            "​INTERPOLATED​",
+            "​AUTO",
+        ]
+        self.mode = mode if mode.upper() in self.modes else "AUTO"
         self.min_weight = float_or(min_weight, 0)
 
     def _calculate_bag_weight(self, transform):
@@ -81,7 +89,7 @@ class BAGReader(RasterioReader):
                 logger.debug(
                     f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}"
                 )
-                vr_opts = {"MODE": "RESAMPLED_GRID", "RES_STRATEGY": "MIN"}
+                vr_opts = {"MODE": self.mode, "RES_STRATEGY": "MIN"}
 
                 try:
                     with rasterio.Env(**env_opts):
