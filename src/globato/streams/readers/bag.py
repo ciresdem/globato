@@ -87,7 +87,7 @@ class BAGReader(RasterioReader):
 
             elif is_vr:
                 logger.debug(
-                    f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}"
+                    f"Detected VR-BAG, re-opening in {self.mode.upper()} mode: {self.src_fn}"
                 )
                 vr_opts = {"MODE": self.mode, "RES_STRATEGY": "MIN"}
 
