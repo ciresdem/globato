@@ -83,7 +83,6 @@ class BAGReader(RasterioReader):
             with rasterio.Env(**env_opts):
                 with rasterio.open(self.src_fn) as src:
                     tags = src.tags(ns="IMAGE_STRUCTURE")
-                    logger.info(src.tags())
                     if tags.get("HAS_SUPERGRIDS") == "TRUE":
                         is_vr = True
 
