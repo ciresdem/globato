@@ -589,19 +589,34 @@ CONTEXT_SETTINGS = dict(max_content_width=120)
     help="Apply Grits Filter (e.g. 'blur:radius=3'). May be set multiple times.",
 )
 @click.option("-C", "--clip", help="Clip output to polygon file. e.g. 'clip_ply.shp'")
+# @click.option(
+#     "-B",
+#     "--buffer",
+#     type=int,
+#     default=0,
+#     help="Buffer the processing region by N cells to prevent edge artifacts. The final DEM will be cropped back to the strict -R region.",
+# )
 @click.option(
     "-B",
-    "--buffer",
-    type=int,
-    default=0,
-    help="Buffer the processing region by N cells to prevent edge artifacts. The final DEM will be cropped back to the strict -R region.",
-)
-@click.option(
-    "-L",
     "--blend",
     type=str,
     default=None,
     help="Blend between weighted data in the generated MultiStack (e.g. 10/20/60).",
+)
+@click.option(
+    "-X",
+    "--extend",
+    type=str,
+    default="0:0",
+    help="Extend region (cells[:percent]). e.g. '6:10'. "
+         "'cells' extends the final output region, 'percent' extends the internal processing region.",
+)
+@click.option(
+    "-L",
+    "--limits",
+    type=str,
+    default=None,
+    help="Set global DEM limits (e.g., min_z=-11000,max_z=8850,expand=3).",
 )
 @click.option(
     "-W",
@@ -652,7 +667,8 @@ def wafflez_build(
     stack_mode,
     filters,
     clip,
-    buffer,
+    extend,
+    limits,
     weights,
     blend,
     shared_cache,
@@ -685,31 +701,33 @@ def wafflez_build(
     original_cwd = os.getcwd()
 
     try:
-        for t_reg, feat_name in yield_parsed_regions(region):
-            strict_r_str = f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
-            tile_outname = f"{outname}_{feat_name}" if feat_name else outname
+        # Parse the Extend argument
+        ext_parts = str(extend).split(":")
+        ext_cells = int(ext_parts[0]) if len(ext_parts) > 0 else 0
+        ext_pct = float(ext_parts[1]) if len(ext_parts) > 1 else 0.0
 
-            proc_reg = t_reg.copy()
-            if buffer > 0:
-                from fetchez.utils import str2inc
+        # Calculate the Delivery Region (Original Region + Cell Overlap)
+        delivery_reg = t_reg.copy()
+        if ext_cells > 0:
+            # Buffer adds absolute values, so cells * increment
+            delivery_reg.buffer(pct=0, x_bv=(inc_val * ext_cells), y_bv=(inc_val * ext_cells))
 
-                inc_val = str2inc(increment)
-                proc_reg.buffer(pct=0, x_bv=(inc_val * buffer), y_bv=(inc_val * buffer))
+        delivery_r_str = f"{delivery_reg.xmin}/{delivery_reg.xmax}/{delivery_reg.ymin}/{delivery_reg.ymax}"
 
-            proc_r_str = (
-                f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
-            )
+        # Calculate the Processing Region (Delivery Region + Percentage)
+        proc_reg = delivery_reg.copy()
+        if ext_pct > 0:
+            proc_reg.buffer(pct=ext_pct, x_inc=inc_val, y_inc=inc_val)
 
-            if feat_name:
-                click.secho(
-                    f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True
-                )
-                click.secho(f"  Delivery Region: {strict_r_str}", fg="blue")
-                if buffer > 0:
-                    click.secho(
-                        f"  Buffered Region: {proc_r_str} (+{buffer} cells)",
-                        fg="yellow",
-                    )
+        proc_r_str = f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
+
+        tile_outname = f"{outname}_{feat_name}" if feat_name else outname
+
+        if feat_name:
+            click.secho(f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True)
+            click.secho(f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)", fg="blue")
+            if ext_pct > 0:
+                click.secho(f"  Processing Region: {proc_r_str} (+{ext_pct}%)", fg="yellow")
 
             # --- Base Pipeline Standard Hooks ---
             global_hooks = [
@@ -731,6 +749,14 @@ def wafflez_build(
                 },
             ]
 
+            # --- Parse Limits ---
+            limit_args = {}
+            if limits:
+                for kv in limits.split(","):
+                    if "=" in kv:
+                        k, v = kv.split("=", 1)
+                        limit_args[k.strip()] = float(v.strip())
+
             # --- Multi Stack and Raster Stream ---
             global_hooks.append(
                 {
@@ -745,6 +771,10 @@ def wafflez_build(
                     },
                 }
             )
+            # todo
+            # if "expand" in limit_args:
+            #     ms_args["expand_limit"] = int(limit_args["expand"])
+
             global_hooks.append(
                 {"name": "focus_sink", "args": {"target": "multi_stack"}}
             )
@@ -758,6 +788,15 @@ def wafflez_build(
                     },
                 }
             )
+
+            if "min_z" in limit_args or "max_z" in limit_args:
+                global_hooks.append({
+                    "name": "raster_limits",
+                    "args": {
+                        "min_z": limit_args.get("min_z"),
+                        "max_z": limit_args.get("max_z"),
+                    }
+                })
 
             # --- Dynamic Blending Tiers ---
             # Parse the weights to generate the correct number of blend/cudem steps
@@ -825,6 +864,17 @@ def wafflez_build(
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
+
+            if ext_pct > 0:
+                global_hooks.append(
+                    {
+                        "name": "raster_cut",
+                        "args": {
+                            "region": delivery_r_str, # Cut back to the expanded cell delivery bounds
+                            "output": f"{tile_outname}_final.tif"
+                        },
+                    }
+                )
 
             # --- Add Clipping (-C) ---
             if clip:
