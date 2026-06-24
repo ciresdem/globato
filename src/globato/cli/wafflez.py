@@ -609,7 +609,7 @@ CONTEXT_SETTINGS = dict(max_content_width=120)
     type=str,
     default="0:0",
     help="Extend region (cells[:percent]). e.g. '6:10'. "
-         "'cells' extends the final output region, 'percent' extends the internal processing region.",
+    "'cells' extends the final output region, 'percent' extends the internal processing region.",
 )
 @click.option(
     "-L",
@@ -710,7 +710,9 @@ def wafflez_build(
         delivery_reg = t_reg.copy()
         if ext_cells > 0:
             # Buffer adds absolute values, so cells * increment
-            delivery_reg.buffer(pct=0, x_bv=(inc_val * ext_cells), y_bv=(inc_val * ext_cells))
+            delivery_reg.buffer(
+                pct=0, x_bv=(inc_val * ext_cells), y_bv=(inc_val * ext_cells)
+            )
 
         delivery_r_str = f"{delivery_reg.xmin}/{delivery_reg.xmax}/{delivery_reg.ymin}/{delivery_reg.ymax}"
 
@@ -724,10 +726,16 @@ def wafflez_build(
         tile_outname = f"{outname}_{feat_name}" if feat_name else outname
 
         if feat_name:
-            click.secho(f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True)
-            click.secho(f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)", fg="blue")
+            click.secho(
+                f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True
+            )
+            click.secho(
+                f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)", fg="blue"
+            )
             if ext_pct > 0:
-                click.secho(f"  Processing Region: {proc_r_str} (+{ext_pct}%)", fg="yellow")
+                click.secho(
+                    f"  Processing Region: {proc_r_str} (+{ext_pct}%)", fg="yellow"
+                )
 
             # --- Base Pipeline Standard Hooks ---
             global_hooks = [
@@ -790,13 +798,15 @@ def wafflez_build(
             )
 
             if "min_z" in limit_args or "max_z" in limit_args:
-                global_hooks.append({
-                    "name": "raster_limits",
-                    "args": {
-                        "min_z": limit_args.get("min_z"),
-                        "max_z": limit_args.get("max_z"),
+                global_hooks.append(
+                    {
+                        "name": "raster_limits",
+                        "args": {
+                            "min_z": limit_args.get("min_z"),
+                            "max_z": limit_args.get("max_z"),
+                        },
                     }
-                })
+                )
 
             # --- Dynamic Blending Tiers ---
             # Parse the weights to generate the correct number of blend/cudem steps
@@ -870,8 +880,8 @@ def wafflez_build(
                     {
                         "name": "raster_cut",
                         "args": {
-                            "region": delivery_r_str, # Cut back to the expanded cell delivery bounds
-                            "output": f"{tile_outname}_final.tif"
+                            "region": delivery_r_str,  # Cut back to the expanded cell delivery bounds
+                            "output": f"{tile_outname}_final.tif",
                         },
                     }
                 )
