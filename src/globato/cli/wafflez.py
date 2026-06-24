@@ -885,7 +885,7 @@ def wafflez_build(
                         "name": "raster_cut",
                         "args": {
                             "region": delivery_r_str,  # Cut back to the expanded cell delivery bounds
-                            "output": f"{tile_outname}_final.tif",
+                            # "output": f"{tile_outname}_final.tif",
                         },
                     }
                 )

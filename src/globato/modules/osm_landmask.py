@@ -168,7 +168,7 @@ class OSMLandmaskModule(FetchModule):
         if not votes:
             return None
 
-        return (sum(votes) / len(votes)) > 0.5
+        return (sum(votes) / len(votes)) > 0.25
 
     def _is_land_by_gmrt(self, poly):
         """Fallback: Check GMRT elevation."""
