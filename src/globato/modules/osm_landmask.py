@@ -14,8 +14,8 @@ import logging
 import json
 import math
 import fiona
-from shapely.geometry import box, LineString, Point, mapping
-from shapely.ops import linemerge, unary_union
+from shapely.geometry import box, LineString, Point, Polygon, mapping
+from shapely.ops import linemerge, unary_union, polygonize
 
 from fetchez.modules import FetchModule
 from fetchez.core import Fetch, urlencode, CUDEM_USER_AGENT
@@ -38,7 +38,10 @@ HEADERS = {
 
 @cli_opts(
     help_text="Generates a Land/Water mask vector from OpenStreetMap.",
-    include_water="If True, carves out inland lakes and rivers from the landmask.",
+    include_water="Macro flag to include both lakes and rivers.",
+    include_rivers="If True, carves out rivers and estuaries (waterway=riverbank).",
+    include_lakes="If True, carves out inland lakes and ponds (natural=water).",
+    min_area_sqm="Minimum area in square meters for a waterbody to be carved out.",
 )
 class OSMLandmaskModule(FetchModule):
     """Fetches OSM Coastline data and polygonizes it into a landmask."""
@@ -49,11 +52,34 @@ class OSMLandmaskModule(FetchModule):
     meta_category = "Reference"
     meta_tags = ["osm", "coastline", "water", "polygons", "globato"]
 
-    def __init__(self, include_water=False, **kwargs):
+    def __init__(self, include_water=False, include_rivers=None, include_lakes=None, min_area_sqm=0, **kwargs):
         super().__init__(name="osm_landmask", **kwargs)
+
         self.include_water = str(include_water).lower() in ["true", "1", "t", "yes"]
 
+        if include_rivers is None:
+            self.include_rivers = self.include_water
+        else:
+            self.include_rivers = str(include_rivers).lower() in ["true", "1", "t", "yes"]
+
+        if include_lakes is None:
+            self.include_lakes = self.include_water
+        else:
+            self.include_lakes = str(include_lakes).lower() in ["true", "1", "t", "yes"]
+
+        self.min_area_sqm = float(min_area_sqm)
         self.headers = HEADERS
+
+    def _get_area_sqm(self, poly):
+        """Approximates the area of a WGS84 polygon in square meters."""
+
+        lat = poly.centroid.y
+        # ~111,320 meters per degree of latitude
+        deg_to_m_y = 111320.0
+        # Longitude scaling based on latitude
+        deg_to_m_x = 111320.0 * math.cos(math.radians(lat))
+
+        return poly.area * deg_to_m_x * deg_to_m_y
 
     def run(self):
         if not self.region:
@@ -101,13 +127,23 @@ class OSMLandmaskModule(FetchModule):
           way["natural"="coastline"];
           relation["natural"="coastline"];
         """
-        if self.include_water:
+
+        # rivers
+        if self.include_rivers:
             query += """
-          way["natural"="water"];
-          relation["natural"="water"];
-          way["waterway"="riverbank"];
-          relation["waterway"="riverbank"];
+            way["waterway"="riverbank"];
+            relation["waterway"="riverbank"];
+            way["natural"="water"]["water"="river"];
+            relation["natural"="water"]["water"="river"];
             """
+
+        # lakes/ponds
+        if self.include_lakes:
+            query += """
+            way["natural"="water"]["water"!="river"];
+            relation["natural"="water"]["water"!="river"];
+            """
+
         query += """
         );
         (._;>;);
@@ -122,24 +158,27 @@ class OSMLandmaskModule(FetchModule):
             return dest
         return None
 
-    def _is_land_by_topology(self, poly, lines_geom, buffer_size):
-        """Determine if polygon is Land using the OSM Left-Hand Rule."""
+    def _is_land_by_topology(self, poly, lines_geom, buffer_size, threshold=0.5):
+        """Determine if polygon is Land using the OSM Left-Hand Rule on local boundaries."""
 
         check_poly = poly.buffer(buffer_size * 2.0)
 
         if not check_poly.intersects(lines_geom):
             return None  # Indeterminate
 
-        if lines_geom.geom_type == "MultiLineString":
-            geoms = list(lines_geom.geoms)
+        local_lines = lines_geom.intersection(check_poly)
+
+        # Flatten the geometry collection into a list of LineStrings
+        if local_lines.geom_type in ["MultiLineString", "GeometryCollection"]:
+            from shapely.geometry import LineString
+            geoms = [geom for geom in local_lines.geoms if isinstance(geom, LineString)]
+        elif local_lines.geom_type == "LineString":
+            geoms = [local_lines]
         else:
-            geoms = [lines_geom]
+            return None
 
         votes = []
         for line in geoms:
-            if not check_poly.intersects(line):
-                continue
-
             coords = list(line.coords)
             step = max(1, int(len(coords) / 5))
 
@@ -148,7 +187,7 @@ class OSMLandmaskModule(FetchModule):
                 p2 = coords[i + 1]
                 dx, dy = p2[0] - p1[0], p2[1] - p1[1]
 
-                # Normal Vector pointing LEFT (-dy, dx)
+                # Normal vector pointing left (-dy, dx)
                 nx, ny = -dy, dx
                 mag = math.sqrt(nx * nx + ny * ny)
                 if mag == 0:
@@ -168,7 +207,7 @@ class OSMLandmaskModule(FetchModule):
         if not votes:
             return None
 
-        return (sum(votes) / len(votes)) > 0.25
+        return (sum(votes) / len(votes)) >= threshold
 
     def _is_land_by_gmrt(self, poly):
         """Fallback: Check GMRT elevation."""
@@ -206,62 +245,183 @@ class OSMLandmaskModule(FetchModule):
                 dst.write({"geometry": mapping(poly), "properties": {"class": "land"}})
 
     def _polygonize(self, osm_file, dst_file, region):
-        """Polygonize the osm data"""
+        """Polygonize the OSM data correctly by separating coastline, water, and islands."""
 
-        lines = []
+        coast_lines = []
+        water_polys = []
+        water_lines = []
+        island_polys = []
+        island_lines = []
 
         try:
             with open(osm_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
+            relation_member_ids = set()
+            relations = []
+            ways = []
+
+            # --- Sort elements and map relation dependencies ---
             for element in data.get("elements", []):
-                # 'out geom' embeds the lat/lon directly into the way elements!
-                if element.get("type") == "way" and "geometry" in element:
-                    coords = [(pt["lon"], pt["lat"]) for pt in element["geometry"]]
-                    if len(coords) >= 2:
-                        lines.append(LineString(coords))
+                if element.get("type") == "relation":
+                    relations.append(element)
+                    for member in element.get("members", []):
+                        if member.get("type") == "way":
+                            relation_member_ids.add(member.get("ref"))
+                elif element.get("type") == "way":
+                    ways.append(element)
+
+            # --- Process Relations (Inner/Outer/Etc.) ---
+            for rel in relations:
+                tags = rel.get("tags", {})
+                is_coast = tags.get("natural") == "coastline"
+                is_river = tags.get("waterway") == "riverbank" or tags.get("water") == "river"
+                is_lake = tags.get("natural") == "water" and not is_river
+                # is_water = self.include_water and (tags.get("natural") == "water" or tags.get("waterway") == "riverbank")
+
+                is_water = False
+                if self.include_rivers and is_river:
+                    is_water = True
+                if self.include_lakes and is_lake:
+                    is_water = True
+
+                if not is_coast and not is_water:
+                    continue
+                if not is_coast and not is_water:
+                    continue
+
+                for member in rel.get("members", []):
+                    if member.get("type") == "way" and "geometry" in member:
+                        coords = [(pt["lon"], pt["lat"]) for pt in member["geometry"]]
+                        if len(coords) < 2:
+                            continue
+                        line = LineString(coords)
+                        role = member.get("role", "")
+
+                        if is_coast:
+                            coast_lines.append(line)
+                        elif is_water:
+                            if role == "inner":
+                                if line.is_closed and len(coords) >= 4:
+                                    island_polys.append(Polygon(coords))
+                                else:
+                                    island_lines.append(line)
+                            else:
+                                if line.is_closed and len(coords) >= 4:
+                                    water_polys.append(Polygon(coords))
+                                else:
+                                    water_lines.append(line)
+
+            # --- Process Standalone Ways (Skipping Relation Members) ---
+            for way in ways:
+                # If this way was part of a river relation, skip it!
+                # This prevents islands from being double-processed as solid water.
+                if way.get("id") in relation_member_ids:
+                    continue
+
+                tags = way.get("tags", {})
+                is_coast = tags.get("natural") == "coastline"
+                is_water = self.include_water and (tags.get("natural") == "water" or tags.get("waterway") == "riverbank")
+
+                if not is_coast and not is_water:
+                    continue
+
+                if "geometry" in way:
+                    coords = [(pt["lon"], pt["lat"]) for pt in way["geometry"]]
+                    if len(coords) < 2:
+                        continue
+                    line = LineString(coords)
+
+                    if is_coast:
+                        coast_lines.append(line)
+                    elif is_water:
+                        if line.is_closed and len(coords) >= 4:
+                            water_polys.append(Polygon(coords))
+                        else:
+                            water_lines.append(line)
 
         except Exception as e:
             logger.error(f"Failed to parse OSM JSON natively: {e}")
             self._handle_fallback(dst_file, region)
             return
 
-        if not lines:
-            self._handle_fallback(dst_file, region)
-            return
+        # --- Stitch fragmented unclosed boundaries ---
+        if water_lines:
+            for poly in polygonize(linemerge(water_lines)):
+                water_polys.append(poly)
 
-        merged = linemerge(lines)
-        coastline_geom = unary_union(merged)
+        if island_lines:
+            for poly in polygonize(linemerge(island_lines)):
+                island_polys.append(poly)
 
         w, e, s, n = region
         region_box = box(w, s, e, n)
-
-        cut_width = 1e-6
-        cutters = coastline_geom.buffer(cut_width)
-
-        try:
-            split_geom = region_box.difference(cutters)
-        except Exception:
-            self._handle_fallback(dst_file, region)
-            return
-
         land_polys = []
-        polys = (
-            [split_geom]
-            if split_geom.geom_type == "Polygon"
-            else list(split_geom.geoms)
-        )
 
-        for poly in polys:
-            if poly.is_empty:
-                continue
-
-            is_land = self._is_land_by_topology(poly, coastline_geom, cut_width)
-
-            if is_land is None:
-                is_land = self._is_land_by_gmrt(poly)
-
+        if not coast_lines:
+            is_land = self._is_land_by_gmrt(region_box)
             if is_land:
-                land_polys.append(poly)
+                land_polys.append(region_box)
+        else:
+            merged_coast = linemerge(coast_lines)
+            coastline_geom = unary_union(merged_coast)
+
+            cut_width = 1e-6
+            cutters = coastline_geom.buffer(cut_width)
+
+            try:
+                split_geom = region_box.difference(cutters)
+            except Exception:
+                self._handle_fallback(dst_file, region)
+                return
+
+            polys = [split_geom] if split_geom.geom_type == "Polygon" else list(split_geom.geoms)
+
+            for poly in polys:
+                if poly.is_empty:
+                    continue
+
+                is_land = self._is_land_by_topology(poly, coastline_geom, cut_width, threshold=0.5)
+
+                if is_land is None:
+                    is_land = self._is_land_by_gmrt(poly)
+
+                if is_land:
+                    land_polys.append(poly)
+
+        # --- Carve out Inland Water & Protect Islands ---
+        if land_polys and water_polys:
+            # Apply the minimum area filter
+            if self.min_area_sqm > 0:
+                water_polys = [p for p in water_polys if self._get_area_sqm(p) >= self.min_area_sqm]
+                island_polys = [p for p in island_polys if self._get_area_sqm(p) >= self.min_area_sqm]
+
+            logger.info(f"[OSM] Carving {len(water_polys)} waterbodies from landmask...")
+
+            # Combine all valid water polygons
+            unified_water = unary_union([p for p in water_polys if p.is_valid])
+
+            # Punch the islands out of the water!
+            if island_polys:
+                unified_islands = unary_union([p for p in island_polys if p.is_valid])
+                unified_water = unified_water.difference(unified_islands)
+
+            # Punch the water out of the land!
+            final_land = []
+            for land in land_polys:
+                try:
+                    diff = land.difference(unified_water)
+                    if diff.is_empty:
+                        continue
+
+                    if diff.geom_type == "Polygon":
+                        final_land.append(diff)
+                    elif diff.geom_type == "MultiPolygon":
+                        final_land.extend(list(diff.geoms))
+                except Exception as e:
+                    logger.warning(f"[OSM] Geometry difference failed on a polygon: {e}")
+                    final_land.append(land)
+
+            land_polys = final_land
 
         self._write_geojson(dst_file, land_polys)
