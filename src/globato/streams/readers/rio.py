@@ -108,13 +108,13 @@ class RasterioReader(BaseGlobatoReader):
                             )
                         except WindowError:
                             logger.debug(
-                                f"Raster {self.src_fn} is entirely outside the requested region."
+                                f"Raster {self.src_fn} is entirely outside the requested region of {self.region}."
                             )
                             return
 
                         if master_window.width <= 0 or master_window.height <= 0:
                             logger.debug(
-                                f"Raster {self.src_fn} is entirely outside the requested region."
+                                f"Raster {self.src_fn} is entirely outside the requested region of {self.region}."
                             )
                             return
                     else:
