@@ -17,6 +17,7 @@ import logging
 import rasterio
 
 from fetchez.utils import float_or
+from fetchez.spatial import Region
 
 from .rio import RasterioReader
 
@@ -41,11 +42,11 @@ class BAGReader(RasterioReader):
     def __init__(self, path, mode="RESAMPLED_GRID", min_weight=0, **kwargs):
         super().__init__(path, **kwargs)
         self.modes = [
-            "LOW_RES_GRID​",
-            "​LIST_SUPERGRIDS​",
-            "​RESAMPLED_GRID​",
-            "​INTERPOLATED​",
-            "​AUTO",
+            "LOW_RES_GRID",
+            "LIST_SUPERGRIDS",
+            "RESAMPLED_GRID",
+            "INTERPOLATED",
+            "AUTO",
         ]
         self.mode = mode if mode.upper() in self.modes else "AUTO"
         self.min_weight = float_or(min_weight, 0)
@@ -71,11 +72,22 @@ class BAGReader(RasterioReader):
 
         is_vr = False
 
+        # temp hack; if world_region matches self.region,
+        # it means that self.region wasn't set and should
+        # be reset to None.
+        world_region = Region(-180, 180, -90, 90)
+        if world_region == self.region:
+            self.region = None
+
         try:
             with rasterio.Env(**env_opts):
                 with rasterio.open(self.src_fn) as src:
                     tags = src.tags(ns="IMAGE_STRUCTURE")
+                    logger.info(src.tags())
                     if tags.get("HAS_SUPERGRIDS") == "TRUE":
+                        is_vr = True
+
+                    if src.tags().get("MIN_RESOLUTION_X"):
                         is_vr = True
 
                     self.weight = self._calculate_bag_weight(src.transform)
@@ -87,7 +99,7 @@ class BAGReader(RasterioReader):
 
             elif is_vr:
                 logger.debug(
-                    f"Detected VR-BAG, re-opening in resampled mode: {self.src_fn}"
+                    f"Detected VR-BAG, re-opening in {self.mode.upper()} mode: {self.src_fn}"
                 )
                 vr_opts = {"MODE": self.mode, "RES_STRATEGY": "MIN"}
 
