@@ -702,6 +702,7 @@ def wafflez_build(
 
     try:
         from fetchez.utils import str2inc
+
         inc_val = str2inc(increment)
 
         for t_reg, feat_name in yield_parsed_regions(region):
@@ -725,7 +726,9 @@ def wafflez_build(
             if ext_pct > 0:
                 proc_reg.buffer(pct=ext_pct, x_inc=inc_val, y_inc=inc_val)
 
-            proc_r_str = f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
+            proc_r_str = (
+                f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
+            )
 
             tile_outname = f"{outname}_{feat_name}" if feat_name else outname
 
@@ -734,7 +737,8 @@ def wafflez_build(
                     f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True
                 )
                 click.secho(
-                    f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)", fg="blue"
+                    f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)",
+                    fg="blue",
                 )
                 if ext_pct > 0:
                     click.secho(
@@ -895,7 +899,6 @@ def wafflez_build(
                         "args": {"output": f"{tile_outname}_final.tif"},
                     }
                 )
-
 
             # --- Add Clipping (-C) ---
             if clip:

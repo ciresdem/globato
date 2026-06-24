@@ -52,7 +52,14 @@ class OSMLandmaskModule(FetchModule):
     meta_category = "Reference"
     meta_tags = ["osm", "coastline", "water", "polygons", "globato"]
 
-    def __init__(self, include_water=False, include_rivers=None, include_lakes=None, min_area_sqm=0, **kwargs):
+    def __init__(
+        self,
+        include_water=False,
+        include_rivers=None,
+        include_lakes=None,
+        min_area_sqm=0,
+        **kwargs,
+    ):
         super().__init__(name="osm_landmask", **kwargs)
 
         self.include_water = str(include_water).lower() in ["true", "1", "t", "yes"]
@@ -60,7 +67,12 @@ class OSMLandmaskModule(FetchModule):
         if include_rivers is None:
             self.include_rivers = self.include_water
         else:
-            self.include_rivers = str(include_rivers).lower() in ["true", "1", "t", "yes"]
+            self.include_rivers = str(include_rivers).lower() in [
+                "true",
+                "1",
+                "t",
+                "yes",
+            ]
 
         if include_lakes is None:
             self.include_lakes = self.include_water
@@ -171,6 +183,7 @@ class OSMLandmaskModule(FetchModule):
         # Flatten the geometry collection into a list of LineStrings
         if local_lines.geom_type in ["MultiLineString", "GeometryCollection"]:
             from shapely.geometry import LineString
+
             geoms = [geom for geom in local_lines.geoms if isinstance(geom, LineString)]
         elif local_lines.geom_type == "LineString":
             geoms = [local_lines]
@@ -275,7 +288,9 @@ class OSMLandmaskModule(FetchModule):
             for rel in relations:
                 tags = rel.get("tags", {})
                 is_coast = tags.get("natural") == "coastline"
-                is_river = tags.get("waterway") == "riverbank" or tags.get("water") == "river"
+                is_river = (
+                    tags.get("waterway") == "riverbank" or tags.get("water") == "river"
+                )
                 is_lake = tags.get("natural") == "water" and not is_river
                 # is_water = self.include_water and (tags.get("natural") == "water" or tags.get("waterway") == "riverbank")
 
@@ -321,7 +336,10 @@ class OSMLandmaskModule(FetchModule):
 
                 tags = way.get("tags", {})
                 is_coast = tags.get("natural") == "coastline"
-                is_water = self.include_water and (tags.get("natural") == "water" or tags.get("waterway") == "riverbank")
+                is_water = self.include_water and (
+                    tags.get("natural") == "water"
+                    or tags.get("waterway") == "riverbank"
+                )
 
                 if not is_coast and not is_water:
                     continue
@@ -375,13 +393,19 @@ class OSMLandmaskModule(FetchModule):
                 self._handle_fallback(dst_file, region)
                 return
 
-            polys = [split_geom] if split_geom.geom_type == "Polygon" else list(split_geom.geoms)
+            polys = (
+                [split_geom]
+                if split_geom.geom_type == "Polygon"
+                else list(split_geom.geoms)
+            )
 
             for poly in polys:
                 if poly.is_empty:
                     continue
 
-                is_land = self._is_land_by_topology(poly, coastline_geom, cut_width, threshold=0.5)
+                is_land = self._is_land_by_topology(
+                    poly, coastline_geom, cut_width, threshold=0.5
+                )
 
                 if is_land is None:
                     is_land = self._is_land_by_gmrt(poly)
@@ -393,10 +417,18 @@ class OSMLandmaskModule(FetchModule):
         if land_polys and water_polys:
             # Apply the minimum area filter
             if self.min_area_sqm > 0:
-                water_polys = [p for p in water_polys if self._get_area_sqm(p) >= self.min_area_sqm]
-                island_polys = [p for p in island_polys if self._get_area_sqm(p) >= self.min_area_sqm]
+                water_polys = [
+                    p for p in water_polys if self._get_area_sqm(p) >= self.min_area_sqm
+                ]
+                island_polys = [
+                    p
+                    for p in island_polys
+                    if self._get_area_sqm(p) >= self.min_area_sqm
+                ]
 
-            logger.info(f"[OSM] Carving {len(water_polys)} waterbodies from landmask...")
+            logger.info(
+                f"[OSM] Carving {len(water_polys)} waterbodies from landmask..."
+            )
 
             # Combine all valid water polygons
             unified_water = unary_union([p for p in water_polys if p.is_valid])
@@ -419,7 +451,9 @@ class OSMLandmaskModule(FetchModule):
                     elif diff.geom_type == "MultiPolygon":
                         final_land.extend(list(diff.geoms))
                 except Exception as e:
-                    logger.warning(f"[OSM] Geometry difference failed on a polygon: {e}")
+                    logger.warning(
+                        f"[OSM] Geometry difference failed on a polygon: {e}"
+                    )
                     final_land.append(land)
 
             land_polys = final_land
