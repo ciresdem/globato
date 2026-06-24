@@ -701,41 +701,45 @@ def wafflez_build(
     original_cwd = os.getcwd()
 
     try:
-        # Parse the Extend argument
-        ext_parts = str(extend).split(":")
-        ext_cells = int(ext_parts[0]) if len(ext_parts) > 0 else 0
-        ext_pct = float(ext_parts[1]) if len(ext_parts) > 1 else 0.0
+        from fetchez.utils import str2inc
+        inc_val = str2inc(increment)
 
-        # Calculate the Delivery Region (Original Region + Cell Overlap)
-        delivery_reg = t_reg.copy()
-        if ext_cells > 0:
-            # Buffer adds absolute values, so cells * increment
-            delivery_reg.buffer(
-                pct=0, x_bv=(inc_val * ext_cells), y_bv=(inc_val * ext_cells)
-            )
+        for t_reg, feat_name in yield_parsed_regions(region):
+            # Parse the Extend argument
+            ext_parts = str(extend).split(":")
+            ext_cells = int(ext_parts[0]) if len(ext_parts) > 0 else 0
+            ext_pct = float(ext_parts[1]) if len(ext_parts) > 1 else 0.0
 
-        delivery_r_str = f"{delivery_reg.xmin}/{delivery_reg.xmax}/{delivery_reg.ymin}/{delivery_reg.ymax}"
-
-        # Calculate the Processing Region (Delivery Region + Percentage)
-        proc_reg = delivery_reg.copy()
-        if ext_pct > 0:
-            proc_reg.buffer(pct=ext_pct, x_inc=inc_val, y_inc=inc_val)
-
-        proc_r_str = f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
-
-        tile_outname = f"{outname}_{feat_name}" if feat_name else outname
-
-        if feat_name:
-            click.secho(
-                f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True
-            )
-            click.secho(
-                f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)", fg="blue"
-            )
-            if ext_pct > 0:
-                click.secho(
-                    f"  Processing Region: {proc_r_str} (+{ext_pct}%)", fg="yellow"
+            # Calculate the Delivery Region (Original Region + Cell Overlap)
+            delivery_reg = t_reg.copy()
+            if ext_cells > 0:
+                # Buffer adds absolute values, so cells * increment
+                delivery_reg.buffer(
+                    pct=0, x_bv=(inc_val * ext_cells), y_bv=(inc_val * ext_cells)
                 )
+
+            delivery_r_str = f"{delivery_reg.xmin}/{delivery_reg.xmax}/{delivery_reg.ymin}/{delivery_reg.ymax}"
+
+            # Calculate the Processing Region (Delivery Region + Percentage)
+            proc_reg = delivery_reg.copy()
+            if ext_pct > 0:
+                proc_reg.buffer(pct=ext_pct, x_inc=inc_val, y_inc=inc_val)
+
+            proc_r_str = f"{proc_reg.xmin}/{proc_reg.xmax}/{proc_reg.ymin}/{proc_reg.ymax}"
+
+            tile_outname = f"{outname}_{feat_name}" if feat_name else outname
+
+            if feat_name:
+                click.secho(
+                    f"\n--- Building Batch Tile: {feat_name} ---", fg="cyan", bold=True
+                )
+                click.secho(
+                    f"  Delivery Region: {delivery_r_str} (+{ext_cells} cells)", fg="blue"
+                )
+                if ext_pct > 0:
+                    click.secho(
+                        f"  Processing Region: {proc_r_str} (+{ext_pct}%)", fg="yellow"
+                    )
 
             # --- Base Pipeline Standard Hooks ---
             global_hooks = [
@@ -885,6 +889,13 @@ def wafflez_build(
                         },
                     }
                 )
+                global_hooks.append(
+                    {
+                        "name": "raster_crop",
+                        "args": {"output": f"{tile_outname}_final.tif"},
+                    }
+                )
+
 
             # --- Add Clipping (-C) ---
             if clip:
@@ -893,22 +904,6 @@ def wafflez_build(
                     clip_hook["args"]["barrier"] = clip_hook.pop("name")
                     clip_hook["name"] = "raster_clip"
                 global_hooks.append(clip_hook)
-
-            if buffer > 0:
-                global_hooks.append(
-                    {
-                        "name": "raster_cut",
-                        "args": {
-                            "region": strict_r_str,
-                        },
-                    }
-                )
-                global_hooks.append(
-                    {
-                        "name": "raster_crop",
-                        "args": {"output": f"{tile_outname}_final.tif"},
-                    }
-                )
 
             if metadata:
                 global_hooks.append(
