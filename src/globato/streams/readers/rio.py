@@ -80,138 +80,128 @@ class RasterioReader(BaseGlobatoReader):
         yield from self._process_rio_dataset()
         return
 
-    def _process_rio_dataset(self):
-        """Yield chunks using Rasterio Windows."""
+    def _process_rio_dataset(self, src=None):
+        """Yield chunks using Rasterio Windows. Accepts an optional open dataset."""
 
-        try:
-            with rasterio.Env(CPL_MIN_LOG_LEVEL=rasterio.logging.ERROR):
-                with rasterio.open(self.src_fn) as src:
-                    # ndv = float_or(src.nodata, -9999)
+        if src is not None:
+            yield from self._read_chunks_from_src(src)
+        else:
+            try:
+                with rasterio.Env(CPL_MIN_LOG_LEVEL=rasterio.logging.ERROR):
+                    with rasterio.open(self.src_fn) as new_src:
+                        yield from self._read_chunks_from_src(new_src)
+            except Exception as e:
+                logger.error(f"Rasterio read failed: {e}")
 
-                    if self.region:
-                        w, e, s, n = self.region
-                        if src.crs and src.crs != "EPSG:4326":
-                            try:
-                                w, s, e, n = transform_bounds(
-                                    "EPSG:4326", src.crs, w, s, e, n
-                                )
-                            except Exception as e:
-                                logger.warning(
-                                    f"Failed to transform bounds for {self.src_fn}: {e}"
-                                )
+    def _read_chunks_from_src(self, src):
+        """The core windowing and extraction logic, isolated from file-opening."""
 
-                        req_window = from_bounds(w, s, e, n, transform=src.transform)
+        if self.region:
+            w, e, s, n = self.region
+            if src.crs and src.crs != "EPSG:4326":
+                try:
+                    w, s, e, n = transform_bounds("EPSG:4326", src.crs, w, s, e, n)
+                except Exception as e:
+                    logger.warning(f"Failed to transform bounds for {self.src_fn}: {e}")
 
-                        try:
-                            master_window = req_window.intersection(
-                                Window(0, 0, src.width, src.height)
-                            )
-                        except WindowError:
-                            logger.debug(
-                                f"Raster {self.src_fn} is entirely outside the requested region of {self.region}."
-                            )
-                            return
+            req_window = from_bounds(w, s, e, n, transform=src.transform)
 
-                        if master_window.width <= 0 or master_window.height <= 0:
-                            logger.debug(
-                                f"Raster {self.src_fn} is entirely outside the requested region of {self.region}."
-                            )
-                            return
+            try:
+                master_window = req_window.intersection(
+                    Window(0, 0, src.width, src.height)
+                )
+            except WindowError:
+                logger.debug(
+                    f"Raster {self.src_fn} is entirely outside the requested region of {self.region}."
+                )
+                return
+
+            if master_window.width <= 0 or master_window.height <= 0:
+                logger.debug(
+                    f"Raster {self.src_fn} is entirely outside the requested region of {self.region}."
+                )
+                return
+        else:
+            master_window = Window(0, 0, src.width, src.height)
+
+        block_h, block_w = src.block_shapes[0]
+        h_chunk = self.chunk_size or block_h
+        w_chunk = self.chunk_size or block_w
+
+        y_start = int(master_window.row_off)
+        y_end = int(master_window.row_off + master_window.height)
+        x_start = int(master_window.col_off)
+        x_end = int(master_window.col_off + master_window.width)
+
+        for y in range(y_start, y_end, h_chunk):
+            rows = min(h_chunk, y_end - y)
+
+            for x in range(x_start, x_end, w_chunk):
+                cols = min(w_chunk, x_end - x)
+
+                window = Window(x, y, cols, rows)
+                z = src.read(self.band_no, window=window)
+                u = (
+                    src.read(self.u_band, window=window)
+                    if self.u_band
+                    else np.zeros_like(z)
+                )
+                w = (
+                    src.read(self.w_band, window=window)
+                    if self.w_band
+                    else np.ones_like(z)
+                )
+
+                x_arr = src.read(self.x_band, window=window) if self.x_band else None
+                y_arr = src.read(self.y_band, window=window) if self.y_band else None
+
+                if not np.issubdtype(z.dtype, np.floating):
+                    z = z.astype(np.float32)
+
+                mask = ~np.isnan(z)
+                if src.nodata is not None:
+                    if np.issubdtype(z.dtype, np.floating):
+                        mask &= ~np.isclose(z, src.nodata, rtol=1e-5, equal_nan=True)
                     else:
-                        master_window = Window(0, 0, src.width, src.height)
+                        mask &= z != src.nodata
 
-                    block_h, block_w = src.block_shapes[0]
-                    h_chunk = self.chunk_size or block_h
-                    w_chunk = self.chunk_size or block_w
+                if not np.any(mask):
+                    continue
 
-                    y_start = int(master_window.row_off)
-                    y_end = int(master_window.row_off + master_window.height)
-                    x_start = int(master_window.col_off)
-                    x_end = int(master_window.col_off + master_window.width)
+                z_valid = z[mask]
+                w_valid = w[mask]
+                u_valid = u[mask]
 
-                    for y in range(y_start, y_end, h_chunk):
-                        rows = min(h_chunk, y_end - y)
+                if x_arr is not None and y_arr is not None:
+                    xs = x_arr[mask]
+                    ys = y_arr[mask]
+                else:
+                    local_rows, local_cols = np.where(mask)
 
-                        for x in range(x_start, x_end, w_chunk):
-                            cols = min(w_chunk, x_end - x)
+                    global_rows = local_rows + window.row_off
+                    global_cols = local_cols + window.col_off
 
-                            window = Window(x, y, cols, rows)
-                            z = src.read(self.band_no, window=window)
-                            u = (
-                                src.read(self.u_band, window=window)
-                                if self.u_band
-                                else np.zeros_like(z)
-                            )
-                            w = (
-                                src.read(self.w_band, window=window)
-                                if self.w_band
-                                else np.ones_like(z)
-                            )
+                    xs, ys = rasterio.transform.xy(
+                        src.transform,
+                        global_rows,
+                        global_cols,
+                        offset="center",
+                    )
+                count = len(z_valid)
+                chunk = np.zeros(
+                    count,
+                    dtype=[
+                        ("x", "f8"),
+                        ("y", "f8"),
+                        ("z", "f4"),
+                        ("w", "f4"),
+                        ("u", "f4"),
+                    ],
+                )
 
-                            x_arr = (
-                                src.read(self.x_band, window=window)
-                                if self.x_band
-                                else None
-                            )
-                            y_arr = (
-                                src.read(self.y_band, window=window)
-                                if self.y_band
-                                else None
-                            )
-                            # w_iv = src.read(self.w_iv_band, window=window) if self.w_iv_band else np.ones_like(z)
-
-                            if not np.issubdtype(z.dtype, np.floating):
-                                z = z.astype(np.float32)
-
-                            mask = ~np.isnan(z)
-                            if src.nodata is not None:
-                                if np.issubdtype(z.dtype, np.floating):
-                                    mask &= ~np.isclose(
-                                        z, src.nodata, rtol=1e-5, equal_nan=True
-                                    )
-                                else:
-                                    mask &= z != src.nodata
-
-                            if not np.any(mask):
-                                continue
-
-                            z_valid = z[mask]
-                            w_valid = w[mask]
-                            u_valid = u[mask]
-
-                            if x_arr is not None and y_arr is not None:
-                                xs = x_arr[mask]
-                                ys = y_arr[mask]
-                            else:
-                                local_rows, local_cols = np.where(mask)
-
-                                global_rows = local_rows + window.row_off
-                                global_cols = local_cols + window.col_off
-
-                                xs, ys = rasterio.transform.xy(
-                                    src.transform,
-                                    global_rows,
-                                    global_cols,
-                                    offset="center",
-                                )
-                            count = len(z_valid)
-                            chunk = np.zeros(
-                                count,
-                                dtype=[
-                                    ("x", "f8"),
-                                    ("y", "f8"),
-                                    ("z", "f4"),
-                                    ("w", "f4"),
-                                    ("u", "f4"),
-                                ],
-                            )
-
-                            chunk["x"] = xs
-                            chunk["y"] = ys
-                            chunk["z"] = z_valid
-                            chunk["u"] = u_valid
-                            chunk["w"] = w_valid
-                            yield chunk
-
-        except Exception as e:
-            logger.error(f"Rasterio read failed: {e}")
+                chunk["x"] = xs
+                chunk["y"] = ys
+                chunk["z"] = z_valid
+                chunk["u"] = u_valid
+                chunk["w"] = w_valid
+                yield chunk
