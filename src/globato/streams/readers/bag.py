@@ -98,7 +98,7 @@ class BAGReader(RasterioReader):
 
             elif is_vr:
                 logger.debug(
-                    f"Detected VR-BAG, re-opening in {self.mode.upper()} mode: {self.src_fn}"
+                    f"Detected VR-BAG, re-opening in {self.mode} mode: {self.src_fn}"
                 )
                 vr_opts = {"MODE": self.mode, "RES_STRATEGY": "MIN"}
 
@@ -106,8 +106,10 @@ class BAGReader(RasterioReader):
                     with rasterio.Env(**env_opts):
                         self.u_band = 2
                         with rasterio.open(self.src_fn, **vr_opts) as src:
+                            logger.debug(f"Dataset Driver: {src.driver}")
+                            logger.debug(f"Dimensions: {src.width}x{src.height}")
                             self.weight = self._calculate_bag_weight(src.transform)
-                        yield from self._process_rio_dataset()
+                            yield from self._process_rio_dataset(src=src)
                 except Exception as e:
                     logger.error(f"Failed to read VR-BAG {self.src_fn}: {e}")
         except Exception as e:
