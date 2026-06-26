@@ -14,6 +14,7 @@ This readers lidar to a point stream.
 import logging
 import numpy as np
 import laspy as lp
+from rasterio.warp import transform_bounds
 
 from fetchez.utils import str_or
 from globato.streams import BaseGlobatoReader
@@ -81,6 +82,30 @@ class LASReader(BaseGlobatoReader):
 
         try:
             with lp.open(self.src_fn) as lasf:
+                if self.region is not None:
+                    w, e, s, n = self.region
+                    las_srs = self.get_srs()
+
+                    # If the LAS file has an SRS, transform our 4326 region bounds to match it
+                    if las_srs and las_srs != "EPSG:4326":
+                        try:
+                            w, s, e, n = transform_bounds(
+                                "EPSG:4326", las_srs, w, s, e, n
+                            )
+                        except Exception:
+                            pass
+
+                    # Native LAS bounds
+                    las_w, las_s = lasf.header.x_min, lasf.header.y_min
+                    las_e, las_n = lasf.header.x_max, lasf.header.y_max
+
+                    # If the file entirely misses the region, abort
+                    if las_w > e or las_e < w or las_s > n or las_n < s:
+                        logger.debug(
+                            f"Skipping {self.src_fn}: Bounding box falls outside requested region."
+                        )
+                        return
+
                 for chunk in lasf.chunk_iterator(2_000_000):
                     if self.classes:
                         mask = np.isin(chunk.classification, self.classes)
@@ -92,15 +117,29 @@ class LASReader(BaseGlobatoReader):
                         points_y = chunk.y
                         points_z = chunk.z
 
-                    if len(points_x) == 0:
+                    count = len(points_x)
+                    if count == 0:
                         continue
 
-                    w = np.ones_like(points_z)
-                    u = np.zeros_like(points_z)
+                    points = np.zeros(
+                        count,
+                        dtype=[
+                            ("x", "f8"),
+                            ("y", "f8"),
+                            ("z", "f4"),
+                            ("w", "f4"),
+                            ("u", "f4"),
+                        ],
+                    )
 
-                    dataset = np.column_stack((points_x, points_y, points_z, w, u))
-                    points = np.rec.fromrecords(dataset, names="x, y, z, w, u")
+                    points["x"] = points_x
+                    points["y"] = points_y
+                    points["z"] = points_z
+                    points["w"] = 1.0
+                    points["u"] = 0.0
+
                     yield points
+
         except Exception as e:
             logger.error(f"LAS/Z processing failed for {self.src_fn}: {e}")
             return None

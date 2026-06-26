@@ -12,7 +12,7 @@ Reproject the data stream. Hook for fetchez.
 """
 
 import logging
-
+import pyproj
 from fetchez.hooks import FetchHook
 
 from transformez.srs import SRSParser
@@ -39,8 +39,6 @@ class StreamReproject(FetchHook):
         self.cache_dir = cache_dir
         self._cache = {}
 
-        # print(dst_srs, src_srs)
-
     def _get_pipeline(self, entry_src_srs, region=None):
         if not SRSParser:
             return None
@@ -52,7 +50,8 @@ class StreamReproject(FetchHook):
         if actual_src in self._cache:
             return self._cache[actual_src]
 
-        # todo: reproject region if nec.
+        # Use Transformez to generate the shift grid,
+        # aligned to the source CRS
         parser = SRSParser(
             actual_src,
             self.dst_srs,
@@ -60,11 +59,10 @@ class StreamReproject(FetchHook):
             vert_grid=self.vert_grid,
             cache_dir=self.cache_dir,
         )
-        t_in, t_out, grid_fn = parser.get_components()
-
+        horz_transformer, grid_fn = parser.get_components()
         grid_query = RasterQuery(grid_fn) if grid_fn else None
 
-        self._cache[actual_src] = (t_in, t_out, grid_query)
+        self._cache[actual_src] = (horz_transformer, grid_query)
         return self._cache[actual_src]
 
     def run(self, entries):
@@ -99,17 +97,18 @@ class StreamReproject(FetchHook):
         return entries
 
     def _apply_transform(self, stream, pipeline):
-        t_to_hub, t_from_hub, grid_query = pipeline
+        horz_transformer, grid_query = pipeline
 
         for chunk in stream:
-            h_x, h_y = t_to_hub.transform(chunk["x"], chunk["y"])
-
+            # Vertical Shift (using native, unprojected x/y coordinates)
             if grid_query and chunk["z"] is not None:
-                shifts = grid_query.query(h_x, h_y)
+                shifts = grid_query.query(chunk["x"], chunk["y"])
                 chunk["z"] += shifts
 
-            d_x, d_y = t_from_hub.transform(h_x, h_y)
-            chunk["x"] = d_x
-            chunk["y"] = d_y
+            # Horizontal Shift
+            if horz_transformer:
+                chunk["x"], chunk["y"] = horz_transformer.transform(
+                    chunk["x"], chunk["y"]
+                )
 
             yield chunk

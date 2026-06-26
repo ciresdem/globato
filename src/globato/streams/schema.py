@@ -12,7 +12,6 @@ Makes sure incoming format streams make the correct rec-array
 """
 
 import numpy as np
-import numpy.lib.recfunctions as rfn
 
 
 def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
@@ -21,9 +20,9 @@ def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
     Standard Schema:
       - x, y, z (Required)
       - w (Weight): Defaults to module_weight
-      - u (Uncertainty): Defaults to module_unc. If exists, combines with module_unc.
-      - classification (uint8): Defaults to 0 (Unclassified)
-      - confidence (int16): Defaults to 1 (Low/Exists)
+      - u (Uncertainty): Defaults to module_unc
+      - classification (uint8): Defaults to 0
+      - confidence (int16): Defaults to 1
     """
 
     for chunk in stream:
@@ -35,40 +34,47 @@ def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
             yield chunk
             continue
 
-        new_fields = {}
-
-        # Metadata Defaults
+        missing_fields = []
         if "w" not in names:
-            new_fields["w"] = np.full(len(chunk), module_weight, dtype=np.float32)
-
+            missing_fields.append(("w", "f4"))
         if "u" not in names:
-            new_fields["u"] = np.full(len(chunk), module_unc, dtype=np.float32)
-
-        # Classification Defaults
+            missing_fields.append(("u", "f4"))
         if "classification" not in names:
-            new_fields["classification"] = np.zeros(len(chunk), dtype=np.uint8)
+            missing_fields.append(("classification", "u1"))
+        if "confidence" not in names:
+            missing_fields.append(("confidence", "i2"))
+
+        if not missing_fields:
+            if module_weight != 1.0:
+                chunk["w"] *= module_weight
+            if module_unc > 0.0:
+                chunk["u"] = np.sqrt(np.square(chunk["u"]) + np.square(module_unc))
+            yield chunk
+            continue
+
+        new_dtype = chunk.dtype.descr + missing_fields
+        new_chunk = np.empty(len(chunk), dtype=new_dtype)
+
+        for name in names:
+            new_chunk[name] = chunk[name]
+
+        if "w" in names:
+            new_chunk["w"] *= module_weight
+        else:
+            new_chunk["w"] = module_weight
+
+        if "u" in names:
+            if module_unc > 0.0:
+                new_chunk["u"] = np.sqrt(
+                    np.square(new_chunk["u"]) + np.square(module_unc)
+                )
+        else:
+            new_chunk["u"] = module_unc
+
+        if "classification" not in names:
+            new_chunk["classification"] = 0
 
         if "confidence" not in names:
-            new_fields["confidence"] = np.ones(len(chunk), dtype=np.int16)
+            new_chunk["confidence"] = 1
 
-        # Append missing fields
-        if new_fields:
-            chunk = rfn.append_fields(
-                chunk,
-                names=list(new_fields.keys()),
-                data=list(new_fields.values()),
-                usemask=False,
-                asrecarray=True,
-            )
-
-        # Apply Weight
-        if "w" in names:
-            chunk["w"] *= module_weight
-
-        # Apply Uncertainty
-        # sqrt(point_u^2 + module_u^2)
-        if module_unc > 0:
-            if "u" in names:
-                chunk["u"] = np.sqrt(np.square(chunk["u"]) + np.square(module_unc))
-
-        yield chunk
+        yield new_chunk
