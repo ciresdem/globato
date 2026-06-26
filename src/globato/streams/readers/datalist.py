@@ -47,7 +47,7 @@ class DatalistReader(BaseGlobatoReader):
         self.kwargs = kwargs
 
     def _get_entries(self):
-        """Returns a list of dicts: {'path': str, 'weight': float, 'unc': float}"""
+        """Returns a list of dicts: {'path': str, 'data_type': str, 'weight': float, 'unc': float}"""
 
         entries = []
         h3_fn = f"{self.src_fn}.h3.json"
@@ -90,6 +90,9 @@ class DatalistReader(BaseGlobatoReader):
                         entries.append(
                             {
                                 "path": path,
+                                "data_type": meta.get(
+                                    "data_type", os.path.splitext(path)[-1]
+                                ),
                                 "weight": float(meta.get("weight", 1.0)),
                                 "unc": float(meta.get("uncertainty", 0.0)),
                             }
@@ -113,11 +116,21 @@ class DatalistReader(BaseGlobatoReader):
                         else os.path.abspath(os.path.join(base_dir, raw_path))
                     )
 
+                    data_type = (
+                        parts[1] if len(parts) > 1 else os.path.spitext(path)[-1]
+                    )
                     weight = float(parts[2]) if len(parts) > 2 else 1.0
                     unc = float(parts[3]) if len(parts) > 3 else 0.0
 
                     if os.path.exists(path):
-                        entries.append({"path": path, "weight": weight, "unc": unc})
+                        entries.append(
+                            {
+                                "path": path,
+                                "data_type": data_type,
+                                "weight": weight,
+                                "unc": unc,
+                            }
+                        )
                 except Exception as e:
                     logger.warning(f"Error parsing datalist line '{line}': {e}")
 
@@ -129,7 +142,12 @@ class DatalistReader(BaseGlobatoReader):
         return None
 
     def _yield_raw_chunks(self):
-        from globato.hooks.formats.stream_factory import StreamFactory
+        # from globato.hooks.formats.stream_factory import StreamFactory
+        # from fetchez.hooks.stream_init import DataStream
+        from fetchez.registry import ReaderRegistry, ProfileRegistry
+
+        ReaderRegistry.load_all()
+        ProfileRegistry.load_all()
 
         entries = self._get_entries()
         logger.info(
@@ -137,8 +155,11 @@ class DatalistReader(BaseGlobatoReader):
         )
 
         for entry in entries:
-            reader = StreamFactory.get_reader(
-                entry["path"], region=self.region, **self.kwargs
+            # reader = StreamFactory.get_reader(
+            #    entry["path"], region=self.region, **self.kwargs
+            # )
+            reader = ReaderRegistry.get_reader(
+                entry["path"], entry["data_type"], region=self.region, **self.kwargs
             )
             if not reader:
                 continue
