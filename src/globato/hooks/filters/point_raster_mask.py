@@ -84,7 +84,10 @@ class PointRasterMask(GlobatoFilter):
 
             barrier_path = None
             for r in gen_instance.results:
-                if r.get("data_type") == "coastline_mask":
+                if (
+                    r.get("data_type") == "coastline_mask"
+                    or r.get("data_type") == "osm_landmask"
+                ):
                     barrier_path = r.get("src_fn")
                     break
 
