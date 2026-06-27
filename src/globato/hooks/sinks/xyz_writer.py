@@ -113,10 +113,13 @@ class XYZWrite(FetchHook):
 
                 stream = entry["stream"]
                 for chunk in stream:
-                    # Filter out NaN/invalid geometries if necessary
+                    data = np.column_stack(
+                        (chunk["x"], chunk["y"], chunk["z"], chunk["w"], chunk["u"])
+                    )
+
                     np.savetxt(
                         out_port,
-                        chunk[["x", "y", "z", "w", "u"]],
+                        data,
                         fmt="%.6f",
                         delimiter=" ",
                     )
