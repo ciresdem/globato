@@ -12,7 +12,6 @@ Reproject the data stream. Hook for fetchez.
 """
 
 import logging
-import pyproj
 from fetchez.hooks import FetchHook
 
 from transformez.srs import SRSParser
