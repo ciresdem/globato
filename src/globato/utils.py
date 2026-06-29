@@ -183,7 +183,7 @@ def globatize_modules(modules, shared_cache=None, crs=None):
         if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
             mod.setdefault("args", {})["outdir"] = abs_cache
 
-        # --- Insert the target crs into stream-reproject ---
+        # --- Insert the target crs into stream-reproject etc. ---
         if crs:
             reproject_hook = None
             for h in hooks:
@@ -210,10 +210,11 @@ def globatize_modules(modules, shared_cache=None, crs=None):
 
 
 # --- Recipe building ---
-def make_recipe_config(name, r_str, modules, hooks, threads=4):
+def make_recipe_config(name, r_str, modules, hooks, crs="EPSG:4326", threads=4):
     config = {
         "project": {"name": name},
         "region": r_str,  # Provide the buffered region to the modules
+        "region_srs": crs,  # The region srs
         "modules": modules,  # Use our compiled modules list
         "global_hooks": hooks,  # Use compiled global dem-building hooks
         "execution": {"threads": threads},

@@ -74,7 +74,7 @@ def _yield_stdin_chunks(chunk_size=100000):
 @click.option(
     "-E", "--inc", help="Grid increment (e.g., 1s, 0.0001). Triggers stacking!"
 )
-@click.option("-T", "--t-srs", help="Target SRS for reprojection (e.g., EPSG:4326).")
+@click.option("-P", "--t-srs", help="Target SRS for reprojection (e.g., EPSG:4326).")
 @click.option(
     "-F",
     "--filter",
@@ -137,7 +137,7 @@ def dump(
     global_hooks.append({"name": "drop_class", "args": {}})
     global_hooks.append({"name": "xyz_write", "args": {"output_path": output}})
 
-    config = make_recipe_config("pointz_dump", region, compiled_modules, global_hooks)
+    config = make_recipe_config("pointz_dump", region, compiled_modules, global_hooks, crs=t_srs)
 
     if save_recipe:
         out_yaml = "pointz_recipe.yaml"
