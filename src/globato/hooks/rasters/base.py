@@ -157,6 +157,36 @@ class RasterBaseHook(FetchHook):
             logger.error(f"Could not parse geometries from {barrier_path}: {e}")
             return None
 
+    def _create_barrier_mask(self, shape, transform):
+        """Generates a boolean numpy mask from the barrier.
+        Automatically fetches or generates the geometries on-demand.
+        Returns True inside the polygons, False outside.
+        """
+
+        if not self.barrier:
+            return None
+
+        # _get_barrier_geometries fetches the data if not provided
+        if not self.barrier_geoms:
+            self.barrier_geoms = self._get_barrier_geometries(transform)
+
+        # If fetching failed or returned nothing, abort
+        if not self.barrier_geoms:
+            return None
+
+        from rasterio.features import rasterize
+
+        mask = rasterize(
+            self.barrier_geoms,
+            out_shape=shape,
+            transform=transform,
+            fill=0,
+            default_value=1,
+            dtype="uint8",
+        ).astype(bool)
+
+        return mask
+
     def get_outliers(self, in_array, percentile=75, k=1.5):
         if np.all(np.isnan(in_array)):
             return np.nan, np.nan
@@ -282,7 +312,7 @@ class RasterStreamHook(RasterBaseHook):
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
                 dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
 
-            logger.info(f"Running local {self.name} on {os.path.basename(src_fn)}")
+            logger.debug(f"Running local {self.name} on {os.path.basename(src_fn)}")
             try:
                 success = self._process_file_fallback(src_fn, dst_fn, entry)
                 if success:
