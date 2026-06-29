@@ -134,71 +134,20 @@ class RasterBaseHook(FetchHook):
         if not self.barrier:
             return None
 
-        barrier_path = self.barrier
-        barrier_lower = os.path.basename(barrier_path).lower()
+        mod = getattr(self, "current_mod", None)
+        region = getattr(mod, "region", None) if mod else None
+        outdir = os.path.dirname(self.output) if self.output else os.getcwd()
 
-        if barrier_lower in ["coastline", "landmask", "osm", "glob_coast"]:
-            mod = getattr(self, "current_mod", None)
-            if not mod or not getattr(mod, "region", None):
-                logger.error("Region is required to auto-generate a coastline barrier.")
-                return None
+        from globato.utils import resolve_barrier
 
-            if self.output:
-                outdir = os.path.dirname(self.output)
-            else:
-                outdir = os.getcwd()
+        barrier_path = resolve_barrier(
+            self.barrier,
+            region=region,
+            outdir=os.path.join(outdir, "auto_barriers"),
+            output_type="vector",
+        )
 
-            logger.debug(f"[{self.name}] Generating coastline with outdir of {outdir}")
-
-            target_res = "1s"
-            # if transform is not None:
-            #     #try:
-            #     target_res = inc2str(abs(transform[0]))
-            #     #except ImportError:
-            #     #    target_res = abs(transform[0])
-
-            target_mod_name = (
-                "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
-            )
-
-            logger.debug(
-                f"[{self.name}] Auto-generating barrier using {target_mod_name}..."
-            )
-            from fetchez.registry import ModuleRegistry
-            from fetchez.core import run_fetchez
-
-            generator_mod = ModuleRegistry.get_class(target_mod_name)
-            if not generator_mod:
-                logger.error(f"{target_mod_name} module not found!")
-                return None
-
-            gen_instance = generator_mod(
-                src_region=mod.region,
-                outdir=os.path.join(outdir, "auto_barriers"),
-                res=target_res,  # Ignored by osm_landmask, used by glob_coast
-                include_water=True,  # Ignored by glob_coast, used by osm_landmask
-            )
-
-            gen_instance.run()
-            run_fetchez([gen_instance])
-
-            if gen_instance.results:
-                if target_mod_name == "glob_coast":
-                    for r in gen_instance.results:
-                        artifacts = r.get("artifacts", {})
-                        if "vector_fill_holes" in artifacts:
-                            barrier_path = artifacts["vector_fill_holes"]
-                            break
-                        elif "raster_polygonize" in artifacts:
-                            barrier_path = artifacts["raster_polygonize"]
-                            break
-                else:
-                    barrier_path = gen_instance.results[0].get("dst_fn")
-
-        if not barrier_path or not os.path.exists(barrier_path):
-            logger.debug(
-                f"Barrier file not found or failed to generate: {barrier_path}"
-            )
+        if not barrier_path:
             return None
 
         try:
@@ -207,36 +156,6 @@ class RasterBaseHook(FetchHook):
         except Exception as e:
             logger.error(f"Could not parse geometries from {barrier_path}: {e}")
             return None
-
-    def _create_barrier_mask(self, shape, transform):
-        """Generates a boolean numpy mask from the barrier.
-        Automatically fetches or generates the geometries on-demand.
-        Returns True inside the polygons, False outside.
-        """
-
-        if not self.barrier:
-            return None
-
-        # _get_barrier_geometries fetches the data if not provided
-        if not self.barrier_geoms:
-            self.barrier_geoms = self._get_barrier_geometries(transform)
-
-        # If fetching failed or returned nothing, abort
-        if not self.barrier_geoms:
-            return None
-
-        from rasterio.features import rasterize
-
-        mask = rasterize(
-            self.barrier_geoms,
-            out_shape=shape,
-            transform=transform,
-            fill=0,
-            default_value=1,
-            dtype="uint8",
-        ).astype(bool)
-
-        return mask
 
     def get_outliers(self, in_array, percentile=75, k=1.5):
         if np.all(np.isnan(in_array)):

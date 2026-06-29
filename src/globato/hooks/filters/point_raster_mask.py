@@ -50,82 +50,28 @@ class PointRasterMask(GlobatoFilter):
             logger.warning(f"[{self.name}] No barrier provided. Skipping.")
             return False
 
-        barrier_lower = str(os.path.basename(self.barrier)).lower()
-        target_crs = entry.get("src_srs", "EPSG:4326")  # The stream's current CRS
+        target_crs = entry.get("src_srs", "EPSG:4326")
+        from globato.utils import resolve_barrier
 
-        barrier_path = self.barrier
-        if barrier_lower in ["coastline", "landmask", "osm", "glob_coast"]:
-            target_mod = (
-                "osm_landmask" if barrier_lower in ["osm", "landmask"] else "glob_coast"
-            )
+        barrier_path = resolve_barrier(
+            self.barrier,
+            region=getattr(mod, "region", None),
+            outdir=os.path.join(os.getcwd(), "auto_barriers"),
+            res=self.res,
+            include_water=True,
+            output_type="raster",
+            target_crs=target_crs
+        )
 
-            if not getattr(mod, "region", None):
-                logger.error(f"[{self.name}] Region required to auto-generate barrier.")
-                return False
-
-            logger.info(
-                f"[{self.name}] Auto-generating raster barrier using {target_mod} at {self.res}..."
-            )
-
-            generator_mod = ModuleRegistry.get_class(target_mod)
-            gen_instance = generator_mod(
-                src_region=mod.region,
-                outdir=os.path.join(os.getcwd(), "auto_barriers"),
-                res=self.res,
-                include_water=True,
-            )
-
-            gen_instance.run()
-            run_fetchez([gen_instance])
-
-            # if gen_instance.results:
-            #     for r in gen_instance.results:
-            #         artifacts = r.get("artifacts", {})
-
-            barrier_path = None
-            for r in gen_instance.results:
-                if (
-                    r.get("data_type") == "coastline_mask"
-                    or r.get("data_type") == "osm_landmask"
-                ):
-                    barrier_path = r.get("src_fn")
-                    break
-
-            if not barrier_path or not os.path.exists(barrier_path):
-                logger.error(f"[{self.name}] Failed to generate raster barrier.")
-                return False
+        if not barrier_path:
+            logger.error(f"[{self.name}] Failed to resolve raster barrier.")
+            return False
 
         with rasterio.open(barrier_path) as src:
-            if src.crs and src.crs.to_string() != target_crs:
-                logger.debug(
-                    f"[{self.name}] Warping mask to {target_crs} for stream sampling..."
-                )
-
-                transform, width, height = calculate_default_transform(
-                    src.crs, target_crs, src.width, src.height, *src.bounds
-                )
-
-                # Create an empty numpy array to hold the warped mask
-                self.mask_array = np.zeros((height, width), dtype=np.uint8)
-
-                reproject(
-                    source=rasterio.band(src, 1),
-                    destination=self.mask_array,
-                    src_transform=src.transform,
-                    src_crs=src.crs,
-                    dst_transform=transform,
-                    dst_crs=target_crs,
-                    resampling=Resampling.nearest,  # Crucial: Keep the 0/1 boolean nature!
-                )
-
-                self.mask_transform = transform
-                self.mask_width = width
-                self.mask_height = height
-            else:
-                self.mask_array = src.read(1)
-                self.mask_transform = src.transform
-                self.mask_width = src.width
-                self.mask_height = src.height
+            self.mask_array = src.read(1)
+            self.mask_transform = src.transform
+            self.mask_width = src.width
+            self.mask_height = src.height
 
         return True
 

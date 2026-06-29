@@ -22,6 +22,10 @@ from tqdm import tqdm
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 
+from fetchez.core import run_fetchez
+from fetchez.registry import ModuleRegistry
+from fetchez.utils import str2inc
+
 # from fetchez.utils import parse_source_string as fetchez_parse_source
 
 from transformez.utils import cmd_exists
@@ -169,8 +173,6 @@ def yield_parsed_regions(region_str):
 
 
 # --- Source and Hook parsing ---
-
-
 def globatize_modules(modules, shared_cache=None, crs=None):
     abs_cache = os.path.abspath(shared_cache) if shared_cache else None
 
@@ -208,8 +210,6 @@ def globatize_modules(modules, shared_cache=None, crs=None):
 
 
 # --- Recipe building ---
-
-
 def make_recipe_config(name, r_str, modules, hooks, threads=4):
     config = {
         "project": {"name": name},
@@ -254,3 +254,211 @@ def safe_window_read(src, window):
         return None
 
     return data
+
+
+def _generate_barrier_hash(region, res, include_water, target_crs):
+    """Generates a short, unique 8-character MD5 hash based on spatial parameters."""
+
+    import hashlib
+
+    crs_str = str(target_crs).replace(":", "_").replace(" ", "_")
+    region_str = f"{region.xmin}_{region.xmax}_{region.ymin}_{region.ymax}" if region else "global"
+    hash_seed = f"{region_str}_{res}_{include_water}_{crs_str}"
+    return hashlib.md5(hash_seed.encode('utf-8')).hexdigest()[:8]
+
+
+def _get_crs(crs_obj):
+    """Extracts an EPSG/WKT string from fiona/rasterio CRS objects."""
+
+    if not crs_obj:
+        return "EPSG:4326"
+    try:
+        return pyproj.CRS.from_user_input(crs_obj).to_string()
+    except Exception:
+        return "EPSG:4326"
+
+
+def resolve_barrier(
+    barrier_str,
+    region,  # region should be wgs84
+    outdir=None,
+    res="1s",
+    include_water=True,
+    output_type="raster",
+    target_crs="EPSG:4326"
+):
+    """Resolves a barrier string into a valid file path of the requested type and CRS.
+
+    Auto-generates magic keywords or seamlessly converts/reprojects existing files.
+    """
+
+    import fiona
+    import pyproj
+    import rasterio
+    from rasterio.features import rasterize, shapes
+    from rasterio.warp import calculate_default_transform, reproject, Resampling
+    from rasterio.transform import from_bounds
+    from shapely.geometry import shape, mapping
+    from shapely.ops import transform as shapely_transform
+
+    if not barrier_str:
+        return None
+
+    if outdir is None:
+        outdir = os.path.join(os.getcwd(), "auto_barriers")
+    os.makedirs(outdir, exist_ok=True)
+
+    barrier_lower = str(os.path.basename(barrier_str)).lower()
+    magic_keywords = ["coastline", "landmask", "osm", "glob_coast"]
+    resolved_path = None
+    native_type = None
+
+    # =================================================================
+    # Resolve to a native file path (Existing or Auto-Generated)
+    # =================================================================
+    if barrier_lower not in magic_keywords:
+        if os.path.exists(barrier_str):
+            resolved_path = barrier_str
+            native_type = "vector" if resolved_path.endswith(('.shp', '.geojson', '.gpkg', '.json')) else "raster"
+        else:
+            logger.error(f"Barrier file not found: {barrier_str}")
+            return None
+    else:
+        if not region:
+            logger.error("Region is required to auto-generate a coastline barrier.")
+            return None
+
+        target_mod_name = "osm_landmask" if barrier_lower in ["osm", "landmask", "coastline"] else "glob_coast"
+        logger.info(f"Auto-generating barrier using {target_mod_name}...")
+
+        generator_mod = ModuleRegistry.get_class(target_mod_name)
+        if generator_mod:
+            # OSM/Glob_Coast generate in EPSG:4326
+            gen_instance = generator_mod(src_region=region, outdir=outdir, res=res, include_water=include_water)
+            gen_instance.run()
+            run_fetchez([gen_instance])
+
+            if gen_instance.results:
+                for r in gen_instance.results:
+                    artifacts = r.get("artifacts", {})
+
+                    if output_type == "vector" and "vector_fill_holes" in artifacts:
+                        resolved_path = artifacts["vector_fill_holes"]
+                        native_type = "vector"
+                        break
+                    elif output_type == "raster" and r.get("data_type") == "coastline_mask":
+                        resolved_path = r.get("dst_fn")
+                        native_type = "raster"
+                        break
+
+                if not resolved_path:
+                    resolved_path = gen_instance.results[0].get("dst_fn")
+                    native_type = "vector" if target_mod_name == "osm_landmask" else "raster"
+
+    if not resolved_path or not os.path.exists(resolved_path):
+        logger.error("Failed to resolve or generate the barrier.")
+        return None
+
+    # =================================================================
+    # Extract Native CRS
+    # =================================================================
+    if native_type == "raster":
+        with rasterio.open(resolved_path) as src:
+            native_crs = _get_crs(src.crs)
+    else:
+        with fiona.open(resolved_path, "r") as src:
+            native_crs = _get_crs(src.crs)
+
+    # Fast-path: Identity check
+    if native_type == output_type and native_crs == target_crs:
+        return resolved_path
+
+    # =================================================================
+    # Enforce Output Type & Projection
+    # =================================================================
+    logger.info(f"Barrier mismatch: Converting {native_type}({native_crs}) -> {output_type}({target_crs})")
+
+    spatial_hash = _generate_barrier_hash(region, res, include_water, target_crs)
+    base_name = os.path.splitext(os.path.basename(resolved_path))[0]
+
+    needs_reproject = native_crs != target_crs
+    transformer = None
+    if needs_reproject:
+        transformer = pyproj.Transformer.from_crs(native_crs, target_crs, always_xy=True)
+
+    # --- OUTPUT: VECTOR ---
+    if output_type == "vector":
+        out_vec_path = os.path.join(outdir, f"{base_name}_{spatial_hash}.geojson")
+        if os.path.exists(out_vec_path):
+            return out_vec_path
+
+        geoms = []
+        if native_type == "raster":
+            with rasterio.open(resolved_path) as src:
+                image = src.read(1)
+                mask = image != src.nodata if src.nodata is not None else image > 0
+                geoms = [shape(s) for s, v in shapes(image, mask=mask, transform=src.transform) if v > 0]
+        else:
+            with fiona.open(resolved_path, "r") as src:
+                geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
+
+        if needs_reproject:
+            geoms = [shapely_transform(transformer.transform, g) for g in geoms]
+
+        meta = {'driver': 'GeoJSON', 'schema': {'geometry': 'Polygon', 'properties': {'val': 'int'}}, 'crs': target_crs}
+        with fiona.open(out_vec_path, 'w', **meta) as dst:
+            dst.writerecords([{'properties': {'val': 1}, 'geometry': mapping(g)} for g in geoms])
+
+        return out_vec_path
+
+    # --- OUTPUT: RASTER ---
+    elif output_type == "raster":
+        out_ras_path = os.path.join(outdir, f"{base_name}_{spatial_hash}.tif")
+        if os.path.exists(out_ras_path):
+            return out_ras_path
+
+        # Vector -> Raster (Rasterize directly into target space)
+        if native_type == "vector":
+            if not region:
+                logger.error("Region required to rasterize vector barrier.")
+                return None
+
+            with fiona.open(resolved_path, "r") as src:
+                geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
+
+            if needs_reproject:
+                geoms = [shapely_transform(transformer.transform, g) for g in geoms]
+
+            inc = str2inc(res)
+            width = int(round(region.width / inc))
+            height = int(round(region.height / inc))
+            transform = from_bounds(region.xmin, region.ymin, region.xmax, region.ymax, width, height)
+
+            mask_arr = rasterize(geoms, out_shape=(height, width), transform=transform, fill=0, default_value=1, dtype='uint8')
+            profile = {'driver': 'GTiff', 'height': height, 'width': width, 'count': 1, 'dtype': 'uint8', 'crs': target_crs, 'transform': transform, 'nodata': 0, 'compress': 'deflate'}
+
+            with rasterio.open(out_ras_path, 'w', **profile) as dst:
+                dst.write(mask_arr, 1)
+
+            return out_ras_path
+
+        # Raster -> Raster (Warp)
+        else:
+            with rasterio.open(resolved_path) as src:
+                transform, width, height = calculate_default_transform(src.crs, target_crs, src.width, src.height, *src.bounds)
+                profile = src.profile.copy()
+                profile.update({'crs': target_crs, 'transform': transform, 'width': width, 'height': height})
+
+                with rasterio.open(out_ras_path, 'w', **profile) as dst:
+                    reproject(
+                        source=rasterio.band(src, 1),
+                        destination=rasterio.band(dst, 1),
+                        src_transform=src.transform,
+                        src_crs=src.crs,
+                        dst_transform=transform,
+                        dst_crs=target_crs,
+                        resampling=Resampling.nearest # Keeps the mask boolean 0/1
+                    )
+            return out_ras_path
+
+    return None

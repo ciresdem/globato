@@ -98,7 +98,7 @@ class VectorMask(GlobatoFilter, RasterSampling):
             lyr = vec_ds.GetLayer()
 
             gdal.RasterizeLayer(ds, [1], lyr, burn_values=[1])
-            ds = None  # Save/Close
+            ds = None
             return True
 
         except Exception as e:
