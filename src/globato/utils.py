@@ -262,13 +262,19 @@ def _generate_barrier_hash(region, res, include_water, target_crs):
     import hashlib
 
     crs_str = str(target_crs).replace(":", "_").replace(" ", "_")
-    region_str = f"{region.xmin}_{region.xmax}_{region.ymin}_{region.ymax}" if region else "global"
+    region_str = (
+        f"{region.xmin}_{region.xmax}_{region.ymin}_{region.ymax}"
+        if region
+        else "global"
+    )
     hash_seed = f"{region_str}_{res}_{include_water}_{crs_str}"
-    return hashlib.md5(hash_seed.encode('utf-8')).hexdigest()[:8]
+    return hashlib.md5(hash_seed.encode("utf-8")).hexdigest()[:8]
 
 
 def _get_crs(crs_obj):
     """Extracts an EPSG/WKT string from fiona/rasterio CRS objects."""
+
+    import pyproj
 
     if not crs_obj:
         return "EPSG:4326"
@@ -280,12 +286,12 @@ def _get_crs(crs_obj):
 
 def resolve_barrier(
     barrier_str,
-    region,  # region should be wgs84
+    region,
     outdir=None,
     res="1s",
     include_water=True,
     output_type="raster",
-    target_crs="EPSG:4326"
+    target_crs="EPSG:4326",
 ):
     """Resolves a barrier string into a valid file path of the requested type and CRS.
 
@@ -313,13 +319,15 @@ def resolve_barrier(
     resolved_path = None
     native_type = None
 
-    # =================================================================
-    # Resolve to a native file path (Existing or Auto-Generated)
-    # =================================================================
+    # --- Resolve to a native file path (Existing or Auto-Generated) ---
     if barrier_lower not in magic_keywords:
         if os.path.exists(barrier_str):
             resolved_path = barrier_str
-            native_type = "vector" if resolved_path.endswith(('.shp', '.geojson', '.gpkg', '.json')) else "raster"
+            native_type = (
+                "vector"
+                if resolved_path.endswith((".shp", ".geojson", ".gpkg", ".json"))
+                else "raster"
+            )
         else:
             logger.error(f"Barrier file not found: {barrier_str}")
             return None
@@ -328,13 +336,19 @@ def resolve_barrier(
             logger.error("Region is required to auto-generate a coastline barrier.")
             return None
 
-        target_mod_name = "osm_landmask" if barrier_lower in ["osm", "landmask", "coastline"] else "glob_coast"
+        target_mod_name = (
+            "osm_landmask"
+            if barrier_lower in ["osm", "landmask", "coastline"]
+            else "glob_coast"
+        )
         logger.info(f"Auto-generating barrier using {target_mod_name}...")
 
         generator_mod = ModuleRegistry.get_class(target_mod_name)
         if generator_mod:
             # OSM/Glob_Coast generate in EPSG:4326
-            gen_instance = generator_mod(src_region=region, outdir=outdir, res=res, include_water=include_water)
+            gen_instance = generator_mod(
+                src_region=region, outdir=outdir, res=res, include_water=include_water
+            )
             gen_instance.run()
             run_fetchez([gen_instance])
 
@@ -346,22 +360,25 @@ def resolve_barrier(
                         resolved_path = artifacts["vector_fill_holes"]
                         native_type = "vector"
                         break
-                    elif output_type == "raster" and r.get("data_type") == "coastline_mask":
+                    elif (
+                        output_type == "raster"
+                        and r.get("data_type") == "coastline_mask"
+                    ):
                         resolved_path = r.get("dst_fn")
                         native_type = "raster"
                         break
 
                 if not resolved_path:
                     resolved_path = gen_instance.results[0].get("dst_fn")
-                    native_type = "vector" if target_mod_name == "osm_landmask" else "raster"
+                    native_type = (
+                        "vector" if target_mod_name == "osm_landmask" else "raster"
+                    )
 
     if not resolved_path or not os.path.exists(resolved_path):
         logger.error("Failed to resolve or generate the barrier.")
         return None
 
-    # =================================================================
-    # Extract Native CRS
-    # =================================================================
+    # --- Extract Native CRS ---
     if native_type == "raster":
         with rasterio.open(resolved_path) as src:
             native_crs = _get_crs(src.crs)
@@ -373,10 +390,10 @@ def resolve_barrier(
     if native_type == output_type and native_crs == target_crs:
         return resolved_path
 
-    # =================================================================
-    # Enforce Output Type & Projection
-    # =================================================================
-    logger.info(f"Barrier mismatch: Converting {native_type}({native_crs}) -> {output_type}({target_crs})")
+    # --- Enforce Output Type & Projection ---
+    logger.info(
+        f"Barrier mismatch: Converting {native_type}({native_crs}) -> {output_type}({target_crs})"
+    )
 
     spatial_hash = _generate_barrier_hash(region, res, include_water, target_crs)
     base_name = os.path.splitext(os.path.basename(resolved_path))[0]
@@ -384,7 +401,9 @@ def resolve_barrier(
     needs_reproject = native_crs != target_crs
     transformer = None
     if needs_reproject:
-        transformer = pyproj.Transformer.from_crs(native_crs, target_crs, always_xy=True)
+        transformer = pyproj.Transformer.from_crs(
+            native_crs, target_crs, always_xy=True
+        )
 
     # --- OUTPUT: VECTOR ---
     if output_type == "vector":
@@ -397,7 +416,11 @@ def resolve_barrier(
             with rasterio.open(resolved_path) as src:
                 image = src.read(1)
                 mask = image != src.nodata if src.nodata is not None else image > 0
-                geoms = [shape(s) for s, v in shapes(image, mask=mask, transform=src.transform) if v > 0]
+                geoms = [
+                    shape(s)
+                    for s, v in shapes(image, mask=mask, transform=src.transform)
+                    if v > 0
+                ]
         else:
             with fiona.open(resolved_path, "r") as src:
                 geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
@@ -405,9 +428,15 @@ def resolve_barrier(
         if needs_reproject:
             geoms = [shapely_transform(transformer.transform, g) for g in geoms]
 
-        meta = {'driver': 'GeoJSON', 'schema': {'geometry': 'Polygon', 'properties': {'val': 'int'}}, 'crs': target_crs}
-        with fiona.open(out_vec_path, 'w', **meta) as dst:
-            dst.writerecords([{'properties': {'val': 1}, 'geometry': mapping(g)} for g in geoms])
+        meta = {
+            "driver": "GeoJSON",
+            "schema": {"geometry": "Polygon", "properties": {"val": "int"}},
+            "crs": target_crs,
+        }
+        with fiona.open(out_vec_path, "w", **meta) as dst:
+            dst.writerecords(
+                [{"properties": {"val": 1}, "geometry": mapping(g)} for g in geoms]
+            )
 
         return out_vec_path
 
@@ -432,12 +461,31 @@ def resolve_barrier(
             inc = str2inc(res)
             width = int(round(region.width / inc))
             height = int(round(region.height / inc))
-            transform = from_bounds(region.xmin, region.ymin, region.xmax, region.ymax, width, height)
+            transform = from_bounds(
+                region.xmin, region.ymin, region.xmax, region.ymax, width, height
+            )
 
-            mask_arr = rasterize(geoms, out_shape=(height, width), transform=transform, fill=0, default_value=1, dtype='uint8')
-            profile = {'driver': 'GTiff', 'height': height, 'width': width, 'count': 1, 'dtype': 'uint8', 'crs': target_crs, 'transform': transform, 'nodata': 0, 'compress': 'deflate'}
+            mask_arr = rasterize(
+                geoms,
+                out_shape=(height, width),
+                transform=transform,
+                fill=0,
+                default_value=1,
+                dtype="uint8",
+            )
+            profile = {
+                "driver": "GTiff",
+                "height": height,
+                "width": width,
+                "count": 1,
+                "dtype": "uint8",
+                "crs": target_crs,
+                "transform": transform,
+                "nodata": 0,
+                "compress": "deflate",
+            }
 
-            with rasterio.open(out_ras_path, 'w', **profile) as dst:
+            with rasterio.open(out_ras_path, "w", **profile) as dst:
                 dst.write(mask_arr, 1)
 
             return out_ras_path
@@ -445,11 +493,20 @@ def resolve_barrier(
         # Raster -> Raster (Warp)
         else:
             with rasterio.open(resolved_path) as src:
-                transform, width, height = calculate_default_transform(src.crs, target_crs, src.width, src.height, *src.bounds)
+                transform, width, height = calculate_default_transform(
+                    src.crs, target_crs, src.width, src.height, *src.bounds
+                )
                 profile = src.profile.copy()
-                profile.update({'crs': target_crs, 'transform': transform, 'width': width, 'height': height})
+                profile.update(
+                    {
+                        "crs": target_crs,
+                        "transform": transform,
+                        "width": width,
+                        "height": height,
+                    }
+                )
 
-                with rasterio.open(out_ras_path, 'w', **profile) as dst:
+                with rasterio.open(out_ras_path, "w", **profile) as dst:
                     reproject(
                         source=rasterio.band(src, 1),
                         destination=rasterio.band(dst, 1),
@@ -457,7 +514,7 @@ def resolve_barrier(
                         src_crs=src.crs,
                         dst_transform=transform,
                         dst_crs=target_crs,
-                        resampling=Resampling.nearest # Keeps the mask boolean 0/1
+                        resampling=Resampling.nearest,  # Keeps the mask boolean 0/1
                     )
             return out_ras_path
 

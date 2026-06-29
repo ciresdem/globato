@@ -13,11 +13,8 @@ import os
 import logging
 import numpy as np
 import rasterio
-from rasterio.warp import calculate_default_transform, reproject, Resampling
 
 from fetchez.utils import str2bool
-from fetchez.core import run_fetchez
-from fetchez.registry import ModuleRegistry
 from .base import GlobatoFilter
 
 logger = logging.getLogger(__name__)
@@ -60,7 +57,7 @@ class PointRasterMask(GlobatoFilter):
             res=self.res,
             include_water=True,
             output_type="raster",
-            target_crs=target_crs
+            target_crs=target_crs,
         )
 
         if not barrier_path:
