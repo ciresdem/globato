@@ -149,6 +149,8 @@ class OSMLandmaskModule(FetchModule):
             relation["natural"="water"]["water"="river"];
             """
 
+            # """
+
         # lakes/ponds
         if self.include_lakes:
             query += """
@@ -270,7 +272,9 @@ class OSMLandmaskModule(FetchModule):
             with open(osm_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            relation_member_ids = set()
+            coast_relation_member_ids = set()
+            water_relation_member_ids = set()
+            # relation_member_ids = set()
             relations = []
             ways = []
 
@@ -278,9 +282,28 @@ class OSMLandmaskModule(FetchModule):
             for element in data.get("elements", []):
                 if element.get("type") == "relation":
                     relations.append(element)
+
+                    tags = element.get("tags", {})
+                    is_coast = tags.get("natural") == "coastline"
+                    is_river = (
+                        tags.get("waterway") == "riverbank"
+                        or tags.get("water") == "river"
+                    )
+                    is_lake = tags.get("natural") == "water" and not is_river
+
+                    is_water = False
+                    if self.include_rivers and is_river:
+                        is_water = True
+                    if self.include_lakes and is_lake:
+                        is_water = True
+
                     for member in element.get("members", []):
                         if member.get("type") == "way":
-                            relation_member_ids.add(member.get("ref"))
+                            # relation_member_ids.add(member.get("ref"))
+                            if is_coast:
+                                coast_relation_member_ids.add(member.get("ref"))
+                            if is_water:
+                                water_relation_member_ids.add(member.get("ref"))
                 elif element.get("type") == "way":
                     ways.append(element)
 
@@ -329,11 +352,7 @@ class OSMLandmaskModule(FetchModule):
 
             # --- Process Standalone Ways (Skipping Relation Members) ---
             for way in ways:
-                # If this way was part of a river relation, skip it!
-                # This prevents islands from being double-processed as solid water.
-                if way.get("id") in relation_member_ids:
-                    continue
-
+                way_id = way.get("id")
                 tags = way.get("tags", {})
                 is_coast = tags.get("natural") == "coastline"
                 is_water = self.include_water and (
@@ -343,20 +362,25 @@ class OSMLandmaskModule(FetchModule):
 
                 if not is_coast and not is_water:
                     continue
+                process_as_coast = is_coast and way_id not in coast_relation_member_ids
+                process_as_water = is_water and way_id not in water_relation_member_ids
 
+                if not process_as_coast and not process_as_water:
+                    continue
                 if "geometry" in way:
                     coords = [(pt["lon"], pt["lat"]) for pt in way["geometry"]]
                     if len(coords) < 2:
                         continue
                     line = LineString(coords)
 
-                    if is_coast:
+                    if process_as_coast:
                         coast_lines.append(line)
-                    elif is_water:
+                    elif process_as_water:
                         if line.is_closed and len(coords) >= 4:
                             water_polys.append(Polygon(coords))
                         else:
-                            water_lines.append(line)
+                            # water_lines.append(line)
+                            pass
 
         except Exception as e:
             logger.error(f"Failed to parse OSM JSON natively: {e}")

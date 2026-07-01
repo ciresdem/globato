@@ -1,0 +1,217 @@
+name: crm_alaska
+desc: >
+tags:
+  - globato
+  - bathymetry
+  - topography
+  - alaska
+  - glob-stream
+  - glob-bundle
+
+modules:
+  # IFSAR 5m DEM
+  - module: tnm
+    args:
+      datasets: "6"
+      weight: 2
+    hooks:
+      - name: range_z
+        args:
+          min_z: 0.001
+      - name: spatial_crop
+
+  - module: copernicus
+    args:
+      weight: .75
+      datatype: 3
+    hooks:
+      - name: unzip
+      - name: filename_filter
+        args:
+          match: ".tif"
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+3855"
+      - name: raster_footprint_fill
+        args:
+          max_gap: 15
+          buffer: 15
+          stage: file
+      - name: set_datatype
+        args:
+          data_type: rio
+      - name: range_z
+        args:
+          min_z: 0.001
+
+  # Bathymetry
+  # Coarse bathy:
+
+  # - module: sysu
+  #   args:
+  #     weight: 0.00001
+  #     product: SYSU_topo
+  #     outdir: ../data
+  #   hooks:
+  #     - name: stream_data
+  #     - name: set-datatype
+  #       args:
+  #         data_type: sysu-xyz
+  #     - name: set-srs
+  #       args:
+  #         srs: "EPSG:4326+9003"
+  #     - name: stream_reproject
+  #       args:
+  #         src_srs: "EPSG:4326+9003"
+  #         dst_srs: "EPSG:4269+5703"
+  #     - name: spatial_crop
+  #     - name: range_z
+  #       args:
+  #         max_z: -0.01
+  #     - name: rq
+  #       args:
+  #         reference: gebco
+  #         threshold: 20
+  #         mode: percent
+  #         builder: grid
+  #         res: 0.008333
+  #     - name: outlierz
+  #     - name: simple_stack
+  #       args:
+  #         res: "30s"
+  #         plug: True
+  #         output: "{base}_sysu_stack.tif"
+  #     - name: raster_footprint_fill
+  #       args:
+  #         max_gap: 2
+  #         buffer: 1
+  #         stage: stream
+  #     - name: stream_data
+
+  - module: dnc
+    args:
+      weight: 0.001
+    hooks:
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+5866"
+      - name: spatial_crop
+      - name: rq
+        args:
+          reference: gebco
+          threshold: 20
+          mode: percent
+          builder: grid
+          res: 0.008333
+      - name: outlierz
+
+  - module: margrav
+    args:
+      weight: 0.0001
+    hooks:
+      - name: set-datatype
+        args:
+          data_type: margrav-xyz
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+9003"
+      - name: spatial_crop
+      - name: range_z
+        args:
+          max_z: -0.01
+      - name: rq
+        args:
+          reference: gebco
+          threshold: 20
+          mode: percent
+          builder: grid
+          res: 0.008333
+      - name: outlierz
+
+  - module: copernicus_marine
+    args:
+      weight: .15
+    hooks:
+      - name: set-datatype
+        args:
+          data_type: copernicus_sdb
+      - name: dynamic-weight
+        args:
+          source_field: confidence
+          method: inverse
+          offset: 1.2
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+9003"
+      - name: spatial_crop
+      - name: range_z
+        args:
+          max_z: -0.01
+      - name: outlierz
+
+  - module: charts
+    args:
+      weight: 0.3
+    hooks:
+      - name: unzip
+      - name: filename_filter
+        args:
+          match: ".000"
+          stage: file
+      - name: set_datatype
+        args:
+          data_type: charts-xyz
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+5866"
+      - name: spatial_crop
+      - name: outlierz
+
+  - module: nos_hydro
+    args:
+      datatype: xyz
+      weight: 0.15
+    hooks:
+      - name: unzip
+      - name: set_datatype
+        args:
+          data_type: nos-xyz
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+5866"
+      - name: spatial_crop
+      - name: outlierz
+      - name: spatial_crop
+
+  # Finer bathy
+  - module: mbdb
+    args: {weight: 1.0, want_inf: True}
+    hooks:
+      - name: filename_filter
+        args:
+          match: ".fbt"
+      - name: stream_data
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+9003"
+      - name: rq
+        args:
+          reference: "gmrt/gebco"
+          threshold: 5
+          mode: "percent"
+          builder: "grid"
+          res: 0.000277777
+
+  - module: nos_hydro
+    args:
+      datatype: bag
+      weight: 1
+      mode: INTERPOLATED
+    hooks:
+    - name: filename_filter
+      args:
+        exclude: Ellipsoid
+        stage: pre
+    - name: set_datatype
+      args:
+        data_type: bag

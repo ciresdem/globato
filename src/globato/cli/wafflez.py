@@ -119,7 +119,7 @@ def _absolutize_local_sources(config, base_dir):
 @click.option(
     "-E", "--increment", help="Override gridding increment/resolution (e.g., 3s, 10)."
 )
-@click.option("-P", "--crs", help="Override target CRS (e.g., EPSG:3857).")
+@click.option("-P", "--t-srs", help="Override target SRS (e.g., EPSG:3857).")
 @click.option("-O", "--outname", help="Override project name / output basename.")
 @click.option(
     "--outdir",
@@ -138,7 +138,7 @@ def _absolutize_local_sources(config, base_dir):
     help="Centralized directory to cache fetched data across all tiles.",
 )
 def wafflez_run(
-    target, region, increment, crs, outname, outdir, overwrite, shared_cache
+    target, region, increment, t_srs, outname, outdir, overwrite, shared_cache
 ):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
@@ -156,13 +156,13 @@ def wafflez_run(
     if outname:
         base_config.setdefault("project", {})["name"] = outname
 
-    if increment or crs or outname:
+    if increment or t_srs or outname:
         increment = str2inc(increment)
         for module in base_config.get("modules", []):
             for hook in module.get("hooks", []):
                 if hook.get("name") == "stream_reproject":
-                    if crs:
-                        hook.setdefault("args", {})["dst_srs"] = crs
+                    if t_srs:
+                        hook.setdefault("args", {})["dst_srs"] = t_srs
 
         for hook in base_config.get("global_hooks", []):
             hook_name = hook.get("name")
@@ -174,8 +174,8 @@ def wafflez_run(
             if hook_name == "multi_stack":
                 if increment:
                     hook.setdefault("args", {})["res"] = increment
-                if crs:
-                    hook.setdefault("args", {})["crs"] = crs
+                if t_srs:
+                    hook.setdefault("args", {})["crs"] = t_srs
                 if outname:
                     hook.setdefault("args", {})["output"] = f"{outname}_stack.tif"
 
@@ -257,6 +257,8 @@ def wafflez_run(
                 config["region"] = (
                     f"{t_reg.xmin}/{t_reg.xmax}/{t_reg.ymin}/{t_reg.ymax}"
                 )
+                if t_srs:
+                    config["region_srs"] = t_srs
 
             if feat_name:
                 _is_batch = True
@@ -563,7 +565,7 @@ CONTEXT_SETTINGS = dict(max_content_width=120)
     help="Output Format (GTiff, NetCDF, etc.). Default: GTiff.",
 )
 @click.option(
-    "-P", "--crs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)"
+    "-P", "--t-srs", default="EPSG:4326", help="Target Projection (default: EPSG:4326)"
 )
 @click.option(
     "-N", "--nodata", type=float, default=-9999.0, help="NoData Value. Default: -9999."
@@ -661,7 +663,7 @@ def wafflez_build(
     outname,
     outdir,
     format,
-    crs,
+    t_srs,
     nodata,
     algo,
     stack_mode,
@@ -690,7 +692,7 @@ def wafflez_build(
         sys.exit(1)
 
     compiled_modules = globatize_modules(
-        compile_sources(sources), shared_cache=shared_cache, crs=crs
+        compile_sources(sources), shared_cache=shared_cache, crs=t_srs
     )
 
     if outdir is None:
@@ -779,7 +781,7 @@ def wafflez_build(
                     "name": "multi_stack",
                     "args": {
                         "res": increment,
-                        "crs": crs,
+                        "crs": t_srs,
                         "mode": stack_mode,
                         "nodata": nodata,
                         "weight_threshold": weights,
@@ -837,7 +839,7 @@ def wafflez_build(
                                     "weight_threshold": w,
                                     "blend_dist": blend_list[i],
                                     "random_scale": 0.5,
-                                    # "barrier": "osm",
+                                    "barrier": "osm",
                                 },
                             }
                         )
@@ -864,7 +866,10 @@ def wafflez_build(
 
             # --- Interpolation Algorithm (-M) ---
             algo_hook = parse_hook_string(algo)
-            if algo_hook["name"] == "ms_cudem":
+            if (
+                algo_hook["name"] == "ms_cudem"
+                or algo_hook["name"] == "ms_binary_cudem"
+            ):
                 from fetchez.utils import str2inc
 
                 base_res = str2inc(increment)
@@ -878,7 +883,7 @@ def wafflez_build(
                 args["weights"] = weight_list
                 args["steps"] = len(weight_list) - 1
                 args["barrier"] = "osm"
-                args["algo"] = "interp_rbf"
+                # args["algos"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
@@ -947,7 +952,11 @@ def wafflez_build(
 
             # --- Build the recipe ---
             config = make_recipe_config(
-                tile_outname, proc_r_str, compiled_modules, global_hooks
+                tile_outname,
+                proc_r_str,
+                compiled_modules,
+                global_hooks,
+                crs=t_srs,
             )
 
             tile_dir = os.path.join(base_outdir, tile_outname)

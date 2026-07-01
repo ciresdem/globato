@@ -275,7 +275,7 @@ class SimpleStack(FetchHook):
                     new_entries.append((mod, entry))
                 else:
                     entry["stream"] = self._intercept_per_file(stream, acc)
-                    entry["dst_fn"] = out_fn
+                    # entry["dst_fn"] = out_fn
                     new_entries.append((mod, entry))
 
                 entry.setdefault("artifacts", {})[self.name] = out_fn
