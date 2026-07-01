@@ -137,7 +137,9 @@ def dump(
     global_hooks.append({"name": "drop_class", "args": {}})
     global_hooks.append({"name": "xyz_write", "args": {"output_path": output}})
 
-    config = make_recipe_config("pointz_dump", region, compiled_modules, global_hooks, crs=t_srs)
+    config = make_recipe_config(
+        "pointz_dump", region, compiled_modules, global_hooks, crs=t_srs
+    )
 
     if save_recipe:
         out_yaml = "pointz_recipe.yaml"

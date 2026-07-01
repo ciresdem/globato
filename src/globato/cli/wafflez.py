@@ -866,7 +866,10 @@ def wafflez_build(
 
             # --- Interpolation Algorithm (-M) ---
             algo_hook = parse_hook_string(algo)
-            if algo_hook["name"] == "ms_cudem" or algo_hook["name"] == "ms_binary_cudem":
+            if (
+                algo_hook["name"] == "ms_cudem"
+                or algo_hook["name"] == "ms_binary_cudem"
+            ):
                 from fetchez.utils import str2inc
 
                 base_res = str2inc(increment)
@@ -949,7 +952,11 @@ def wafflez_build(
 
             # --- Build the recipe ---
             config = make_recipe_config(
-                tile_outname, proc_r_str, compiled_modules, global_hooks, crs=t_srs,
+                tile_outname,
+                proc_r_str,
+                compiled_modules,
+                global_hooks,
+                crs=t_srs,
             )
 
             tile_dir = os.path.join(base_outdir, tile_outname)

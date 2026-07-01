@@ -274,7 +274,7 @@ class OSMLandmaskModule(FetchModule):
 
             coast_relation_member_ids = set()
             water_relation_member_ids = set()
-            relation_member_ids = set()
+            # relation_member_ids = set()
             relations = []
             ways = []
 
@@ -285,12 +285,17 @@ class OSMLandmaskModule(FetchModule):
 
                     tags = element.get("tags", {})
                     is_coast = tags.get("natural") == "coastline"
-                    is_river = tags.get("waterway") == "riverbank" or tags.get("water") == "river"
+                    is_river = (
+                        tags.get("waterway") == "riverbank"
+                        or tags.get("water") == "river"
+                    )
                     is_lake = tags.get("natural") == "water" and not is_river
 
                     is_water = False
-                    if self.include_rivers and is_river: is_water = True
-                    if self.include_lakes and is_lake: is_water = True
+                    if self.include_rivers and is_river:
+                        is_water = True
+                    if self.include_lakes and is_lake:
+                        is_water = True
 
                     for member in element.get("members", []):
                         if member.get("type") == "way":
