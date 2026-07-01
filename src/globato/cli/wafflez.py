@@ -839,7 +839,7 @@ def wafflez_build(
                                     "weight_threshold": w,
                                     "blend_dist": blend_list[i],
                                     "random_scale": 0.5,
-                                    # "barrier": "osm",
+                                    "barrier": "osm",
                                 },
                             }
                         )
@@ -866,7 +866,7 @@ def wafflez_build(
 
             # --- Interpolation Algorithm (-M) ---
             algo_hook = parse_hook_string(algo)
-            if algo_hook["name"] == "ms_cudem":
+            if algo_hook["name"] == "ms_cudem" or algo_hook["name"] == "ms_binary_cudem":
                 from fetchez.utils import str2inc
 
                 base_res = str2inc(increment)
@@ -880,7 +880,7 @@ def wafflez_build(
                 args["weights"] = weight_list
                 args["steps"] = len(weight_list) - 1
                 args["barrier"] = "osm"
-                args["algo"] = "interp_rbf"
+                # args["algos"] = "interp_rbf"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)

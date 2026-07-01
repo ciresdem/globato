@@ -112,6 +112,32 @@ modules:
           builder: "grid"
           res: 0.008333
 
+  - module: csb
+    args:
+      weight: 0.25
+      min_year: null
+      max_year: null
+      platform: null
+      provider: null
+      limit: 2000
+      outdir: null
+      uncertainty: 0.0
+      use_cache: true
+    hooks:
+      - name: set-datatype
+        args:
+          data_type: csb_xyz
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+9003"
+      - name: rq
+        args:
+          reference: "gebco"
+          threshold: 20
+          mode: "percent"
+          builder: "grid"
+          res: 0.008333
+
   #   #  Bathymetry
   # - module: gebco
   #   args:

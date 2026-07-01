@@ -151,8 +151,9 @@ class MBSReader(BaseGlobatoReader):
                             else:
                                 endian = ">"
                     else:
-                        logger.debug("Unknown FBT flag. Falling back to mblist.")
-                        return None
+                        # logger.debug("Unknown FBT flag. Falling back to mblist.")
+                        # return None
+                        continue
 
                     # Process Comments
                     if flag == ID_COMMENT2:
