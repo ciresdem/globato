@@ -243,7 +243,8 @@ class MBSReader(BaseGlobatoReader):
                         logger.error(
                             "Corrupt array lengths parsed. Falling back to mblist."
                         )
-                        return None
+                        continue
+                        # return None
 
                     if lon > 180:
                         lon -= 360
@@ -341,7 +342,7 @@ class MBSReader(BaseGlobatoReader):
             src_inf = self.src_fn.replace(".fbt", ".inf")  # f"{self.src_fn}.inf"
             meta = self._get_mbs_meta(src_inf)
 
-            xtrack = df["crosstrack_distance"].abs() * 0.05
+            xtrack = df["crosstrack_distance"].abs() * 0.5
             xtrack_scaled = 1 - (
                 (xtrack - xtrack.min()) / (xtrack.max() - xtrack.min()) * 1
             )

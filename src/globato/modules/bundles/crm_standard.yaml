@@ -79,7 +79,7 @@ modules:
     # - name: stream_data
 
   - module: mbdb
-    args: {weight: 1.0, want_inf: True}
+    args: {weight: 0.75, want_inf: True}
     hooks:
       - name: filename_filter
         args:
