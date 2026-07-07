@@ -130,7 +130,9 @@ class RasterBaseHook(FetchHook):
                 )
                 src.write(data, 1)
 
-    def _get_barrier_geometries(self, profile=None):
+    def _get_barrier_geometries(
+        self, profile=None, include_rivers=True, include_lakes=False
+    ):
         if not self.barrier:
             return None
 
@@ -145,6 +147,8 @@ class RasterBaseHook(FetchHook):
             region=region,
             outdir=os.path.join(outdir, "auto_barriers"),
             output_type="vector",
+            include_rivers=include_rivers,
+            include_lakes=include_lakes,
         )
 
         if not barrier_path:
@@ -157,7 +161,9 @@ class RasterBaseHook(FetchHook):
             logger.error(f"Could not parse geometries from {barrier_path}: {e}")
             return None
 
-    def _create_barrier_mask(self, shape, transform):
+    def _create_barrier_mask(
+        self, shape, transform, include_rivers=True, include_lakes=False
+    ):
         """Generates a boolean numpy mask from the barrier.
         Automatically fetches or generates the geometries on-demand.
         Returns True inside the polygons, False outside.
@@ -168,7 +174,9 @@ class RasterBaseHook(FetchHook):
 
         # _get_barrier_geometries fetches the data if not provided
         if not self.barrier_geoms:
-            self.barrier_geoms = self._get_barrier_geometries(transform)
+            self.barrier_geoms = self._get_barrier_geometries(
+                transform, include_rivers=include_rivers, include_lakes=include_lakes
+            )
 
         # If fetching failed or returned nothing, abort
         if not self.barrier_geoms:
