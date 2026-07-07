@@ -179,7 +179,7 @@ modules:
         args:
           match_key: date
           rules:
-            - 
+            -
       - name: set_datatype
         args:
           data_type: nos-xyz
