@@ -193,8 +193,10 @@ def globatize_modules(modules, shared_cache=None, crs=None):
 
             if reproject_hook:
                 reproject_hook.setdefault("args", {})["dst_srs"] = crs
+                if abs_cache:
+                    reproject_hook.setdefault("args", {})["cache_dir"] = abs_cache
             else:
-                hooks.insert(0, {"name": "stream_reproject", "args": {"dst_srs": crs}})
+                hooks.insert(0, {"name": "stream_reproject", "args": {"dst_srs": crs, "cache_dir": abs_cache or "."}})
         else:
             # -- Make sure the source has a stream initiator ---
             has_stream = any(

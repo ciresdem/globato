@@ -171,9 +171,15 @@ modules:
     args:
       datatype: xyz
       weight: 0.15
+      # min_year: 1970
       # z_scale: -0.3048
     hooks:
       - name: unzip
+      - name: set_weight
+        args:
+          match_key: date
+          rules:
+            - 
       - name: set_datatype
         args:
           data_type: nos-xyz
