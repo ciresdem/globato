@@ -67,19 +67,19 @@ modules:
       args:
         dst_srs: EPSG:4326+3855
     - name: spatial_crop
-    - name: simple_stack
-      args:
-        plug: True
-        output: "stacks/{base}_stack.tif"
-    - name: raster_footprint_fill
-      args:
-        max_gap: 15
-        buffer: 25
-        stage: stream
-    - name: stream_data
+    # - name: simple_stack
+    #   args:
+    #     plug: True
+    #     output: "stacks/{base}_stack.tif"
+    # - name: raster_footprint_fill
+    #   args:
+    #     max_gap: 15
+    #     buffer: 25
+    #     stage: stream
+    # - name: stream_data
 
   - module: mbdb
-    args: {weight: 1.0, want_inf: True}
+    args: {weight: 0.75, want_inf: True}
     hooks:
       - name: filename_filter
         args:

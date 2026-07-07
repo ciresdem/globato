@@ -24,6 +24,7 @@ from fetchez.utils import (
     str2inc,
     inc2str,
     int_or,
+    float_or,
     parse_hook_string,
     parse_arg_to_list,
 )
@@ -49,6 +50,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         blend_dists=None,  # 20,
         barrier=None,
         decimation_mode="weighted_mean",
+        bathy_max_z=-0.01,
         **kwargs,
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
@@ -67,6 +69,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.blend_dists = parse_arg_to_list(blend_dists, int)
         self.algos = parse_arg_to_list(algos, str)
         self.decimation_mode = decimation_mode
+        self.bathy_max_z = float_or(bathy_max_z, -0.01)
 
     def _setup_steps(self, src_path):
         # Steps
@@ -300,10 +303,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
                             (1.0 - weights[blend_active]) * z[blend_active]
                         ) + (weights[blend_active] * bg_aligned[blend_active])
 
-                barrier_mask = self._create_barrier_mask(z.shape, src.transform)
-                if barrier_mask is not None:
-                    water_mask = (~barrier_mask) & (z != ndv) & (~np.isnan(z))
-                    z[water_mask] = np.minimum(z[water_mask], -0.01)
+                if self.bathy_max_z is not None:
+                    barrier_mask = self._create_barrier_mask(z.shape, src.transform)
+                    if barrier_mask is not None:
+                        water_mask = (~barrier_mask) & (z != ndv) & (~np.isnan(z))
+                        z[water_mask] = np.minimum(z[water_mask], self.bathy_max_z)
 
             src.write(z.astype(rasterio.float32), 1)
 
@@ -350,7 +354,12 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         if previous_surface:
             shutil.move(previous_surface, dst_path)
-            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif")
+            remove_glob2(
+                "temp_stack_step*.tif",
+                "temp_interp_step*.tif",
+                "*.blend.tif",
+                "*_step_*.tif*",
+            )
             logger.info(f"--- Successfully built Binary CUDEM DEM: {dst_path} ---")
             return True
 

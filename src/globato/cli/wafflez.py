@@ -929,6 +929,28 @@ def wafflez_build(
                 }
             )
 
+            # Generate a hillshade
+            global_hooks.append(
+                {
+                    "name": "viz_geoshade",
+                    "args": {"output": f"{tile_outname}_hs.tif"},
+                }
+            )
+
+            if outdir:
+                global_hooks.append(
+                    {
+                        "name": "copy_artifact",
+                        "args": {
+                            "target_dir": base_outdir,
+                            "match": [
+                                f"{tile_outname}_final.tif",
+                                f"{tile_outname}_hs.tif",
+                            ],
+                        },
+                    }
+                )
+
             # Add some hook descriptions for the recipe yaml
             for hook in global_hooks:
                 hook_name = hook.get("name")
