@@ -265,7 +265,7 @@ def safe_window_read(src, window):
     return data
 
 
-def _generate_barrier_hash(region, res, include_water, target_crs):
+def _generate_barrier_hash(region, res, include_rivers, include_lakes, target_crs):
     """Generates a short, unique 8-character MD5 hash based on spatial parameters."""
 
     import hashlib
@@ -276,7 +276,7 @@ def _generate_barrier_hash(region, res, include_water, target_crs):
         if region
         else "global"
     )
-    hash_seed = f"{region_str}_{res}_{include_water}_{crs_str}"
+    hash_seed = f"{region_str}_{res}_{include_rivers}_{include_lakes}_{crs_str}"
     return hashlib.md5(hash_seed.encode("utf-8")).hexdigest()[:8]
 
 
@@ -298,7 +298,9 @@ def resolve_barrier(
     region,
     outdir=None,
     res="1s",
-    include_water=True,
+    # include_water=True,
+    include_rivers=True,
+    include_lakes=False,
     output_type="raster",
     target_crs="EPSG:4326",
 ):
@@ -356,7 +358,11 @@ def resolve_barrier(
         if generator_mod:
             # OSM/Glob_Coast generate in EPSG:4326
             gen_instance = generator_mod(
-                src_region=region, outdir=outdir, res=res, include_water=include_water
+                src_region=region,
+                outdir=outdir,
+                res=res,
+                include_rivers=include_rivers,
+                include_lakes=include_lakes,
             )
             gen_instance.run()
             run_fetchez([gen_instance])
@@ -404,7 +410,9 @@ def resolve_barrier(
         f"Barrier mismatch: Converting {native_type}({native_crs}) -> {output_type}({target_crs})"
     )
 
-    spatial_hash = _generate_barrier_hash(region, res, include_water, target_crs)
+    spatial_hash = _generate_barrier_hash(
+        region, res, include_rivers, include_lakes, target_crs
+    )
     base_name = os.path.splitext(os.path.basename(resolved_path))[0]
 
     needs_reproject = native_crs != target_crs
