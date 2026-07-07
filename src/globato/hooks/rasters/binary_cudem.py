@@ -354,7 +354,12 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         if previous_surface:
             shutil.move(previous_surface, dst_path)
-            remove_glob2("temp_stack_step*.tif", "temp_interp_step*.tif", "*.blend.tif", "*_step_*.tif*")
+            remove_glob2(
+                "temp_stack_step*.tif",
+                "temp_interp_step*.tif",
+                "*.blend.tif",
+                "*_step_*.tif*",
+            )
             logger.info(f"--- Successfully built Binary CUDEM DEM: {dst_path} ---")
             return True
 

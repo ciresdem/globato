@@ -943,7 +943,10 @@ def wafflez_build(
                         "name": "copy_artifact",
                         "args": {
                             "target_dir": base_outdir,
-                            "match": [f"{tile_outname}_final.tif", f"{tile_outname}_hs.tif"],
+                            "match": [
+                                f"{tile_outname}_final.tif",
+                                f"{tile_outname}_hs.tif",
+                            ],
                         },
                     }
                 )
