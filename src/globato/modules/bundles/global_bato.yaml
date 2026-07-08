@@ -47,11 +47,17 @@ modules:
       - name: set-srs
         args:
           srs: "EPSG:4326+9003"
+      - name: filter_field
+        args:
+          field: confidence
+          min_val: 1
       - name: dynamic-weight
         args:
           source_field: confidence
-          method: inverse
-          offset: 1.2
+          method: linear
+          scale: 0.25
+          # method: inverse
+          # offset: 1.2
       - name: range_z
         args: {max_z: -0.01}
 

@@ -138,6 +138,9 @@ class GeoHillshade(RasterStreamHook):
         if self.cmap_name.lower() == "etopo":
             cpt_path = cpt_utils.generate_etopo_cpt(self.z_min, self.z_max)
 
+        elif self.cmap_name.lower() == "coastal_relief":
+            cpt_path = cpt_utils.generate_coastal_relief_cpt(self.z_min, self.z_max)
+
         elif not os.path.exists(self.cmap_name):
             logger.info(f"[{self.name}] Fetching CPT from fetchez: {self.cmap_name}")
             cpt_path = cpt_utils.fetch_cpt_city(self.cmap_name)
@@ -163,7 +166,7 @@ class GeoHillshade(RasterStreamHook):
             cm = cpt_utils.load_cmap(stretched_cpt)
             os.remove(stretched_cpt)
             # Cleanup etopo base if generated
-            if self.cmap_name.lower() == "etopo" and os.path.exists(cpt_path):
+            if self.cmap_name.lower() in ["etopo", "coastal_relief"] and os.path.exists(cpt_path):
                 os.remove(cpt_path)
             if cm:
                 return cm

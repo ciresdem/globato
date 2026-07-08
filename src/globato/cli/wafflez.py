@@ -873,17 +873,17 @@ def wafflez_build(
                 from fetchez.utils import str2inc
 
                 base_res = str2inc(increment)
-
-                # Automatically step the resolutions down by a factor of 3 for each weight tier.
-                step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
-                logger.info(weight_list)
-                logger.info(step_resolutions)
                 args = algo_hook.setdefault("args", {})
-                args["resolutions"] = step_resolutions
+
+                if "resolutions" not in args:
+                    step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
+                    args["resolutions"] = step_resolutions
+
                 args["weights"] = weight_list
                 args["steps"] = len(weight_list) - 1
-                args["barrier"] = "osm"
-                # args["algos"] = "interp_rbf"
+
+                if "barrier" not in args:
+                    args["barrier"] = "osm"
 
             algo_hook.setdefault("args", {})["output"] = f"{tile_outname}.tif"
             global_hooks.append(algo_hook)
@@ -933,7 +933,7 @@ def wafflez_build(
             global_hooks.append(
                 {
                     "name": "viz_geoshade",
-                    "args": {"output": f"{tile_outname}_hs.tif"},
+                    "args": {"output": f"{tile_outname}_hs.tif", "cmap": "coastal_relief"},
                 }
             )
 
