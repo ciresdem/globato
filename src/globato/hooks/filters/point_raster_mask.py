@@ -55,7 +55,7 @@ class PointRasterMask(GlobatoFilter):
             region=getattr(mod, "region", None),
             outdir=os.path.join(os.getcwd(), "auto_barriers"),
             res=self.res,
-            include_water=True,
+            include_rivers=True,
             output_type="raster",
             target_crs=target_crs,
         )

@@ -339,40 +339,35 @@ class MBSReader(BaseGlobatoReader):
 
         df["w"] = self.weight if self.weight else 1.0
         if self.auto_weight:
-            src_inf = self.src_fn.replace(".fbt", ".inf")  # f"{self.src_fn}.inf"
+            import datetime
+
+            current_year = datetime.datetime.now().year
+
+            src_inf = self.src_fn.replace(".fbt", ".inf")
             meta = self._get_mbs_meta(src_inf)
 
-            xtrack = df["crosstrack_distance"].abs() * 0.5
-            xtrack_scaled = 1 - (
-                (xtrack - xtrack.min()) / (xtrack.max() - xtrack.min()) * 1
+            # Age Factor: Scale from 0.1 (1980) to 1.5 (Current Year)
+            file_year = int(meta.get("date")) if meta.get("date") else current_year - 10
+            age_factor = np.clip(
+                1.5 * ((file_year - 1980) / (current_year - 1980)), 0.1, 1.5
             )
-            age_weight = 1.0
-            if meta.get("date"):
-                age_weight = max(0.01, 1 - ((2024 - int(meta["date"])) / (2024 - 1980)))
-            good_weight = 1
+
+            # Quality Factor: 0.0 to 1.0 based on % Good Beams
+            quality_factor = 1.0
             if meta.get("perc_good"):
-                good_weight = float(meta.get("perc_good")) / 100
-            df["w"] *= np.sqrt(
-                (age_weight**2) + (xtrack_scaled**2) + (good_weight**2)
-            )  # + 1e-5
-            # df["w"] *= xtrack_scaled #age_weight * good_weight * xtrack_scaled# * xtrack_scaled * good_weight + 1e-5
+                quality_factor = float(meta.get("perc_good", 100)) / 100.0
 
-        # df["w"] = self.weight if self.weight else 1.0
-        # if self.auto_weight:
-        #     src_inf = f"{self.src_fn}.inf"
-        #     meta = self._get_mbs_meta(src_inf)
-        #     age_weight = 1.0
-        #     if meta.get("date"):
-        #         age_weight = min(
-        #             0.99, max(0.01, 1 - ((2024 - int(meta["date"])) / (2024 - 2000)))
-        #         )
+            # Cross-Track Factor: Falloff from Centerline (1.0) to Edge (0.1)
+            xtrack = df["crosstrack_distance"].abs()
+            xtrack_max = xtrack.max() + 1e-5  # Prevent division by zero
+            xtrack_norm = xtrack / xtrack_max
+            xtrack_factor = np.clip(1.0 - (xtrack_norm**2), 0.1, 1.0)
 
-        #     #df["u"] = 0.25 + (0.01 * df["z"].abs())
-        #     # df["w"] = np.where(df["u"] > 0, 1.0 / df["u"], 1.0) * age_weight
-        #     df["w"] *= np.where(df["u"] > 0, 1.0 / (np.sqrt(df["u"])), 1.0) * age_weight
-        # else:
-        #     # df["u"] = 0.0
-        #     df["w"] = self.weight
+            df["w"] = (age_factor * quality_factor * xtrack_factor) * (
+                self.weight or 1.0
+            )
+        else:
+            df["w"] = self.weight or 1.0
 
         return df
 
