@@ -411,9 +411,9 @@ class MBSReader(BaseGlobatoReader):
 
             # Cross-Track Factor: Falloff from Centerline (1.0) to Edge (0.1)
             xtrack = df["crosstrack_distance"].abs()
-            xtrack_max = xtrack.max() + 1e-5  # Prevent division by zero
-            xtrack_norm = xtrack / xtrack_max
-            xtrack_factor = np.clip(1.0 - (xtrack_norm**2), 0.1, 1.0)
+            # xtrack_max = xtrack.max() + 1e-5  # Prevent division by zero
+            # xtrack_norm = xtrack / xtrack_max
+            # xtrack_factor = np.clip(1.0 - (xtrack_norm**2), 0.1, 1.0)
 
             if (
                 "amplitude" in df.columns
