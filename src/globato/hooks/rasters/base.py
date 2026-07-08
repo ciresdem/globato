@@ -295,6 +295,8 @@ class RasterStreamHook(RasterBaseHook):
         raise NotImplementedError("Streaming hooks must implement process_chunk()")
 
     def run(self, entries):
+        logger.info(f"[{self.name}] Running in local mode on {len(entries)} entries")
+
         new_entries = []
         for mod, entry in entries:
             # SET CURRENT MOD FOR COASTLINE GENERATION
@@ -393,6 +395,7 @@ class RasterGlobalHook(RasterBaseHook):
         raise NotImplementedError("Global hooks must implement process_raster()")
 
     def run(self, entries):
+        logger.info(f"[{self.name}] Running in global mode on {len(entries)} entries")
         new_entries = []
         for mod, entry in entries:
             # SET CURRENT MOD FOR COASTLINE GENERATION

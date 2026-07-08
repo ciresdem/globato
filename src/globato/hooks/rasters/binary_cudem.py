@@ -25,6 +25,7 @@ from fetchez.utils import (
     inc2str,
     int_or,
     float_or,
+    str_or,
     parse_hook_string,
     parse_arg_to_list,
 )
@@ -68,7 +69,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.resolutions = parse_arg_to_list(resolutions, str2inc)
         self.blend_dists = parse_arg_to_list(blend_dists, int)
         self.algos = parse_arg_to_list(algos, str)
-        self.decimation_mode = decimation_mode
+        self.decimation_mode = str_or(decimation_mode, "weighted_mean")
         self.bathy_max_z = float_or(bathy_max_z, -0.01)
 
     def _setup_steps(self, src_path):
@@ -130,7 +131,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         )
 
     def _get_interp_hook(self, parsed_algo_hook):
-        """Dynamically loads the requested interpolation hook."""
+        """Loads the requested interpolation hook."""
 
         from fetchez.registry import HookRegistry
 
@@ -183,17 +184,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 "focus_sink:target=multi_stack",
             ],
         )
-        # decimated_stack = fetchez.get(
-        #     "file",
-        #     region=region,
-        #     path=src_path,
-        #     hooks=[
-        #         "set_datatype:data_type=multi-stack",
-        #         "stream-init",
-        #         f"multi_stack:res={target_res},output={dst_path},crs={src_crs},overwrite=True",
-        #         "focus_sink:target=multi_stack",
-        #     ],
-        # )
+
         return decimated_stack
 
     def _process_tier(
@@ -211,6 +202,8 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
             z = data[0].astype("float64")
             w = data[2].astype("float64")
+
+            # We only process data at or above the current weight
             valid_mask = (z != ndv) & (~np.isnan(z))
             core_mask = w >= current_weight
 
@@ -310,21 +303,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         z[water_mask] = np.minimum(z[water_mask], self.bathy_max_z)
 
             src.write(z.astype(rasterio.float32), 1)
-
-        # from globato.hooks.rasters.blend import MultiStackBlend
-
-        # MultiStackBlend(
-        #     weight_threshold=current_weight, blend_dist=100, core_dist=50
-        # ).process_raster(step_stack, "test.tif", {})
-        # import fetchez
-        # blended_stack = fetchez.get(
-        #     "file",
-        #     region=self.region,
-        #     path=step_stack,
-        #     hooks=[
-        #         f"ms_blend:core_dist=40,blend_dist=60,weight_threshold={current_weight},random_scale=.5"
-        #     ]
-        # )
 
     def process_raster(self, src_path, dst_path, entry):
         previous_surface = None
