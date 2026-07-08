@@ -22,6 +22,7 @@ import pandas as pd
 from globato.streams import BaseGlobatoReader
 
 from globato.utils import yield_cmd
+from fetchez.utils import float_or
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,11 @@ class MBSReader(BaseGlobatoReader):
         auto_uncertainty=True,
         want_filtered=False,
         want_flagged=False,
+        rot_threshold=2.0,
+        roll_threshold=5.0,
+        pitch_threshold=5.0,
+        kinematic_penalty=0.2,
+        amp_penalty=0.5,
         **kwargs,
     ):
         super().__init__(path, **kwargs)
@@ -67,6 +73,12 @@ class MBSReader(BaseGlobatoReader):
         self.auto_uncertainty = auto_uncertainty
         self.want_filtered = want_filtered
         self.want_flagged = want_flagged
+
+        self.rot_threshold = float_or(rot_threshold, 2.0)
+        self.roll_threshold = float_or(roll_threshold, 5.0)
+        self.pitch_threshold = float_or(pitch_threshold, 5.0)
+        self.kinematic_penalty = float_or(kinematic_penalty, 0.2)
+        self.amp_penalty = float_or(amp_penalty, 0.5)
 
         self.weight = 1
         # if self.src_srs is None:
@@ -109,6 +121,8 @@ class MBSReader(BaseGlobatoReader):
         logger.debug(f"Attempting native Python binary read for {self.src_fn}")
 
         all_x, all_y, all_z, all_flags, all_xtrack = [], [], [], [], []
+        all_heading, all_ping, all_amp = [], [], []
+        ping_counter = 0
 
         # MB-System format ID constants
         ID_V1, ID_V2, ID_V3 = 25700, 28270, 17476
@@ -271,9 +285,20 @@ class MBSReader(BaseGlobatoReader):
                     alongtrack_raw = np.frombuffer(b_ltrack, dtype=f"{endian}i2")
 
                     if beams_amp > 0:
-                        f.read(beams_amp * 2)
+                        b_amp = f.read(beams_amp * 2)
+                        if len(b_amp) < beams_amp * 2:
+                            break
+                        amp_raw = np.frombuffer(b_amp, dtype=f"{endian}i2")
+                    else:
+                        amp_raw = np.zeros(beams_bath)
+
                     if pixels_ss > 0:
                         f.read(pixels_ss * 2 * 3)
+
+                    # if beams_amp > 0:
+                    #     f.read(beams_amp * 2)
+                    # if pixels_ss > 0:
+                    #     f.read(pixels_ss * 2 * 3)
 
                     # Apply Scaling
                     bath = ((bath_raw * depth_scale) + sensor_depth) * -1
@@ -299,6 +324,16 @@ class MBSReader(BaseGlobatoReader):
                     all_flags.append(beamflags)
                     all_xtrack.append(xtrack)
 
+                    all_heading.append(np.full(beams_bath, heading))
+                    all_ping.append(np.full(beams_bath, ping_counter))
+
+                    if len(amp_raw) == beams_bath:
+                        all_amp.append(amp_raw)
+                    else:
+                        all_amp.append(np.zeros(beams_bath))
+
+                    ping_counter += 1
+
         except Exception as e:
             logger.debug(f"Native Python FBT read failed: {e}. Falling back to mblist.")
             return None
@@ -313,6 +348,9 @@ class MBSReader(BaseGlobatoReader):
                 "z": np.concatenate(all_z),
                 "beamflag": np.concatenate(all_flags),
                 "crosstrack_distance": np.concatenate(all_xtrack),
+                "heading": np.concatenate(all_heading),
+                "ping": np.concatenate(all_ping),
+                "amplitude": np.concatenate(all_amp),
             }
         )
 
@@ -342,7 +380,6 @@ class MBSReader(BaseGlobatoReader):
             import datetime
 
             current_year = datetime.datetime.now().year
-
             src_inf = self.src_fn.replace(".fbt", ".inf")
             meta = self._get_mbs_meta(src_inf)
 
@@ -357,17 +394,58 @@ class MBSReader(BaseGlobatoReader):
             if meta.get("perc_good"):
                 quality_factor = float(meta.get("perc_good", 100)) / 100.0
 
+            theta = np.arctan2(df["crosstrack_distance"].abs(), df["z"].abs())
+            acoustic_factor = np.clip(np.cos(theta) ** 2, 0.1, 1.0)
+
+            ping_headings = df.groupby("ping")["heading"].first()
+            heading_diffs = ping_headings.diff().abs()
+            heading_diffs = np.minimum(heading_diffs, 360 - heading_diffs)
+
+            df["rot"] = df["ping"].map(heading_diffs.fillna(0))
+
+            # If the vessel turns more than 2 degrees between pings, heavily penalize the swath
+            # kinematic_factor = np.where(df["rot"] > 2.0, 0.2, 1.0)
+            kinematic_factor = np.where(
+                df["rot"] > self.rot_threshold, self.kinematic_penalty, 1.0
+            )
+
             # Cross-Track Factor: Falloff from Centerline (1.0) to Edge (0.1)
             xtrack = df["crosstrack_distance"].abs()
             xtrack_max = xtrack.max() + 1e-5  # Prevent division by zero
             xtrack_norm = xtrack / xtrack_max
             xtrack_factor = np.clip(1.0 - (xtrack_norm**2), 0.1, 1.0)
 
-            df["w"] = (age_factor * quality_factor * xtrack_factor) * (
-                self.weight or 1.0
-            )
+            if (
+                "amplitude" in df.columns
+                and df["amplitude"].max() > df["amplitude"].min()
+            ):
+                # (5th to 95th percentile) to ignore anomalous spikes
+                p5 = df["amplitude"].quantile(0.05)
+                p95 = df["amplitude"].quantile(0.95)
+
+                # Normalize the amplitude from 0.0 to 1.0
+                amp_norm = (df["amplitude"] - p5) / (p95 - p5 + 1e-5)
+
+                # Map the 0.0 -> 1.0 range onto our penalty floor -> 1.0
+                amp_factor = np.clip(
+                    self.amp_penalty + (amp_norm * (1.0 - self.amp_penalty)),
+                    self.amp_penalty,
+                    1.0,
+                )
+            else:
+                amp_factor = 1.0
+
+            df["w"] = (
+                age_factor
+                * quality_factor
+                * acoustic_factor
+                * kinematic_factor
+                * amp_factor
+            ) * (self.weight or 1.0)
         else:
             df["w"] = self.weight or 1.0
+
+        df.drop(columns=["heading", "ping", "rot"], inplace=True, errors="ignore")
 
         return df
 
@@ -419,7 +497,8 @@ class MBSReader(BaseGlobatoReader):
 
         # O-flags: XYZ, Distance(D), Angle(A), Grazing(G), Flag(g),
         # Pitch(P), p(draft), Roll(R), r(heave), Speed(S), Course(C), c(headings), etc.
-        cmd_full = f"mblist -M{self.mb_exclude} -OXYZDAGgFPpRrSCcELH#{region_arg} -I{self.src_fn}{fmt_arg}"
+        # cmd_full = f"mblist -M{self.mb_exclude} -OXYZDAGgFPpRrSCcELH#{region_arg} -I{self.src_fn}{fmt_arg}"
+        cmd_full = f"mblist -M{self.mb_exclude} -OXYZDAGgFPpRrSCcELH#a{region_arg} -I{self.src_fn}{fmt_arg}"
 
         column_names = [
             "x",
@@ -443,6 +522,7 @@ class MBSReader(BaseGlobatoReader):
             "beam_number",
             "w",
             "u",
+            "amplitude",
         ]
 
         # Execute mblist and Parse
@@ -480,24 +560,75 @@ class MBSReader(BaseGlobatoReader):
             16: "cumulative_alongtrack_distance",
             17: "heading",
             18: "beam_number",
+            19: "amplitude",
         }
         df.rename(columns=rename_map, inplace=True)
         df = df[rename_map.values()]
 
-        # Calculate Uncertainty and Weight
         if self.auto_weight:
-            u_depth = (0.25 + (0.02 * df["z"].abs())) * 0.51
-            u_xtrack = 0.005 * df["crosstrack_distance"].abs()
-            speed_diff = (df["speed"] - 14).abs()
-            tmp_speed = np.minimum(14, speed_diff)
-            u_speed = tmp_speed * 0.51
+            import datetime
 
-            df["u"] = np.sqrt(u_depth**2 + u_xtrack**2 + u_speed**2)
-            df["w"] = np.where(df["u"] > 0, 1.0 / df["u"], 1.0)
-            df["w"] *= age_weight
+            current_year = datetime.datetime.now().year
+
+            file_year = int(meta.get("date")) if meta.get("date") else current_year - 10
+            age_factor = np.clip(
+                1.5 * ((file_year - 1980) / (current_year - 1980)), 0.1, 1.5
+            )
+            quality_factor = float(meta.get("perc_good", 100)) / 100.0
+
+            theta = np.arctan2(df["crosstrack_distance"].abs(), df["z"].abs())
+            acoustic_factor = np.clip(np.cos(theta) ** 2, 0.1, 1.0)
+
+            kinematic_factor = np.ones(len(df))
+
+            if "roll" in df.columns:
+                kinematic_factor = np.where(
+                    df["roll"].abs() > self.roll_threshold,
+                    self.kinematic_penalty,
+                    kinematic_factor,
+                )
+            if "pitch" in df.columns:
+                kinematic_factor = np.where(
+                    df["pitch"].abs() > self.pitch_threshold,
+                    self.kinematic_penalty,
+                    kinematic_factor,
+                )
+
+            df["ping_boundary"] = (df["heading"].diff().abs() > 1e-4).cumsum()
+            ping_rot = df.groupby("ping_boundary")["heading"].first().diff().abs()
+            ping_rot = np.minimum(ping_rot, 360 - ping_rot).fillna(0)
+            df["rot"] = df["ping_boundary"].map(ping_rot)
+
+            kinematic_factor = np.where(
+                df["rot"] > self.rot_threshold, self.kinematic_penalty, kinematic_factor
+            )
+
+            if (
+                "amplitude" in df.columns
+                and df["amplitude"].max() > df["amplitude"].min()
+            ):
+                p5 = df["amplitude"].quantile(0.05)
+                p95 = df["amplitude"].quantile(0.95)
+                amp_norm = (df["amplitude"] - p5) / (p95 - p5 + 1e-5)
+                amp_factor = np.clip(
+                    self.amp_penalty + (amp_norm * (1.0 - self.amp_penalty)),
+                    self.amp_penalty,
+                    1.0,
+                )
+            else:
+                amp_factor = 1.0
+
+            df["w"] = (
+                age_factor
+                * quality_factor
+                * acoustic_factor
+                * kinematic_factor
+                * amp_factor
+            ) * (self.weight or 1.0)
+
+            df.drop(columns=["ping_boundary", "rot"], inplace=True, errors="ignore")
         else:
-            df["u"] = 0.0
-            df["w"] = self.weight if self.weight else 1.0
+            df["w"] = self.weight or 1.0
 
         if self.want_filtered:
             df = self._filter_mbs_data(df)

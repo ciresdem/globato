@@ -41,6 +41,7 @@ HEADERS = {
     include_water="Macro flag to include both lakes and rivers.",
     include_rivers="If True, carves out rivers and estuaries (waterway=riverbank).",
     include_lakes="If True, carves out inland lakes and ponds (natural=water).",
+    include_reefs="If True, returns reefs (natural=reef) as land.",
     min_area_sqm="Minimum area in square meters for a waterbody to be carved out.",
 )
 class OSMLandmaskModule(FetchModule):
@@ -57,6 +58,7 @@ class OSMLandmaskModule(FetchModule):
         include_water=False,
         include_rivers=None,
         include_lakes=None,
+        include_reefs=False,
         min_area_sqm=0,
         **kwargs,
     ):
@@ -79,6 +81,7 @@ class OSMLandmaskModule(FetchModule):
         else:
             self.include_lakes = str(include_lakes).lower() in ["true", "1", "t", "yes"]
 
+        self.include_reefs = str(include_reefs).lower() in ["true", "1", "t", "yes"]
         self.min_area_sqm = float(min_area_sqm)
         self.headers = HEADERS
 
@@ -156,6 +159,13 @@ class OSMLandmaskModule(FetchModule):
             query += """
             way["natural"="water"]["water"!="river"];
             relation["natural"="water"]["water"!="river"];
+            """
+
+        # reefs
+        if self.include_reefs:
+            query += """
+            way["natural"="reef"];
+            relation["natural"="reef"];
             """
 
         query += """
@@ -267,6 +277,7 @@ class OSMLandmaskModule(FetchModule):
         water_lines = []
         island_polys = []
         island_lines = []
+        reef_polys = []
 
         try:
             with open(osm_file, "r", encoding="utf-8") as f:
@@ -355,18 +366,26 @@ class OSMLandmaskModule(FetchModule):
                 way_id = way.get("id")
                 tags = way.get("tags", {})
                 is_coast = tags.get("natural") == "coastline"
+                is_reef = self.include_reefs and tags.get("natural") == "reef"
                 is_water = self.include_water and (
                     tags.get("natural") == "water"
                     or tags.get("waterway") == "riverbank"
                 )
 
-                if not is_coast and not is_water:
+                if not is_coast and not is_water and not is_reef:
                     continue
+
                 process_as_coast = is_coast and way_id not in coast_relation_member_ids
                 process_as_water = is_water and way_id not in water_relation_member_ids
+                process_as_reef = is_reef
 
-                if not process_as_coast and not process_as_water:
+                if (
+                    not process_as_coast
+                    and not process_as_water
+                    and not process_as_reef
+                ):
                     continue
+
                 if "geometry" in way:
                     coords = [(pt["lon"], pt["lat"]) for pt in way["geometry"]]
                     if len(coords) < 2:
@@ -380,6 +399,11 @@ class OSMLandmaskModule(FetchModule):
                             water_polys.append(Polygon(coords))
                         else:
                             # water_lines.append(line)
+                            pass
+                    elif process_as_reef:
+                        if line.is_closed and len(coords) >= 4:
+                            reef_polys.append(Polygon(coords))
+                        else:
                             pass
 
         except Exception as e:
@@ -436,6 +460,12 @@ class OSMLandmaskModule(FetchModule):
 
                 if is_land:
                     land_polys.append(poly)
+
+        if reef_polys:
+            logger.info(
+                f"[OSM] Injecting {len(reef_polys)} offshore reefs into landmask..."
+            )
+            land_polys.extend(reef_polys)
 
         # --- Carve out Inland Water & Protect Islands ---
         if land_polys and water_polys:
