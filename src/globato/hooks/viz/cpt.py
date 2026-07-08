@@ -223,6 +223,91 @@ def generate_etopo_cpt(gmin, gmax, output_file="tmp.cpt"):
     return output_file
 
 
+def generate_coastal_relief_cpt(gmin, gmax, output_file="tmp.cpt"):
+    """Generates a CPT based on a custom QGIS Coastal Topobathy colormap,
+    scaled to gmin/gmax while anchoring the coastline (0m) exactly at 0.
+    """
+
+    trs = [
+        -6000,
+        -4000,
+        -2500,
+        -1500,
+        -750,
+        -25,
+        -10,
+        -5,
+        0,
+        1,
+        2.5,
+        5,
+        10,
+        25,
+        50,
+        100,
+        250,
+        500,
+        1000,
+    ]
+
+    colors = [
+        [18, 32, 89],
+        [28, 55, 125],
+        [38, 84, 158],
+        [48, 115, 184],
+        [68, 150, 199],
+        [106, 185, 209],
+        [145, 210, 217],
+        [181, 225, 219],
+        [214, 235, 214],
+        [211, 229, 176],
+        [180, 214, 143],
+        [145, 190, 112],
+        [111, 162, 88],
+        [130, 137, 82],
+        [157, 126, 83],
+        [181, 143, 103],
+        [199, 174, 137],
+        [218, 205, 177],
+        [242, 239, 230],
+    ]
+
+    new_elevs = []
+    split_val = 0
+    t_min, t_max = min(trs), max(trs)
+
+    # Stretch the fixed elevation bins to fit the actual grid's Min/Max
+    # while strictly pinning 0 (the coastline) to 0.
+    for t in trs:
+        if t <= split_val:
+            if t_min == split_val:
+                pct = 0
+            else:
+                pct = (t - t_min) / (split_val - t_min)
+            val = gmin + pct * (0 - gmin)
+        else:
+            if t_max == split_val:
+                pct = 0
+            else:
+                pct = (t - split_val) / (t_max - split_val)
+            val = 0 + pct * (gmax - 0)
+        new_elevs.append(val)
+
+    with open(output_file, "w") as cpt:
+        for i in range(len(new_elevs) - 1):
+            elev_curr = new_elevs[i]
+            elev_next = new_elevs[i + 1]
+            c1 = colors[i]
+            c2 = colors[i + 1]
+
+            # Write Gradient CPT format (z0 r0 g0 b0 z1 r1 g1 b1)
+            cpt.write(
+                f"{elev_curr} {c1[0]} {c1[1]} {c1[2]} {elev_next} {c2[0]} {c2[1]} {c2[2]}\n"
+            )
+
+    return output_file
+
+
 def process_cpt(cpt_file, gmin, gmax, gdal=False, split_cpt=None):
     """Stretches an existing CPT to global limits, preserving the split hinge point."""
 
