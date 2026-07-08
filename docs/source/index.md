@@ -14,6 +14,7 @@ Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and 
 * **Declarative Pipelines:** Define your data sources, regions, and processing hooks in a simple YAML recipe, ensuring 100% reproducibility.
 * **API Caching:** Remote API queries (NOAA, Copernicus, etc.) are hashed and cached locally. Tweak your blending weights or hillshade parameters and re-run your DEM in seconds without re-downloading data.
 * **On-The-Fly Datum Shifts:** True 3D projection and vertical datum transformations (e.g., MLLW to NAVD88) applied directly to data streams.
+* **Native Projection Support:** Pass projected bounding boxes (e.g., UTM, State Plane) natively. Globato seamlessly warps regions on-the-fly to fetch remote data and projects it back to your target coordinate system.
 
 ---
 

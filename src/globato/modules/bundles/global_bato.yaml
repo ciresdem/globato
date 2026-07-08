@@ -69,7 +69,7 @@ modules:
           threshold: 10
           mode: "percent"
           builder: "grid"
-          res: 0.008333
+          res: 0.000277777
 
   # Global Marine Gravity Bathymetry
   - module: sysu
