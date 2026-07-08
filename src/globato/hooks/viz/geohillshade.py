@@ -166,7 +166,9 @@ class GeoHillshade(RasterStreamHook):
             cm = cpt_utils.load_cmap(stretched_cpt)
             os.remove(stretched_cpt)
             # Cleanup etopo base if generated
-            if self.cmap_name.lower() in ["etopo", "coastal_relief"] and os.path.exists(cpt_path):
+            if self.cmap_name.lower() in ["etopo", "coastal_relief"] and os.path.exists(
+                cpt_path
+            ):
                 os.remove(cpt_path)
             if cm:
                 return cm

@@ -17,6 +17,7 @@ from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
 
+
 class StreamFieldFilter(FetchHook):
     """Filters a point stream, keeping only points where a specific field
     falls within the defined min_val and max_val thresholds.
@@ -45,10 +46,10 @@ class StreamFieldFilter(FetchHook):
 
             mask = np.ones(len(chunk), dtype=bool)
             if self.min_val is not None:
-                mask &= (chunk[self.field] >= self.min_val)
+                mask &= chunk[self.field] >= self.min_val
 
             if self.max_val is not None:
-                mask &= (chunk[self.field] <= self.max_val)
+                mask &= chunk[self.field] <= self.max_val
 
             valid_chunk = chunk[mask]
             if len(valid_chunk) > 0:

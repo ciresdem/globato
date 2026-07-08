@@ -876,7 +876,9 @@ def wafflez_build(
                 args = algo_hook.setdefault("args", {})
 
                 if "resolutions" not in args:
-                    step_resolutions = [base_res * (3**i) for i in range(len(weight_list))]
+                    step_resolutions = [
+                        base_res * (3**i) for i in range(len(weight_list))
+                    ]
                     args["resolutions"] = step_resolutions
 
                 args["weights"] = weight_list
@@ -933,7 +935,10 @@ def wafflez_build(
             global_hooks.append(
                 {
                     "name": "viz_geoshade",
-                    "args": {"output": f"{tile_outname}_hs.tif", "cmap": "coastal_relief"},
+                    "args": {
+                        "output": f"{tile_outname}_hs.tif",
+                        "cmap": "coastal_relief",
+                    },
                 }
             )
 
