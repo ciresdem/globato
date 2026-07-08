@@ -340,6 +340,7 @@ class MBSReader(BaseGlobatoReader):
         df["w"] = self.weight if self.weight else 1.0
         if self.auto_weight:
             import datetime
+
             current_year = datetime.datetime.now().year
 
             src_inf = self.src_fn.replace(".fbt", ".inf")
@@ -347,7 +348,9 @@ class MBSReader(BaseGlobatoReader):
 
             # Age Factor: Scale from 0.1 (1980) to 1.5 (Current Year)
             file_year = int(meta.get("date")) if meta.get("date") else current_year - 10
-            age_factor = np.clip(1.5 * ((file_year - 1980) / (current_year - 1980)), 0.1, 1.5)
+            age_factor = np.clip(
+                1.5 * ((file_year - 1980) / (current_year - 1980)), 0.1, 1.5
+            )
 
             # Quality Factor: 0.0 to 1.0 based on % Good Beams
             quality_factor = 1.0
@@ -356,11 +359,13 @@ class MBSReader(BaseGlobatoReader):
 
             # Cross-Track Factor: Falloff from Centerline (1.0) to Edge (0.1)
             xtrack = df["crosstrack_distance"].abs()
-            xtrack_max = xtrack.max() + 1e-5 # Prevent division by zero
+            xtrack_max = xtrack.max() + 1e-5  # Prevent division by zero
             xtrack_norm = xtrack / xtrack_max
-            xtrack_factor = np.clip(1.0 - (xtrack_norm ** 2), 0.1, 1.0)
+            xtrack_factor = np.clip(1.0 - (xtrack_norm**2), 0.1, 1.0)
 
-            df["w"] = (age_factor * quality_factor * xtrack_factor) * (self.weight or 1.0)
+            df["w"] = (age_factor * quality_factor * xtrack_factor) * (
+                self.weight or 1.0
+            )
         else:
             df["w"] = self.weight or 1.0
 
