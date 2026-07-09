@@ -160,7 +160,7 @@ modules:
           stage: "file"
       - name: set_datatype
         args:
-          data_type: "charts_000"
+          data_type: "charts-xyz"
       - name: stream_data
         args:
           chunk_size: 100000
