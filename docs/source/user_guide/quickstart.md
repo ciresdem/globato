@@ -1,9 +1,9 @@
 # Quickstart: From Zero to DEM in 1 arc-second
 
-Welcome to **Globato**, the continuous DEM generation framework. In this guide, we will go from installing the software to generating a production-ready, beautiful Coastal Digital Elevation Model (DEM) of Miami, Florida, in just a few terminal commands.
+Welcome to **Globato**, the continuous DEM generation framework. In this guide, we will go from installing the software to generating a production-ready Coastal Digital Elevation Model (DEM) of San Diego, California, in just a few terminal commands.
 
 ## Prerequisites
-Globato requires Python 3.10+. We highly recommend doing this inside a clean virtual environment (like conda or venv).
+Globato requires Python 3.12+. We highly recommend doing this inside a clean virtual environment (like conda or venv).
 
 ```bash
 pip install globato
@@ -15,7 +15,7 @@ Globato uses **Recipes** (YAML configuration files) to define how data is downlo
 Let's see what is available:
 
 ```bash
-globato recipe list
+globato recipes list
 ```
 
 You should see quick_coastal and crm_standard in the list.
@@ -23,16 +23,16 @@ You should see quick_coastal and crm_standard in the list.
 If you want to know exactly what a recipe does before you run it, you can inspect it:
 
 ```bash
-globato recipe info quick_coastal
+globato recipes info quick_coastal
 ```
 
-**Note**: quick_coastal is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.
+**Note**: `quick_coastal` is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.
 
 ## Step 2: Running a Curated Recipe
 Let's run the quick_coastal recipe. Globato's geographic engine is smart enough to understand place names, so we don't even need to look up bounding box coordinates. We just use the -R (Region) flag and prefix our search with `loc:`. Since by default the quick_coastal recipe will generate a DEM at 3 arc-seconds, lets increase the output resolution to 1 arc-second.
 
 ```bash
-globato recipe run quick_coastal -R loc:"portland, me -E 1s"
+globato cudem run quick_coastal -R loc:"portland, me -E 1s"
 ```
 
 **What just happened?**
@@ -59,7 +59,7 @@ What if you want to build a DEM using completely different data, but don't want 
 Let's build a DEM using USGS 3DEP topography and NOAA MBDB (Multibeam) bathymetry.
 
 ```bash
-globato recipe build -R loc:"San Diego" tnm:datasets=3/4 mbdb:want_inf=false -E 1s
+globato cudem build -R loc:"San Diego" tnm:datasets=3/4 mbdb -E 1s
 ```
 
 Globato will output a custom San_Diego_recipe.yaml file into your directory and immediately execute it.
@@ -72,7 +72,7 @@ Raw data is rarely perfect. Globato allows you to attach processing "hooks" dire
 Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded and lets also remove hydro-flattened regions from the national map DEMs using the `raster_flats` hook.
 
 ```bash
-globato recipe build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s
+globato cudem build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s
 ```
 
 *(Above: The just generated DEM of San Diego, California)*
