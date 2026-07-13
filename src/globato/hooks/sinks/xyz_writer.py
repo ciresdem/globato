@@ -95,9 +95,10 @@ class WriteXYZ(FetchHook):
 
 
 class XYZWrite(FetchHook):
-    name = "xyz_write"
+    name = "xyz-write"
     meta_stage = "stream"
     meta_category = "stream-sink"
+    meta_aliases = ["xyz_write"]
 
     def __init__(self, output_path=None, **kwargs):
         super().__init__(**kwargs)
@@ -114,7 +115,7 @@ class XYZWrite(FetchHook):
                 stream = entry["stream"]
                 for chunk in stream:
                     data = np.column_stack(
-                        (chunk["x"], chunk["y"], chunk["z"], chunk["w"], chunk["u"])
+                        (chunk["x"], chunk["y"], chunk["z"])#, chunk["w"], chunk["u"])
                     )
 
                     np.savetxt(
