@@ -40,6 +40,8 @@ modules:
       - name: unzip
       - name: filename_filter
         args: {match: ".tif"}
+      - name: raster_warp
+        args: {res: 1s}
       - name: set_datatype
         args:
           data_type: "rasterio"
@@ -100,7 +102,7 @@ modules:
     hooks:
       - name: set_datatype
         args:
-          data_type: "ehydro_gdb"
+          data_type: "ehydro-xyz"
       - name: stream_data
       - name: stream_reproject
         args:
