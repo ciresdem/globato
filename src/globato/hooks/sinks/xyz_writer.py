@@ -115,7 +115,11 @@ class XYZWrite(FetchHook):
                 stream = entry["stream"]
                 for chunk in stream:
                     data = np.column_stack(
-                        (chunk["x"], chunk["y"], chunk["z"])  # , chunk["w"], chunk["u"])
+                        (
+                            chunk["x"],
+                            chunk["y"],
+                            chunk["z"],
+                        )  # , chunk["w"], chunk["u"])
                     )
 
                     np.savetxt(
