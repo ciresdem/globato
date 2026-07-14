@@ -858,9 +858,7 @@ class ATL03Reader(IceSat2Reader):
 
         try:
             land_results = fetchez.get(
-                "osm_landmask",
-                region=self.region.to_list(),
-                outdir=self.cache_dir
+                "osm_landmask", region=self.region.to_list(), outdir=self.cache_dir
             )
             if not land_results:
                 return None
@@ -1231,7 +1229,9 @@ class ATL03Reader(IceSat2Reader):
             df = self.apply_atl12_classifications(df, atl12_fn, laser)
 
         if self.use_external_masks and land_tree is not None:
-            logger.debug("Enforcing absolute landmask to eliminate rogue offshore land classes")
+            logger.debug(
+                "Enforcing absolute landmask to eliminate rogue offshore land classes"
+            )
             x_vals = df["longitude"].values
             y_vals = df["latitude"].values
             points = shapely.points(x_vals, y_vals)
@@ -1242,7 +1242,9 @@ class ATL03Reader(IceSat2Reader):
 
             # Identify land classifications sitting out in the water
             # (Excluding valid water columns like 40-Bathy, 42-Inland Lakes, etc.)
-            rogue_offshore_land = is_offshore & (~df["ph_h_classed"].isin([40, 41, 42, 44]))
+            rogue_offshore_land = is_offshore & (
+                ~df["ph_h_classed"].isin([40, 41, 42, 44])
+            )
 
             # Wipe them out and default them to open ocean
             df.loc[rogue_offshore_land, "ph_h_classed"] = 44
