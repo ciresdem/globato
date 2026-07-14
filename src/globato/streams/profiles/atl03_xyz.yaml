@@ -5,3 +5,4 @@ reader:
   name: atl03-point-reader
   args:
     classes: "1"
+    use_external_masks: True
