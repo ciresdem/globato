@@ -847,6 +847,41 @@ class ATL03Reader(IceSat2Reader):
             logger.warning(f"Inland water classification failed: {e}")
         return df
 
+    def _get_land_tree(self):
+        """Fetches the OSM coastline landmask for the region and builds an STRtree."""
+
+        if not self.region:
+            return None
+
+        region_geom = self.region.to_shapely()
+        geoms = []
+
+        try:
+            land_results = fetchez.get(
+                "osm_landmask",
+                region=self.region.to_list(),
+                outdir=self.cache_dir
+            )
+            if not land_results:
+                return None
+
+            for res in land_results:
+                path = res if isinstance(res, str) else res.get("dst_fn")
+                if path and os.path.exists(path):
+                    with fiona.open(path, "r") as src:
+                        for feat in src:
+                            if feat.get("geometry") is not None:
+                                land_geom = shape(feat["geometry"])
+                                # Only retain polygons that intersect our bounding box
+                                if region_geom.intersects(land_geom):
+                                    geoms.append(land_geom)
+            if geoms:
+                return STRtree(geoms)
+        except Exception as e:
+            logger.warning(f"Failed to build external landmask tree: {e}")
+
+        return None
+
     def _get_bldg_tree(self, source="bing"):
         region_geom = self.region.to_shapely()
         geoms = []
@@ -1056,6 +1091,7 @@ class ATL03Reader(IceSat2Reader):
         atl12_fn=None,
         atl13_fn=None,
         bldg_tree=None,
+        land_tree=None,
     ):
         if orientation is None:
             orientation = f["/orbit_info/sc_orient"][0]
@@ -1194,6 +1230,27 @@ class ATL03Reader(IceSat2Reader):
             logger.debug("Apply ATL12 Classifications")
             df = self.apply_atl12_classifications(df, atl12_fn, laser)
 
+        if self.use_external_masks and land_tree is not None:
+            logger.debug("Enforcing absolute landmask to eliminate rogue offshore land classes")
+            x_vals = df["longitude"].values
+            y_vals = df["latitude"].values
+            points = shapely.points(x_vals, y_vals)
+
+            land_idx = land_tree.query(points, predicate="intersects")
+            intersecting_indices = np.unique(land_idx)
+            is_offshore = ~df.index.isin(intersecting_indices)
+
+            # Identify land classifications sitting out in the water
+            # (Excluding valid water columns like 40-Bathy, 42-Inland Lakes, etc.)
+            rogue_offshore_land = is_offshore & (~df["ph_h_classed"].isin([40, 41, 42, 44]))
+
+            # Wipe them out and default them to open ocean
+            df.loc[rogue_offshore_land, "ph_h_classed"] = 44
+
+            # Set near-surface offshore returns to serve as nearshore/coastline
+            is_near_surface = rogue_offshore_land & (df["photon_height"].abs() <= 5.0)
+            df.loc[is_near_surface, "ph_h_classed"] = 41
+
         logger.debug("Apply Near-Shore Classifications")
         df = self.classify_nearshore_roughness(df)
         logger.debug("Apply Inland Water Classifications")
@@ -1225,8 +1282,11 @@ class ATL03Reader(IceSat2Reader):
         # osm_lakes = None
 
         bldg_tree = None
+        land_tree = None
         if self.use_external_masks:
-            bldg_tree = self._get_bldg_tree(source="gba")
+            # bldg_tree = self._get_bldg_tree(source="gba")
+            bldg_tree = self._get_bldg_tree(source="bing")
+            land_tree = self._get_land_tree()
 
         # Fetch Aux ATLXX Data
         atl08_fn = self.fetch_atlxx(self.fn, "ATL08") if self.classes else None
@@ -1253,6 +1313,7 @@ class ATL03Reader(IceSat2Reader):
                         atl24_fn=atl24_fn,
                         atl06_fn=atl06_fn,
                         bldg_tree=bldg_tree,
+                        land_tree=land_tree,
                     )
 
                     if dataset is None or dataset.empty:
