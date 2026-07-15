@@ -217,7 +217,9 @@ class DiffZHook(FetchHook):
     name = "z-residual"
     meta_stage = "stream"
     meta_category = "stream-transform"
-    meta_desc = "Calculates exact residuals by mapping points onto a sloped bilinear DEM facet."
+    meta_desc = (
+        "Calculates exact residuals by mapping points onto a sloped bilinear DEM facet."
+    )
 
     def __init__(self, raster=None, **kwargs):
         super().__init__(**kwargs)
@@ -253,19 +255,25 @@ class DiffZHook(FetchHook):
                     order=1,
                     mode="constant",
                     cval=np.nan,
-                    prefilter=False
+                    prefilter=False,
                 )
 
                 # Ensure the chunk has a residual column
                 if "residual" not in chunk.dtype.names:
                     from numpy.lib.recfunctions import append_fields
+
                     chunk = append_fields(
-                        chunk, "residual", np.full(len(chunk), np.nan, dtype="f4"), usemask=False
+                        chunk,
+                        "residual",
+                        np.full(len(chunk), np.nan, dtype="f4"),
+                        usemask=False,
                     )
 
                 # Only calculate residuals where the DEM has valid data
                 valid_mask = ~np.isnan(sampled_z)
-                chunk["residual"][valid_mask] = chunk["z"][valid_mask] - sampled_z[valid_mask]
+                chunk["residual"][valid_mask] = (
+                    chunk["z"][valid_mask] - sampled_z[valid_mask]
+                )
                 chunk["z"][valid_mask] = chunk["z"][valid_mask] - sampled_z[valid_mask]
                 # chunk["z"][valid_mask] = sampled_z[valid_mask]
                 # Yield only the points that successfully intersected the DEM
