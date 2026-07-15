@@ -17,6 +17,8 @@ from fetchez.hooks import FetchHook
 from fetchez.utils import str2bool, float_or
 from globato.utils import add_field_to_recarray
 
+from scipy.ndimage import map_coordinates
+
 logger = logging.getLogger(__name__)
 
 
@@ -205,3 +207,81 @@ class Diff_Z(FetchHook, RasterSampling):
     def filter_chunk(self, chunk):
         mask = np.isnan(chunk["z"])
         return mask
+
+
+class DiffZHook(FetchHook):
+    """Calculates the residual (Z-diff) between the point stream and a reference DEM
+    using Bilinear Interpolation to account for sub-pixel terrain slope.
+    """
+
+    name = "z-residual"
+    meta_stage = "stream"
+    meta_category = "stream-transform"
+    meta_desc = (
+        "Calculates exact residuals by mapping points onto a sloped bilinear DEM facet."
+    )
+
+    def __init__(self, raster=None, **kwargs):
+        super().__init__(**kwargs)
+        self.raster = raster
+
+    def _process_stream(self, stream):
+        # Open the reference DEM once
+        with rasterio.open(self.raster) as src:
+            data = src.read(1)
+            ndv = src.nodata
+
+            # Convert NoData to NaN so the interpolator handles it gracefully
+            if ndv is not None:
+                data = np.where(data == ndv, np.nan, data)
+
+            # Get the inverse affine transform to map geographic coordinates to array indices
+            inv_transform = ~src.transform
+
+            for chunk in stream:
+                if chunk is None or len(chunk) == 0:
+                    continue
+
+                x_vals = chunk["x"]
+                y_vals = chunk["y"]
+
+                # Convert geographic coordinates to fractional array indices
+                cols, rows = inv_transform * (x_vals, y_vals)
+
+                # Bilinear Interpolation (order=1) maps the point onto the sloped plane!
+                sampled_z = map_coordinates(
+                    data,
+                    [rows, cols],
+                    order=1,
+                    mode="constant",
+                    cval=np.nan,
+                    prefilter=False,
+                )
+
+                # Ensure the chunk has a residual column
+                if "residual" not in chunk.dtype.names:
+                    from numpy.lib.recfunctions import append_fields
+
+                    chunk = append_fields(
+                        chunk,
+                        "residual",
+                        np.full(len(chunk), np.nan, dtype="f4"),
+                        usemask=False,
+                    )
+
+                # Only calculate residuals where the DEM has valid data
+                valid_mask = ~np.isnan(sampled_z)
+                chunk["residual"][valid_mask] = (
+                    chunk["z"][valid_mask] - sampled_z[valid_mask]
+                )
+                chunk["z"][valid_mask] = chunk["z"][valid_mask] - sampled_z[valid_mask]
+                # chunk["z"][valid_mask] = sampled_z[valid_mask]
+                # Yield only the points that successfully intersected the DEM
+                yield chunk[valid_mask]
+
+    def run(self, entries):
+        for mod, entry in entries:
+            if self.is_point_stream(entry):
+                stream = entry.get("stream")
+                entry["stream"] = self._process_stream(stream)
+        return entries

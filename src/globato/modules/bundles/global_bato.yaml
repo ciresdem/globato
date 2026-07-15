@@ -12,6 +12,17 @@ tags:
   - glob-stream
   - glob-bundle
 modules:
+  # - module: fabdem
+  #   args: {weight: 1.5}
+  #   hooks:
+  #     - name: unzip
+  #     - name: filename_filter
+  #       args: {match: ".tif"}
+  #     - name: set_datatype
+  #       args:
+  #         data_type: "rio"
+  #     - name: range_z
+  #       args: {min_z: 0.01}
   - module: copernicus
     args: {weight: 1.5, datatype: 3}
     hooks:
