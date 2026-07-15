@@ -1,5 +1,13 @@
 # 📦 Installation
 
+## From Conda (Recommended)
+
+* Globato is available on `conda-forge`:
+
+```bash
+conda install -c conda-forge globato
+```
+
 ## From Pip/PyPi
 
 ```bash
