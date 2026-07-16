@@ -516,7 +516,28 @@ class ATL03Reader(IceSat2Reader):
                     df.loc[mask, "bathy_confidence"] = merged.loc[mask, "atl24_conf"]
                     df.loc[mask, "latitude"] = merged.loc[mask, "atl24_lat"]
                     df.loc[mask, "longitude"] = merged.loc[mask, "atl24_lon"]
-                    df.loc[mask, "photon_height"] = merged.loc[mask, "atl24_z"]
+
+                    # ATL24's ortho_h is a tide-free EGM2008 orthometric height —
+                    # the same frame as this reader's "geoid" output (h_ortho).
+                    # Convert it into whatever vertical_datum was requested using
+                    # the matched ATL03 photon's own geoid/tide terms, so bathy
+                    # photons land in the same frame as every other class instead
+                    # of silently staying geoid-referenced.
+                    atl24_ortho = merged.loc[mask, "atl24_z"]
+                    p_geoid_m = merged.loc[mask, "photon_geoid"]
+                    p_f2m_m = merged.loc[mask, "photon_f2m"]
+                    p_tide_f2m_m = merged.loc[mask, "photon_tide_f2m"]
+
+                    if self.vertical_datum == "geoid-mean-tide":
+                        converted = atl24_ortho + p_tide_f2m_m - p_f2m_m
+                    elif self.vertical_datum == "ellipsoid-mean-tide":
+                        converted = atl24_ortho + p_geoid_m + p_tide_f2m_m
+                    elif self.vertical_datum == "geoid":
+                        converted = atl24_ortho
+                    else:
+                        converted = atl24_ortho + p_geoid_m  # ellipsoid
+
+                    df.loc[mask, "photon_height"] = converted
         except Exception as e:
             logger.warning(f"Failed to apply ATL24 data: {e}")
         return df
@@ -1191,6 +1212,9 @@ class ATL03Reader(IceSat2Reader):
                 "delta_time": dt,
                 "photon_h_dem": h_dem,
                 "photon_meantide": h_meantide,
+                "photon_geoid": p_geoid,
+                "photon_f2m": p_f2m,
+                "photon_tide_f2m": p_tide_earth_f2m,
                 "ph_h_classed": -1,
                 "bathy_confidence": -1.0,
                 "ph_segment_id": ph_seg_ids,
@@ -1273,6 +1297,8 @@ class ATL03Reader(IceSat2Reader):
                 df = self.classify_by_mask_tree(
                     df, bldg_tree, 7, except_classes=[40, 41, 42, 44]
                 )
+
+        df = df.drop(columns=["photon_geoid", "photon_f2m", "photon_tide_f2m"])
 
         return df
 
