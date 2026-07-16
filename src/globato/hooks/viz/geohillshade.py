@@ -134,12 +134,15 @@ class GeoHillshade(RasterStreamHook):
             pass
 
         cpt_path = self.cmap_name
+        is_pre_stretched = False
 
         if self.cmap_name.lower() == "etopo":
             cpt_path = cpt_utils.generate_etopo_cpt(self.z_min, self.z_max)
+            is_pre_stretched = True
 
         elif self.cmap_name.lower() == "coastal_relief":
             cpt_path = cpt_utils.generate_coastal_relief_cpt(self.z_min, self.z_max)
+            is_pre_stretched = True
 
         elif not os.path.exists(self.cmap_name):
             logger.info(f"[{self.name}] Fetching CPT from fetchez: {self.cmap_name}")
@@ -151,20 +154,25 @@ class GeoHillshade(RasterStreamHook):
             )
             return plt.get_cmap("terrain")
 
-        logger.info(
-            f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
-        )
-        stretched_cpt = cpt_utils.process_cpt(
-            cpt_path,
-            gmin=self.z_min,
-            gmax=self.z_max,
-            split_cpt=self.split_cpt,
-            gdal=False,
-        )
+        if is_pre_stretched:
+            stretched_cpt = cpt_path
+        else:
+            logger.info(
+                f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
+            )
+            stretched_cpt = cpt_utils.process_cpt(
+                cpt_path,
+                gmin=self.z_min,
+                gmax=self.z_max,
+                split_cpt=self.split_cpt,
+                gdal=False,
+            )
 
         if stretched_cpt and os.path.exists(stretched_cpt):
             cm = cpt_utils.load_cmap(stretched_cpt)
-            os.remove(stretched_cpt)
+            if not is_pre_stretched:
+                os.remove(stretched_cpt)
+
             # Cleanup etopo base if generated
             if self.cmap_name.lower() in ["etopo", "coastal_relief"] and os.path.exists(
                 cpt_path
