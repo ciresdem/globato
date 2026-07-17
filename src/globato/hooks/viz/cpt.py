@@ -434,7 +434,8 @@ def load_cmap(cpt_file, name="globato_cpt"):
                     if not z_vals:
                         z_vals.append(z0)
                         colors.append((r0, g0, b0))
-                    elif z0 != z_vals[-1]:
+                    elif z0 != z_vals[-1] or (r0, g0, b0) != colors[-1]:
+                        # elif z0 != z_vals[-1]:
                         # Handle discontinuous colormaps (sharp breaks)
                         z_vals.append(z0)
                         colors.append((r0, g0, b0))
@@ -482,7 +483,8 @@ def load_cmap(cpt_file, name="globato_cpt"):
             cdict["green"].append((x, cl[1], cr[1]))
             cdict["blue"].append((x, cl[2], cr[2]))
 
-        return LinearSegmentedColormap(name, cdict)
+        # return LinearSegmentedColormap(name, cdict)
+        return LinearSegmentedColormap(name, cdict, N=65536)
 
     except Exception as e:
         logger.error(f"Failed to load CPT to cmap: {e}")

@@ -23,6 +23,35 @@ logger = logging.getLogger(__name__)
 PERSPECTO_COMMANDS = ["colorbar", "hillshade", "points"]
 
 
+def _list_cmaps(ctx, param, value):
+    """List available colormaps and exit."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    click.secho("\n🎨 Globato Built-In Colormaps:", fg="cyan", bold=True)
+    click.echo("  etopo           : Standard ETOPO1 elevation/bathymetry palette.")
+    click.echo("  coastal_relief  : Custom QGIS Coastal Topobathy palette.")
+
+    click.secho("\n🌍 CPT-City Integration:", fg="cyan", bold=True)
+    click.echo("  Fetchez will automatically download valid CPT-City queries.")
+    click.echo("  Examples: 'grass/haxby', 'cmocean/bathy', 'gmt/globe'")
+
+    click.secho("\n📊 Matplotlib Native Colormaps:", fg="cyan", bold=True)
+    try:
+        import matplotlib.pyplot as plt
+
+        cmaps = plt.colormaps()
+        click.echo(f"  {', '.join(cmaps[:25])} ... and {len(cmaps) - 25} more.")
+        click.echo(
+            "  (Full list: https://matplotlib.org/stable/gallery/color/colormap_reference.html)"
+        )
+    except ImportError:
+        click.echo("  Matplotlib is not installed.")
+
+    click.echo("\n")
+    ctx.exit()
+
+
 @click.version_option(package_name="globato")
 @click.group(
     cls=FetchezMainGroup,
@@ -71,6 +100,14 @@ def perspecto_group():
 @click.option("--gamma", type=float, help="Gamma correction factor.")
 @click.option("--z-min", type=float, help="Force minimum Z value for the colormap.")
 @click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
+@click.option(
+    "--list-cmaps",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_list_cmaps,
+    help="List available native and custom colormaps and exit.",
+)
 @click.option(
     "--split-cpt",
     type=float,
@@ -154,6 +191,14 @@ def perspecto_hillshade(
 )
 @click.option("--z-min", type=float, help="Force minimum Z value for the colormap.")
 @click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
+@click.option(
+    "--list-cmaps",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_list_cmaps,
+    help="List available native and custom colormaps and exit.",
+)
 @click.option(
     "--split-cpt",
     type=float,
@@ -253,8 +298,8 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
       globato perspecto points mbdb -R loc:"Miami" -F rq:threshold=5 --outliers
     """
 
-    from globato.hooks.formats.stream_factory import StreamFactory
     from fetchez.core import run_fetchez
+    from fetchez.registry import ReaderRegistry
 
     try:
         from globato.hooks.viz.pc import PointCloudViz
@@ -263,6 +308,7 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
         sys.exit(1)
 
     HookRegistry.load_all()
+    ReaderRegistry.load_all()
     active_filters = []
     parsed_region = Region.from_string(region) if region else None
 
@@ -292,7 +338,7 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
 
     entries = []
     if os.path.exists(src):
-        reader = StreamFactory.get_reader(src)
+        reader = ReaderRegistry.get_reader(src, src.split(".")[-1])
         # Apply _prepare_stream to guarantee schema!
         stream = _prepare_stream(reader.yield_chunks()) if reader else []
         entries.append((dummy_mod, {"dst_fn": src, "stream": stream}))
@@ -308,7 +354,9 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
         run_fetchez([fetcher])
         for entry in fetcher.results:
             if entry.get("dst_fn"):
-                r = StreamFactory.get_reader(entry["dst_fn"])
+                r = ReaderRegistry.get_reader(
+                    entry["dst_fn"], entry["dst_fn"].split(".")[-1]
+                )
                 if r:
                     entries.append(
                         (

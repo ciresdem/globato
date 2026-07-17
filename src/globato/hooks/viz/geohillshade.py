@@ -129,9 +129,16 @@ class GeoHillshade(RasterStreamHook):
         import matplotlib.pyplot as plt
 
         try:
-            return plt.get_cmap(self.cmap_name)
+            cmap = plt.get_cmap(self.cmap_name)
+            self._is_native_cmap = True
+            return cmap
         except ValueError:
+            self._is_native_cmap = False
             pass
+        # try:
+        #     return plt.get_cmap(self.cmap_name)
+        # except ValueError:
+        #     pass
 
         cpt_path = self.cmap_name
         is_pre_stretched = False
@@ -154,19 +161,19 @@ class GeoHillshade(RasterStreamHook):
             )
             return plt.get_cmap("terrain")
 
-        if is_pre_stretched:
-            stretched_cpt = cpt_path
-        else:
-            logger.info(
-                f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
-            )
-            stretched_cpt = cpt_utils.process_cpt(
-                cpt_path,
-                gmin=self.z_min,
-                gmax=self.z_max,
-                split_cpt=self.split_cpt,
-                gdal=False,
-            )
+        # if is_pre_stretched:
+        #     stretched_cpt = cpt_path
+        # else:
+        logger.info(
+            f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
+        )
+        stretched_cpt = cpt_utils.process_cpt(
+            cpt_path,
+            gmin=self.z_min,
+            gmax=self.z_max,
+            split_cpt=self.split_cpt,
+            gdal=False,
+        )
 
         if stretched_cpt and os.path.exists(stretched_cpt):
             cm = cpt_utils.load_cmap(stretched_cpt)
@@ -244,7 +251,16 @@ class GeoHillshade(RasterStreamHook):
         ) * np.cos(self.azrad - aspect)
         hs = np.clip(hs, 0.0, 1.0)
 
-        norm = mcolors.Normalize(vmin=self.z_min, vmax=self.z_max, clip=True)
+        if (
+            self.split_cpt is not None
+            and getattr(self, "_is_native_cmap", False)
+            and self.z_min < self.split_cpt < self.z_max
+        ):
+            norm = mcolors.TwoSlopeNorm(
+                vmin=self.z_min, vcenter=self.split_cpt, vmax=self.z_max
+            )
+        else:
+            norm = mcolors.Normalize(vmin=self.z_min, vmax=self.z_max, clip=True)
         rgba = self.cm(norm(z_masked))
         rgb_colors = rgba[..., :3]
 
