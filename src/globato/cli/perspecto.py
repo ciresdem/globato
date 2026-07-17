@@ -23,6 +23,32 @@ logger = logging.getLogger(__name__)
 PERSPECTO_COMMANDS = ["colorbar", "hillshade", "points"]
 
 
+def _list_cmaps(ctx, param, value):
+    """List available colormaps and exit."""
+    if not value or ctx.resilient_parsing:
+        return
+
+    click.secho("\n🎨 Globato Built-In Colormaps:", fg="cyan", bold=True)
+    click.echo("  etopo           : Standard ETOPO1 elevation/bathymetry palette.")
+    click.echo("  coastal_relief  : Custom QGIS Coastal Topobathy palette.")
+
+    click.secho("\n🌍 CPT-City Integration:", fg="cyan", bold=True)
+    click.echo("  Fetchez will automatically download valid CPT-City queries.")
+    click.echo("  Examples: 'grass/haxby', 'cmocean/bathy', 'gmt/globe'")
+
+    click.secho("\n📊 Matplotlib Native Colormaps:", fg="cyan", bold=True)
+    try:
+        import matplotlib.pyplot as plt
+        cmaps = plt.colormaps()
+        click.echo(f"  {', '.join(cmaps[:25])} ... and {len(cmaps)-25} more.")
+        click.echo("  (Full list: https://matplotlib.org/stable/gallery/color/colormap_reference.html)")
+    except ImportError:
+        click.echo("  Matplotlib is not installed.")
+
+    click.echo("\n")
+    ctx.exit()
+
+
 @click.version_option(package_name="globato")
 @click.group(
     cls=FetchezMainGroup,
@@ -71,6 +97,14 @@ def perspecto_group():
 @click.option("--gamma", type=float, help="Gamma correction factor.")
 @click.option("--z-min", type=float, help="Force minimum Z value for the colormap.")
 @click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
+@click.option(
+    "--list-cmaps",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_list_cmaps,
+    help="List available native and custom colormaps and exit.",
+)
 @click.option(
     "--split-cpt",
     type=float,
@@ -154,6 +188,14 @@ def perspecto_hillshade(
 )
 @click.option("--z-min", type=float, help="Force minimum Z value for the colormap.")
 @click.option("--z-max", type=float, help="Force maximum Z value for the colormap.")
+@click.option(
+    "--list-cmaps",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_list_cmaps,
+    help="List available native and custom colormaps and exit.",
+)
 @click.option(
     "--split-cpt",
     type=float,
