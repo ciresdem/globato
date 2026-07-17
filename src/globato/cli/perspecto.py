@@ -295,8 +295,8 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
       globato perspecto points mbdb -R loc:"Miami" -F rq:threshold=5 --outliers
     """
 
-    from globato.hooks.formats.stream_factory import StreamFactory
     from fetchez.core import run_fetchez
+    from fetchez.registry import ReaderRegistry
 
     try:
         from globato.hooks.viz.pc import PointCloudViz
@@ -305,6 +305,7 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
         sys.exit(1)
 
     HookRegistry.load_all()
+    ReaderRegistry.load_all()
     active_filters = []
     parsed_region = Region.from_string(region) if region else None
 
@@ -334,7 +335,7 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
 
     entries = []
     if os.path.exists(src):
-        reader = StreamFactory.get_reader(src)
+        reader = ReaderRegistry.get_reader(src, src.split(".")[-1])
         # Apply _prepare_stream to guarantee schema!
         stream = _prepare_stream(reader.yield_chunks()) if reader else []
         entries.append((dummy_mod, {"dst_fn": src, "stream": stream}))
@@ -350,7 +351,7 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
         run_fetchez([fetcher])
         for entry in fetcher.results:
             if entry.get("dst_fn"):
-                r = StreamFactory.get_reader(entry["dst_fn"])
+                r = ReaderRegistry.get_reader(entry["dst_fn"], entry["dst_fn"].split(".")[-1])
                 if r:
                     entries.append(
                         (
