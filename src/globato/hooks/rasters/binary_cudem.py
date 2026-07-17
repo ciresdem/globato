@@ -110,7 +110,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         # Algos
         if len(self.algos) == 0:
-            self.algos = ["raster_fill"] * max(0, self.steps)
+            self.algos = ["raster_fill:max_dist=10"] * max(0, self.steps)
             self.algos.append("interp_rbf")
 
         while len(self.algos) <= self.steps:
@@ -291,10 +291,19 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
                     if np.any(trans_mask):
                         valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
-                        blend_active = trans_mask & valid_bg
+                        valid_z = (z != ndv) & (~np.isnan(z))
+
+                        # blend_active = trans_mask & valid_bg
+                        blend_active = trans_mask & valid_bg & valid_z
                         z[blend_active] = (
                             (1.0 - weights[blend_active]) * z[blend_active]
                         ) + (weights[blend_active] * bg_aligned[blend_active])
+
+                    remaining_holes = (z == ndv) | np.isnan(z)
+                    valid_bg_overall = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
+
+                    fill_from_bg = remaining_holes & valid_bg_overall
+                    z[fill_from_bg] = bg_aligned[fill_from_bg]
 
                 if self.bathy_max_z is not None:
                     barrier_mask = self._create_barrier_mask(z.shape, src.transform)
