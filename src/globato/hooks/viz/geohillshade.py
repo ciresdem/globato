@@ -256,7 +256,9 @@ class GeoHillshade(RasterStreamHook):
             and getattr(self, "_is_native_cmap", False)
             and self.z_min < self.split_cpt < self.z_max
         ):
-            norm = mcolors.TwoSlopeNorm(vmin=self.z_min, vcenter=self.split_cpt, vmax=self.z_max)
+            norm = mcolors.TwoSlopeNorm(
+                vmin=self.z_min, vcenter=self.split_cpt, vmax=self.z_max
+            )
         else:
             norm = mcolors.Normalize(vmin=self.z_min, vmax=self.z_max, clip=True)
         rgba = self.cm(norm(z_masked))

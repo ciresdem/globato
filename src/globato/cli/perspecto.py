@@ -39,9 +39,12 @@ def _list_cmaps(ctx, param, value):
     click.secho("\n📊 Matplotlib Native Colormaps:", fg="cyan", bold=True)
     try:
         import matplotlib.pyplot as plt
+
         cmaps = plt.colormaps()
-        click.echo(f"  {', '.join(cmaps[:25])} ... and {len(cmaps)-25} more.")
-        click.echo("  (Full list: https://matplotlib.org/stable/gallery/color/colormap_reference.html)")
+        click.echo(f"  {', '.join(cmaps[:25])} ... and {len(cmaps) - 25} more.")
+        click.echo(
+            "  (Full list: https://matplotlib.org/stable/gallery/color/colormap_reference.html)"
+        )
     except ImportError:
         click.echo("  Matplotlib is not installed.")
 
@@ -351,7 +354,9 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
         run_fetchez([fetcher])
         for entry in fetcher.results:
             if entry.get("dst_fn"):
-                r = ReaderRegistry.get_reader(entry["dst_fn"], entry["dst_fn"].split(".")[-1])
+                r = ReaderRegistry.get_reader(
+                    entry["dst_fn"], entry["dst_fn"].split(".")[-1]
+                )
                 if r:
                     entries.append(
                         (

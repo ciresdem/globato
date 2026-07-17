@@ -272,7 +272,7 @@ class ReferenceQuality(GlobatoFilter):
             order=1,
             mode="constant",
             cval=np.nan,
-            prefilter=False
+            prefilter=False,
         )
         valid_ref = (ref_vals != nodata) & (~np.isnan(ref_vals))
 

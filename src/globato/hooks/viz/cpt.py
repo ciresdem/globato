@@ -483,7 +483,7 @@ def load_cmap(cpt_file, name="globato_cpt"):
             cdict["green"].append((x, cl[1], cr[1]))
             cdict["blue"].append((x, cl[2], cr[2]))
 
-        #return LinearSegmentedColormap(name, cdict)
+        # return LinearSegmentedColormap(name, cdict)
         return LinearSegmentedColormap(name, cdict, N=65536)
 
     except Exception as e:
