@@ -17,6 +17,7 @@ import logging
 import numpy as np
 import rasterio
 import threading
+from scipy.ndimage import map_coordinates
 
 import fetchez
 
@@ -133,7 +134,14 @@ class ReferenceQuality(GlobatoFilter):
 
         try:
             self.src = rasterio.open(self.ref_fn)
-            self.ref_data = self.src.read(1)
+            # Store the inverse transform matrix to map points to fractional pixels natively
+            self.inv_transform = ~self.src.transform
+            ref_raw = self.src.read(1).astype("float64")
+            nodata = self.src.nodata if self.src.nodata is not None else -9999
+
+            # Standardize NoData to NaN so the bilinear interpolator ignores voids cleanly
+            self.ref_data = np.where(ref_raw == nodata, np.nan, ref_raw)
+            # self.ref_data = self.src.read(1)
         except Exception as e:
             logger.error(
                 f"[RQ] Failed to open generated reference surface: {e}. Disabling RQ filter."
@@ -251,11 +259,21 @@ class ReferenceQuality(GlobatoFilter):
         if self.target_srs:
             rx, ry, rz = self._transformer.transform(rx, ry, rz)
 
-        rows, cols = rasterio.transform.rowcol(self.src.transform, rx, ry)
+        cols, rows = self.inv_transform * (rx, ry)
+
+        # rows, cols = rasterio.transform.rowcol(self.src.transform, rx, ry)
         rows = np.clip(rows, 0, self.src.height - 1)
         cols = np.clip(cols, 0, self.src.width - 1)
 
-        ref_vals = self.ref_data[rows, cols]
+        # ref_vals = self.ref_data[rows, cols]
+        ref_vals = map_coordinates(
+            self.ref_data,
+            [rows, cols],
+            order=1,
+            mode="constant",
+            cval=np.nan,
+            prefilter=False
+        )
         valid_ref = (ref_vals != nodata) & (~np.isnan(ref_vals))
 
         diff = np.abs(rz - ref_vals)
