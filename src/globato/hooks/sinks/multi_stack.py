@@ -444,8 +444,9 @@ class MultiStackHook(FetchHook):
     def run(self, entries):
         if not self._accumulator:
             region = next(
-                (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
+                (getattr(mod, "original_region", mod.region) for mod, _ in entries if hasattr(mod, "region")), None
             )
+            # (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
             if region:
                 region_str = region.format("fn")
                 base, ext = os.path.splitext(self.output)

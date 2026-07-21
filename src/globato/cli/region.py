@@ -224,6 +224,7 @@ def region_split(ctx, size, out, prefix):
     default="gmt",
     help="Output format.",
 )
+@region_dec
 @click.pass_context
 def region_transform(ctx, region_str, t_srs, s_srs, format):
     """Transform a region to a new coordinate reference system.
