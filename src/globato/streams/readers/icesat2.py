@@ -196,10 +196,10 @@ class ATL03Reader(IceSat2Reader):
       3: Top Canopy (ATL08)
       6: Land Ice (ATL06)
       7: Buildings (Dynamic Algo / Bing Mask)
-      40: Bathymetry (ATL24 / Dynamic Algo)
-      41: Coastline / Nearshore Water (ATL24 / Dynamic Algo)
-      42: Inland Water (ATL13 / Dynamic Algo)
-      44: Open Ocean (ATL12 / Geoid Fallback)
+      40: Seafloor (ATL24 / Dynamic Algo)
+      41: Nearshore Water Surface (ATL24 / Dynamic Algo)
+      42: Inland Water Surface (ATL13 / Dynamic Algo)
+      44: Open Ocean Surface (ATL12 / Geoid Fallback)
       -1: Unclassified
     """
     meta_extensions = ["h5"]
