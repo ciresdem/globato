@@ -73,7 +73,7 @@ modules:
         args: {max_z: -0.01}
 
   # NCEI Multibeam
-    - module: mbdb
+  - module: mbdb
     args: {weight: 1, want_inf: True, use_cache: true}
     hooks:
       - name: filename_filter
