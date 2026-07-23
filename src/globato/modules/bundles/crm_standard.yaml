@@ -67,7 +67,7 @@ modules:
     - name: spatial_crop
 
   - module: mbdb
-    args: {weight: 1, want_inf: True, use_cache: true}
+    args: {weight: 0.75, want_inf: True, use_cache: true}
     hooks:
       - name: filename_filter
         args:
