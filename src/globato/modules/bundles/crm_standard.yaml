@@ -66,23 +66,23 @@ modules:
         dst_srs: EPSG:4326+3855
     - name: spatial_crop
 
-  - module: mbdb
-    args: {weight: 0.75, want_inf: True, use_cache: true}
-    hooks:
-      - name: filename_filter
-        args:
-          match: ".fbt"
-      - name: stream_data
-      - name: set-srs
-        args:
-          src_srs: "EPSG:4326+9003"
-      - name: rq
-        args:
-          reference: "gmrt/gebco/cudem"
-          threshold: 5
-          mode: "percent"
-          builder: "grid"
-          res: 0.000277777
+  # - module: mbdb
+  #   args: {weight: 0.75, want_inf: True, use_cache: true}
+  #   hooks:
+  #     - name: filename_filter
+  #       args:
+  #         match: ".fbt"
+  #     - name: stream_data
+  #     - name: set-srs
+  #       args:
+  #         src_srs: "EPSG:4326+9003"
+  #     - name: rq
+  #       args:
+  #         reference: "gmrt/gebco/cudem"
+  #         threshold: 5
+  #         mode: "percent"
+  #         builder: "grid"
+  #         res: 0.000277777
 
     # NOS Hydro surveys
   - module: nos_hydro

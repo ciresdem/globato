@@ -24,7 +24,7 @@ modules:
   #     - name: range_z
   #       args: {min_z: 0.01}
   - module: copernicus
-    args: {weight: 1.5, datatype: 3}
+    args: {weight: .5, datatype: 3}
     hooks:
       - name: unzip
       - name: filename_filter
@@ -36,7 +36,7 @@ modules:
         args: {min_z: 0.01}
 
   - module: copernicus
-    args: {weight: .75, datatype: 1}
+    args: {weight: .35, datatype: 1}
     hooks:
       - name: unzip
       - name: filename_filter
