@@ -131,7 +131,13 @@ class RasterBaseHook(FetchHook):
                 src.write(data, 1)
 
     def _get_barrier_geometries(
-        self, profile=None, include_rivers=True, include_lakes=False
+        self,
+        profile=None,
+        include_rivers=True,
+        include_lakes=False,
+        include_reefs=True,
+        include_wetlands=True,
+        include_breakwaters=True,
     ):
         if not self.barrier:
             return None
@@ -149,6 +155,10 @@ class RasterBaseHook(FetchHook):
             output_type="vector",
             include_rivers=include_rivers,
             include_lakes=include_lakes,
+            include_reefs=include_reefs,
+            include_wetlands=include_wetlands,
+            include_breakwaters=include_breakwaters,
+            target_crs=region.srs,
         )
 
         if not barrier_path:
@@ -162,7 +172,14 @@ class RasterBaseHook(FetchHook):
             return None
 
     def _create_barrier_mask(
-        self, shape, transform, include_rivers=True, include_lakes=False
+        self,
+        shape,
+        transform,
+        include_rivers=True,
+        include_lakes=True,
+        include_reefs=True,
+        include_wetlands=True,
+        include_breakwaters=True,
     ):
         """Generates a boolean numpy mask from the barrier.
         Automatically fetches or generates the geometries on-demand.

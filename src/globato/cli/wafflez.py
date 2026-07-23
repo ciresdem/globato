@@ -189,7 +189,8 @@ def wafflez_run(
 
                 if increment and hook_name == "ms_cudem":
                     args = hook.setdefault("args", {})
-                    old_res = args.get("resolutions", ["1s", "3s"])
+                    # Fallback to the new increment if none exist
+                    old_res = args.get("resolutions", [increment])
 
                     if isinstance(old_res, str):
                         old_res_list = [str2inc(x) for x in old_res.split("/")]
@@ -197,7 +198,7 @@ def wafflez_run(
                         old_res_list = [str2inc(str(x)) for x in old_res]
 
                     num_steps = len(old_res_list)
-                    old_base_res = old_res_list[0] if num_steps > 0 else str2inc("1s")
+                    old_base_res = old_res_list[0] if num_steps > 0 else increment
                     new_base_res = increment
 
                     args["resolutions"] = [
@@ -763,7 +764,7 @@ def wafflez_build(
                 },
                 {
                     "name": "source_masks",
-                    "args": {"res": "1s", "output": f"{tile_outname}_sources.vrt"},
+                    "args": {"res": increment, "output": f"{tile_outname}_sources.vrt"},
                 },
             ]
 

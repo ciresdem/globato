@@ -25,10 +25,11 @@ dependencies = [
     "transformez>=0.4.2",
     "numpy>1.24",
     "scipy",
-    "shapely",
+    "shapely>=2.0.0",
     "laspy[lazrs,laszip]",
     "rasterio>1.4.0",
-    "fiona",
+    "fiona",  # to be removed
+    "pyogrio>=0.7.0",
     "pandas",
     "pyproj>3.6.1",
     "pyshp",

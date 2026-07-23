@@ -98,9 +98,13 @@ class RasterioReader(BaseGlobatoReader):
 
         if self.region:
             w, e, s, n = self.region
-            if src.crs and src.crs != "EPSG:4326":
+
+            # Dynamically grab the SRS from the Region object, fallback to WGS84
+            region_srs = getattr(self.region, "srs", None) or "EPSG:4326"
+
+            if src.crs and src.crs.to_string() != region_srs:
                 try:
-                    w, s, e, n = transform_bounds("EPSG:4326", src.crs, w, s, e, n)
+                    w, s, e, n = transform_bounds(region_srs, src.crs, w, s, e, n)
                 except Exception as e:
                     logger.warning(f"Failed to transform bounds for {self.src_fn}: {e}")
 
