@@ -22,7 +22,7 @@ from rasterio.enums import Resampling
 from rasterio.warp import reproject
 import fiona
 
-from fetchez import core, cli, utils, spatial
+from fetchez import core, cli, utils
 from fetchez.hooks.unzip import Unzip
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.registry import ModuleRegistry
@@ -198,7 +198,9 @@ class GlobCoast(FetchModule):
                             src_transform=src.transform,
                             src_crs=src.crs,
                             dst_transform=self.transform,
-                            dst_crs=rasterio.crs.CRS.from_user_input(self.region.srs),  # rasterio.crs.CRS.from_epsg(4326),
+                            dst_crs=rasterio.crs.CRS.from_user_input(
+                                self.region.srs
+                            ),  # rasterio.crs.CRS.from_epsg(4326),
                             src_nodata=src.nodata,
                             dst_nodata=np.nan,
                             resampling=Resampling.nearest,

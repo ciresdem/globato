@@ -183,7 +183,6 @@ def globatize_modules(modules, shared_cache=None, crs=None):
         if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
             mod.setdefault("args", {})["outdir"] = abs_cache
 
-
         # --- Insert the target crs into stream-reproject etc. ---
         if crs:
             reproject_hook = None
@@ -266,7 +265,16 @@ def safe_window_read(src, window):
     return data
 
 
-def _generate_barrier_hash(region, res, include_rivers, include_lakes, include_reefs, include_wetlands, include_breakwaters, target_crs):
+def _generate_barrier_hash(
+    region,
+    res,
+    include_rivers,
+    include_lakes,
+    include_reefs,
+    include_wetlands,
+    include_breakwaters,
+    target_crs,
+):
     """Generates a short, unique 8-character MD5 hash based on spatial parameters."""
 
     import hashlib
@@ -395,7 +403,9 @@ def resolve_barrier(
 
                     native_type = (
                         "vector"
-                        if resolved_path.endswith((".shp", ".geojson", ".gpkg", ".json"))
+                        if resolved_path.endswith(
+                            (".shp", ".geojson", ".gpkg", ".json")
+                        )
                         else "raster"
                     )
 
@@ -421,7 +431,14 @@ def resolve_barrier(
     )
 
     spatial_hash = _generate_barrier_hash(
-        region, res, include_rivers, include_lakes, include_reefs, include_wetlands, include_breakwaters, target_crs
+        region,
+        res,
+        include_rivers,
+        include_lakes,
+        include_reefs,
+        include_wetlands,
+        include_breakwaters,
+        target_crs,
     )
     base_name = os.path.splitext(os.path.basename(resolved_path))[0]
 

@@ -15,7 +15,7 @@ import os
 import logging
 from pyogrio.raw import read, write
 import shapely
-from shapely.geometry import shape, mapping, Polygon, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class VectorFillHoles(FetchHook):
                     field_data,
                     fields=meta["fields"],
                     geometry_type=meta["geometry_type"],
-                    crs=meta["crs"]
+                    crs=meta["crs"],
                 )
 
                 entry["src_fn"] = src_fn

@@ -15,7 +15,7 @@ import logging
 import numpy as np
 from pyogrio.raw import read
 import shapely
-from shapely.geometry import shape, MultiPolygon
+from shapely.geometry import MultiPolygon
 from shapely.vectorized import contains as vec_contains
 
 from fetchez.utils import str2bool
@@ -60,7 +60,9 @@ class VectorCrop(GlobatoFilter):
                 )
                 return False
 
-            self.geometry = MultiPolygon(valid_geoms) if len(valid_geoms) > 1 else valid_geoms[0]
+            self.geometry = (
+                MultiPolygon(valid_geoms) if len(valid_geoms) > 1 else valid_geoms[0]
+            )
 
         except Exception as e:
             logger.error(f"Failed to load vector {self.vector_path}: {e}")

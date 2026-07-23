@@ -165,15 +165,19 @@ class ReferenceQuality(GlobatoFilter):
         # if target_region:
         #     self.target_srs = target_region.srs
 
-        #if self.target_srs:
+        # if self.target_srs:
 
         # Check the stream's current SRS first, fallback to the module's region SRS
         current_stream_srs = entry.get("src_srs") or region.srs or "EPSG:4326"
 
         if self._transformer is None:
-            self._transformer, _ = SRSParser(current_stream_srs, self.wgs_region.srs).get_components()
+            self._transformer, _ = SRSParser(
+                current_stream_srs, self.wgs_region.srs
+            ).get_components()
         if self._transformer is None:
-            self._transformer, _ = SRSParser(region.srs, self.wgs_region.srs or "epsg:4326").get_components()
+            self._transformer, _ = SRSParser(
+                region.srs, self.wgs_region.srs or "epsg:4326"
+            ).get_components()
 
         return True
 
@@ -190,7 +194,10 @@ class ReferenceQuality(GlobatoFilter):
             logger.debug(f"[RQ] Fetching reference tier: {source}...")
             try:
                 files = fetchez.get(
-                    source, region=region.copy().buffer(pct=5).to_list(), region_srs=region.srs, outdir=outdir
+                    source,
+                    region=region.copy().buffer(pct=5).to_list(),
+                    region_srs=region.srs,
+                    outdir=outdir,
                 )
                 if files:
                     for f in files:

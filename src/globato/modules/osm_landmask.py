@@ -89,8 +89,18 @@ class OSMLandmaskModule(FetchModule):
             self.include_lakes = str(include_lakes).lower() in ["true", "1", "t", "yes"]
 
         self.include_reefs = str(include_reefs).lower() in ["true", "1", "t", "yes"]
-        self.include_wetlands = str(include_wetlands).lower() in ["true", "1", "t", "yes"]
-        self.include_breakwaters = str(include_breakwaters).lower() in ["true", "1", "t", "yes"]
+        self.include_wetlands = str(include_wetlands).lower() in [
+            "true",
+            "1",
+            "t",
+            "yes",
+        ]
+        self.include_breakwaters = str(include_breakwaters).lower() in [
+            "true",
+            "1",
+            "t",
+            "yes",
+        ]
 
         self.min_area_sqm = float(min_area_sqm)
         self.headers = HEADERS
@@ -311,7 +321,7 @@ class OSMLandmaskModule(FetchModule):
             fields=fields,
             geometry_type="Polygon",
             crs="EPSG:4326",
-            driver="GeoJSON"
+            driver="GeoJSON",
         )
 
     def _write_geojson(self, dst_file, polygons):
@@ -357,11 +367,11 @@ class OSMLandmaskModule(FetchModule):
                     is_lake = tags.get("natural") == "water" and not is_river
 
                     is_wetland = (
-                        tags.get("waterway") == "tidal_channel" or
-                        tags.get("natural") == "mud" or
-                        tags.get("natural") == "bay" or
-                        tags.get("estuary") == "yes" or
-                        tags.get("natural") == "wetland"  # Accept ALL wetlands
+                        tags.get("waterway") == "tidal_channel"
+                        or tags.get("natural") == "mud"
+                        or tags.get("natural") == "bay"
+                        or tags.get("estuary") == "yes"
+                        or tags.get("natural") == "wetland"  # Accept ALL wetlands
                     )
 
                     is_water = False
@@ -386,7 +396,12 @@ class OSMLandmaskModule(FetchModule):
             for rel in relations:
                 tags = rel.get("tags", {})
                 is_coast = tags.get("natural") == "coastline"
-                is_breakwater = self.include_breakwaters and tags.get("man_made") in ["breakwater", "pier", "groyne", "jetty"]
+                is_breakwater = self.include_breakwaters and tags.get("man_made") in [
+                    "breakwater",
+                    "pier",
+                    "groyne",
+                    "jetty",
+                ]
                 is_river = (
                     tags.get("waterway") == "riverbank" or tags.get("water") == "river"
                 )
@@ -394,11 +409,11 @@ class OSMLandmaskModule(FetchModule):
                 # is_water = self.include_water and (tags.get("natural") == "water" or tags.get("waterway") == "riverbank")
 
                 is_wetland = (
-                    tags.get("waterway") == "tidal_channel" or
-                    tags.get("natural") == "mud" or
-                    tags.get("natural") == "bay" or
-                    tags.get("estuary") == "yes" or
-                    tags.get("natural") == "wetland"
+                    tags.get("waterway") == "tidal_channel"
+                    or tags.get("natural") == "mud"
+                    or tags.get("natural") == "bay"
+                    or tags.get("estuary") == "yes"
+                    or tags.get("natural") == "wetland"
                 )
 
                 is_water = False
@@ -442,20 +457,30 @@ class OSMLandmaskModule(FetchModule):
 
                 is_coast = tags.get("natural") == "coastline"
                 is_reef = self.include_reefs and tags.get("natural") == "reef"
-                is_breakwater = self.include_breakwaters and tags.get("man_made") in ["breakwater", "pier", "groyne", "jetty"]
+                is_breakwater = self.include_breakwaters and tags.get("man_made") in [
+                    "breakwater",
+                    "pier",
+                    "groyne",
+                    "jetty",
+                ]
 
-                is_river = (tags.get("waterway") == "riverbank" or tags.get("water") == "river")
+                is_river = (
+                    tags.get("waterway") == "riverbank" or tags.get("water") == "river"
+                )
                 is_lake = tags.get("natural") == "water" and not is_river
                 is_wetland = (
-                    tags.get("waterway") == "tidal_channel" or
-                    tags.get("natural") == "mud" or
-                    tags.get("natural") == "bay" or
-                    tags.get("estuary") == "yes" or
-                    tags.get("natural") == "wetland"  # Accept ALL wetlands
+                    tags.get("waterway") == "tidal_channel"
+                    or tags.get("natural") == "mud"
+                    or tags.get("natural") == "bay"
+                    or tags.get("estuary") == "yes"
+                    or tags.get("natural") == "wetland"  # Accept ALL wetlands
                 )
 
                 is_water = False
-                if self.include_water and (tags.get("natural") == "water" or tags.get("waterway") == "riverbank"):
+                if self.include_water and (
+                    tags.get("natural") == "water"
+                    or tags.get("waterway") == "riverbank"
+                ):
                     is_water = True
                 if self.include_rivers and is_river:
                     is_water = True
@@ -629,7 +654,8 @@ class OSMLandmaskModule(FetchModule):
                 if poly.geom_type == "Polygon":
                     # Keep interiors (holes) only if they are larger than the threshold
                     valid_interiors = [
-                        ring for ring in poly.interiors
+                        ring
+                        for ring in poly.interiors
                         if self._get_area_sqm(Polygon(ring)) >= self.min_area_sqm
                     ]
                     cleaned_land.append(Polygon(poly.exterior, valid_interiors))
@@ -638,11 +664,15 @@ class OSMLandmaskModule(FetchModule):
                     multi_cleaned = []
                     for sub_poly in poly.geoms:
                         valid_interiors = [
-                            ring for ring in sub_poly.interiors
+                            ring
+                            for ring in sub_poly.interiors
                             if self._get_area_sqm(Polygon(ring)) >= self.min_area_sqm
                         ]
-                        multi_cleaned.append(Polygon(sub_poly.exterior, valid_interiors))
+                        multi_cleaned.append(
+                            Polygon(sub_poly.exterior, valid_interiors)
+                        )
                     from shapely.geometry import MultiPolygon
+
                     cleaned_land.append(MultiPolygon(multi_cleaned))
 
             land_polys = cleaned_land
