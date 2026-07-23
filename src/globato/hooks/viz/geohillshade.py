@@ -161,19 +161,19 @@ class GeoHillshade(RasterStreamHook):
             )
             return plt.get_cmap("terrain")
 
-        # if is_pre_stretched:
-        #     stretched_cpt = cpt_path
-        # else:
-        logger.info(
-            f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
-        )
-        stretched_cpt = cpt_utils.process_cpt(
-            cpt_path,
-            gmin=self.z_min,
-            gmax=self.z_max,
-            split_cpt=self.split_cpt,
-            gdal=False,
-        )
+        if is_pre_stretched:
+            stretched_cpt = cpt_path
+        else:
+            logger.info(
+                f"[{self.name}] Stretching CPT to [{self.z_min:.2f}, {self.z_max:.2f}] (Split: {self.split_cpt})"
+            )
+            stretched_cpt = cpt_utils.process_cpt(
+                cpt_path,
+                gmin=self.z_min,
+                gmax=self.z_max,
+                split_cpt=self.split_cpt,
+                gdal=False,
+            )
 
         if stretched_cpt and os.path.exists(stretched_cpt):
             cm = cpt_utils.load_cmap(stretched_cpt)

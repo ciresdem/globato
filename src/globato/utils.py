@@ -183,6 +183,7 @@ def globatize_modules(modules, shared_cache=None, crs=None):
         if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
             mod.setdefault("args", {})["outdir"] = abs_cache
 
+
         # --- Insert the target crs into stream-reproject etc. ---
         if crs:
             reproject_hook = None
@@ -265,7 +266,7 @@ def safe_window_read(src, window):
     return data
 
 
-def _generate_barrier_hash(region, res, include_rivers, include_lakes, target_crs):
+def _generate_barrier_hash(region, res, include_rivers, include_lakes, include_reefs, include_wetlands, include_breakwaters, target_crs):
     """Generates a short, unique 8-character MD5 hash based on spatial parameters."""
 
     import hashlib
@@ -276,7 +277,7 @@ def _generate_barrier_hash(region, res, include_rivers, include_lakes, target_cr
         if region
         else "global"
     )
-    hash_seed = f"{region_str}_{res}_{include_rivers}_{include_lakes}_{crs_str}"
+    hash_seed = f"{region_str}_{res}_{include_rivers}_{include_lakes}_{include_reefs}_{include_wetlands}_{include_breakwaters}{crs_str}"
     return hashlib.md5(hash_seed.encode("utf-8")).hexdigest()[:8]
 
 
@@ -298,9 +299,12 @@ def resolve_barrier(
     region,
     outdir=None,
     res="1s",
-    # include_water=True,
+    include_water=True,
     include_rivers=True,
     include_lakes=False,
+    include_reefs=False,
+    include_wetlands=False,
+    include_breakwaters=True,
     output_type="raster",
     target_crs="EPSG:4326",
 ):
@@ -352,7 +356,7 @@ def resolve_barrier(
             if barrier_lower in ["osm", "landmask", "coastline"]
             else "glob_coast"
         )
-        logger.info(f"Auto-generating barrier using {target_mod_name}...")
+        logger.debug(f"Auto-generating barrier using {target_mod_name}...")
 
         generator_mod = ModuleRegistry.get_class(target_mod_name)
         if generator_mod:
@@ -363,6 +367,9 @@ def resolve_barrier(
                 res=res,
                 include_rivers=include_rivers,
                 include_lakes=include_lakes,
+                include_reefs=include_reefs,
+                include_wetlands=include_wetlands,
+                include_breakwaters=include_breakwaters,
             )
             gen_instance.run()
             run_fetchez([gen_instance])
@@ -385,8 +392,11 @@ def resolve_barrier(
 
                 if not resolved_path:
                     resolved_path = gen_instance.results[0].get("dst_fn")
+
                     native_type = (
-                        "vector" if target_mod_name == "osm_landmask" else "raster"
+                        "vector"
+                        if resolved_path.endswith((".shp", ".geojson", ".gpkg", ".json"))
+                        else "raster"
                     )
 
     if not resolved_path or not os.path.exists(resolved_path):
@@ -406,12 +416,12 @@ def resolve_barrier(
         return resolved_path
 
     # --- Enforce Output Type & Projection ---
-    logger.info(
+    logger.debug(
         f"Barrier mismatch: Converting {native_type}({native_crs}) -> {output_type}({target_crs})"
     )
 
     spatial_hash = _generate_barrier_hash(
-        region, res, include_rivers, include_lakes, target_crs
+        region, res, include_rivers, include_lakes, include_reefs, include_wetlands, include_breakwaters, target_crs
     )
     base_name = os.path.splitext(os.path.basename(resolved_path))[0]
 

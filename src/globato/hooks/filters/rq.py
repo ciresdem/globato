@@ -111,6 +111,20 @@ class ReferenceQuality(GlobatoFilter):
             return False
 
         region = getattr(mod, "region")
+        region = mod.region.copy()
+        if not self.target_srs:
+            self.target_srs = region.srs
+
+        # The grid must be built in WGS84 to prevent massive memory allocations
+        # when using geographic resolutions with projected (UTM) boundaries!
+        # If the incoming region is projected, warp a copy to WGS84.
+        self.wgs_region = region.copy()
+        if self.wgs_region.srs and self.wgs_region.srs.upper() != "EPSG:4326":
+            self.wgs_region.warp(dst_srs="EPSG:4326")
+        self.wgs_region.buffer(pct=5)
+
+        # self.target_region = self.wgs_region.buffer(pct=5)
+
         outdir = getattr(mod, "_outdir")
         if not self.ref_fn:
             files = self._fetch_reference_files(region, outdir)
@@ -148,9 +162,18 @@ class ReferenceQuality(GlobatoFilter):
             )
             return False
 
-        if self.target_srs:
-            if self._transformer is None:
-                self._transformer = SRSParser(self.target_srs, self.src_crs).tc
+        # if target_region:
+        #     self.target_srs = target_region.srs
+
+        #if self.target_srs:
+
+        # Check the stream's current SRS first, fallback to the module's region SRS
+        current_stream_srs = entry.get("src_srs") or region.srs or "EPSG:4326"
+
+        if self._transformer is None:
+            self._transformer, _ = SRSParser(current_stream_srs, self.wgs_region.srs).get_components()
+        if self._transformer is None:
+            self._transformer, _ = SRSParser(region.srs, self.wgs_region.srs or "epsg:4326").get_components()
 
         return True
 
@@ -167,7 +190,7 @@ class ReferenceQuality(GlobatoFilter):
             logger.debug(f"[RQ] Fetching reference tier: {source}...")
             try:
                 files = fetchez.get(
-                    source, region=region.copy().buffer(pct=5).to_list(), outdir=outdir
+                    source, region=region.copy().buffer(pct=5).to_list(), region_srs=region.srs, outdir=outdir
                 )
                 if files:
                     for f in files:
@@ -235,28 +258,25 @@ class ReferenceQuality(GlobatoFilter):
             logger.error("[RQ] transformez.grid_engine required for 'grid' builder.")
             return None
 
-        out_path = os.path.join(os.path.dirname(files[0]), f"rq_ref_{self.name}.tif")
-
-        target_region = region.copy().buffer(pct=5)
-        nx = int(np.ceil((target_region[1] - target_region[0]) / self.res))
-        ny = int(np.ceil((target_region[3] - target_region[2]) / self.res))
-
+        nx = int(np.ceil((self.wgs_region[1] - self.wgs_region[0]) / self.res))
+        ny = int(np.ceil((self.wgs_region[3] - self.wgs_region[2]) / self.res))
         logger.debug(
-            f"[RQ] Gridding reference surface ({nx}x{ny}) from {len(files)} files..."
+            f"[RQ] Gridding geographic reference surface ({nx}x{ny}) from {len(files)} files..."
         )
 
-        grid_data = GridEngine.load_and_interpolate(files, target_region, nx, ny)
-        # grid_data = GridEngine.fill_nans(grid_data, decay_pixels=50)
+        out_path = os.path.join(os.path.dirname(files[0]), f"rq_ref_{self.name}.tif")
 
-        GridWriter.write(out_path, grid_data, target_region)
+        grid_data = GridEngine.load_and_interpolate(files, self.wgs_region, nx, ny)
+
+        GridWriter.write(out_path, grid_data, self.wgs_region)
         return out_path
 
     def filter_chunk(self, chunk):
         nodata = self.src.nodata if self.src.nodata is not None else -9999
-
         rx, ry, rz = chunk["x"], chunk["y"], chunk["z"]
 
-        if self.target_srs:
+        # if self.target_srs:
+        if self._transformer:
             rx, ry, rz = self._transformer.transform(rx, ry, rz)
 
         cols, rows = self.inv_transform * (rx, ry)

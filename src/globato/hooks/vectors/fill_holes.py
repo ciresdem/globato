@@ -13,7 +13,8 @@ Perfect for solidifying landmasks and delineating continuous ocean boundaries.
 
 import os
 import logging
-import fiona
+from pyogrio.raw import read, write
+import shapely
 from shapely.geometry import shape, mapping, Polygon, MultiPolygon
 from fetchez.hooks import FetchHook
 
@@ -79,26 +80,20 @@ class VectorFillHoles(FetchHook):
             )
 
             try:
-                with fiona.open(src_fn, "r") as src:
-                    profile = src.profile
+                meta, geometry_wkb, field_data = read(src_fn)
+                geoms = shapely.from_wkb(geometry_wkb)
 
-                    with fiona.open(dst_fn, "w", **profile) as dst:
-                        for feature in src:
-                            if not feature.get("geometry"):
-                                dst.write(feature)
-                                continue
+                filled_geoms = [self._remove_holes(g) for g in geoms if g]
+                new_geometry_wkb = shapely.to_wkb(filled_geoms)
 
-                            geom = shape(feature["geometry"])
-
-                            filled_geom = self._remove_holes(geom)
-
-                            new_feature = {
-                                "type": "Feature",
-                                "properties": dict(feature["properties"]),
-                                "geometry": mapping(filled_geom),
-                            }
-
-                            dst.write(new_feature)
+                write(
+                    dst_fn,
+                    new_geometry_wkb,
+                    field_data,
+                    fields=meta["fields"],
+                    geometry_type=meta["geometry_type"],
+                    crs=meta["crs"]
+                )
 
                 entry["src_fn"] = src_fn
                 entry["dst_fn"] = dst_fn

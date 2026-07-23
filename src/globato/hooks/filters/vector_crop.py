@@ -13,7 +13,8 @@ Crops stream data using a polygon vector mask.
 
 import logging
 import numpy as np
-import fiona
+from pyogrio.raw import read
+import shapely
 from shapely.geometry import shape, MultiPolygon
 from shapely.vectorized import contains as vec_contains
 
@@ -48,16 +49,18 @@ class VectorCrop(GlobatoFilter):
             return False
 
         try:
-            with fiona.open(self.vector_path, "r") as src:
-                geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
+            meta, geometry_wkb, field_data = read(self.vector_path)
+            geoms = shapely.from_wkb(geometry_wkb)
 
-            if not geoms:
+            valid_geoms = [g for g in geoms if g and not g.is_empty]
+
+            if not valid_geoms:
                 logger.warning(
                     f"Vector file {self.vector_path} contains no valid geometries."
                 )
                 return False
 
-            self.geometry = MultiPolygon(geoms) if len(geoms) > 1 else geoms[0]
+            self.geometry = MultiPolygon(valid_geoms) if len(valid_geoms) > 1 else valid_geoms[0]
 
         except Exception as e:
             logger.error(f"Failed to load vector {self.vector_path}: {e}")

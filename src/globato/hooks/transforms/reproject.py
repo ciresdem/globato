@@ -76,13 +76,7 @@ class StreamReproject(FetchHook):
                 mod_region = getattr(mod, "region", None)
                 if mod_region:
                     try:
-                        buffered = mod_region.copy().buffer(pct=5)
-                        safe_region = [
-                            buffered.xmin,
-                            buffered.xmax,
-                            buffered.ymin,
-                            buffered.ymax,
-                        ]
+                        safe_region = mod_region.copy().buffer(pct=5)
                     except Exception:
                         safe_region = list(mod_region)
 
@@ -98,6 +92,7 @@ class StreamReproject(FetchHook):
     def _apply_transform(self, stream, pipeline):
         horz_transformer, grid_query = pipeline
 
+        logger.debug(f"[{self.name}] Applying transformation: {pipeline}")
         for chunk in stream:
             # Vertical Shift (using native, unprojected x/y coordinates)
             if grid_query and chunk["z"] is not None:

@@ -185,11 +185,12 @@ class XYZReader(BaseGlobatoReader):
                             y = chunk_data[:, col_map[self.ypos]]
                             z = chunk_data[:, col_map[self.zpos]]
 
+                            # logger.info(f"file: {self.src_fn} | z: {z}")
                             if self.transform:
                                 x = (x + self.x_offset) * self.x_scale
                                 y = (y + self.y_offset) * self.y_scale
                                 z = z * self.z_scale
-
+                            # logger.info(f"file: {self.src_fn} | z_scaled: {z}")
                             if self.rem:
                                 x = np.fmod(x + 180, 360) - 180
 

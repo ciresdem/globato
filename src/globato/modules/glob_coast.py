@@ -7,6 +7,9 @@ globato.modules.glob_coast
 
 Super-Module that generates a high-quality Coastline Mask.
 Merges Vectors (NHD, OSM) and Rasters (Copernicus, GMRT) into a unified product using weighted voting.
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import os
@@ -19,7 +22,7 @@ from rasterio.enums import Resampling
 from rasterio.warp import reproject
 import fiona
 
-from fetchez import core, cli, utils
+from fetchez import core, cli, utils, spatial
 from fetchez.hooks.unzip import Unzip
 from fetchez.hooks.fn_filter import FilenameFilter
 from fetchez.registry import ModuleRegistry
@@ -134,6 +137,7 @@ class GlobCoast(FetchModule):
         Rasters: tiles are merged using first-valid-wins so that overlapping
         regions are counted only once.
         """
+
         valid_files = [f for f in fetched_files if f and os.path.exists(f)]
         if not valid_files:
             return
@@ -186,6 +190,7 @@ class GlobCoast(FetchModule):
                     buffer = np.full(
                         (self.height, self.width), np.nan, dtype=np.float32
                     )
+
                     with rasterio.open(f_path) as src:
                         reproject(
                             source=rasterio.band(src, 1),
@@ -193,7 +198,7 @@ class GlobCoast(FetchModule):
                             src_transform=src.transform,
                             src_crs=src.crs,
                             dst_transform=self.transform,
-                            dst_crs=rasterio.crs.CRS.from_epsg(4326),
+                            dst_crs=rasterio.crs.CRS.from_user_input(self.region.srs),  # rasterio.crs.CRS.from_epsg(4326),
                             src_nodata=src.nodata,
                             dst_nodata=np.nan,
                             resampling=Resampling.nearest,
@@ -223,7 +228,7 @@ class GlobCoast(FetchModule):
             "width": self.width,
             "count": 1,
             "dtype": "uint8",
-            "crs": "EPSG:4326",
+            "crs": self.region.srs,  # "EPSG:4326",
             "transform": self.transform,
             "compress": "lzw",
             "nodata": None,
@@ -241,9 +246,7 @@ class GlobCoast(FetchModule):
 
         self._init_grid()
 
-        w, e, s, n = self.region
-        pad = 0.1
-        fetch_region = [w - pad, e + pad, s - pad, n + pad]
+        fetch_region = self.region.copy().buffer(pct=5)
 
         for mod_name in self.source_list:
             fetched_files = []

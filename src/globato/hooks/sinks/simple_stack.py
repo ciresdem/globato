@@ -236,9 +236,8 @@ class SimpleStack(FetchHook):
 
         if self._global_mode and not self._accumulator:
             region = next(
-                (getattr(mod, "original_region", mod.region) for mod, _ in entries if hasattr(mod, "region")), None
+                (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
             )
-            #                 (mod.region for mod, _ in entries if getattr(mod, "region", None)), None
             if region:
                 self._init_accumulator(region)
             else:

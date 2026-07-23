@@ -19,6 +19,7 @@ import rasterio
 import scipy.ndimage
 from rasterio.warp import reproject, Resampling
 
+from fetchez.spatial import Region
 from fetchez.utils import (
     remove_glob2,
     str2inc,
@@ -162,12 +163,14 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         with rasterio.open(src_path) as src:
             bounds = src.bounds
-            region = [bounds.left, bounds.right, bounds.bottom, bounds.top]
+            region = Region(bounds.left, bounds.right, bounds.bottom, bounds.top)
             src_crs = src.crs.to_string() if src.crs else None
+            region.srs = src_crs
 
         decimated_stack = fetchez.get(
             "file",
             region=region,
+            region_srs=src_crs,
             path=src_path,
             hooks=[
                 "set_datatype:data_type=multi-stack",
