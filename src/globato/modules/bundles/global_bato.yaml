@@ -74,16 +74,19 @@ modules:
 
   # NCEI Multibeam
   - module: mbdb
-    args: {weight: 1, want_inf: False}
+    args: {weight: 1, want_inf: True, use_cache: true}
     hooks:
+      - name: filename_filter
+        args:
+          match: ".fbt"
+      - name: stream_data
       - name: set-srs
         args:
-          srs: "EPSG:4326+9003"
-      - name: spatial_crop
+          src_srs: "EPSG:4326+9003"
       - name: rq
         args:
-          reference: "gmrt/gebco"
-          threshold: 10
+          reference: "gmrt/gebco/cudem"
+          threshold: 5
           mode: "percent"
           builder: "grid"
           res: 0.000277777
