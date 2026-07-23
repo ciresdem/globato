@@ -21,14 +21,6 @@ Built on top of the `fetchez` (orchestration) and `transformez` (horizontal and 
 
 ---
 
-## ❓ Why Globato?
-
-Traditional DEM generation is often a disjointed, manual process of hunting down, organizing and processing disparate datasets using a wide variety of software and one-off processing scripts.
-
-**Globato standardizes this workflow** by unifying data fetching, spatial filtering, datum transformations, and gridding into a single, memory-safe streaming pipeline. Using declarative YAML recipes, it allows you to orchestrate massive, reproducible Topo-Bathy DEMs directly from your terminal!
-
----
-
 ## 📦 Installation
 Install via pip (this will automatically pull in the `fetchez` and `transformez` dependencies):
 
@@ -52,6 +44,8 @@ Would you like to know more? Check out our [Official Documentation](https://glob
 * **The Globato CLI:** Generate and run globato recipes, fetch elevation data sources, visualize your data all in the command line.
 
 * **DEM Recipes:** Build reproducable DEMs using simple YAML recipes.
+
+* **Module Bundles:** Use pre-configured module bundles for quick DEM generation in your region.
 
 ---
 
