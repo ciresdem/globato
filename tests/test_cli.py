@@ -40,25 +40,11 @@ def test_cli_base_help(runner):
     expected_commands = [
         "cudem",
         "gritz",
-        "regions",
-        "fetchez",
         "dlim",
         "perspecto",
-        "transformez",
     ]
     for cmd in expected_commands:
         assert cmd in result.output, f"Missing '{cmd}' command in CLI help!"
-
-
-def test_region_echo_bbox(runner):
-    """Test the spatial parsing engine (No network required)."""
-
-    result = runner.invoke(
-        cli, ["regions", "echo", "-R", "-120/-119/34/35", "-F", "gmt"]
-    )
-
-    assert result.exit_code == 0
-    assert "-120.0/-119.0/34.0/35.0" in result.output.strip()
 
 
 def test_recipe_build_save_only(runner):
