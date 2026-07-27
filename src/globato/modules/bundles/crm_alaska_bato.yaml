@@ -1,4 +1,4 @@
-name: crm_alaska
+name: crm-alaska-bathy-topo
 desc: >
 tags:
   - globato
@@ -9,6 +9,9 @@ tags:
   - glob-bundle
 
 modules:
+
+  - bundle: crm-bathy-topo
+      
   # IFSAR 5m DEM
   - module: tnm
     args:
@@ -36,5 +39,3 @@ modules:
           builder: grid
           res: 0.008333
       - name: outlierz
-
-  - bundle: crm_standard

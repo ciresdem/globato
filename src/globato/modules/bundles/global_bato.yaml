@@ -29,9 +29,18 @@ modules:
       - name: unzip
       - name: filename_filter
         args: {match: ".tif"}
+      - name: raster_warp
+        args: {res: 3s}
+      - name: point_raster_mask
+        args:
+          barrier: "coastline"
+          invert: False
+          res: 3s
       - name: set_datatype
         args:
           data_type: "rio"
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: range_z
         args: {min_z: 0.01}
 
@@ -41,16 +50,25 @@ modules:
       - name: unzip
       - name: filename_filter
         args: {match: ".tif"}
+      - name: raster_warp
+        args: {res: 9s}
+      - name: point_raster_mask
+        args:
+          barrier: "coastline"
+          invert: False
+          res: 3s
       - name: set_datatype
         args:
           data_type: "rio"
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: range_z
         args: {min_z: 0.01}
 
   # Copernicus marine SDB data
   - module: copernicus_marine
     args:
-      weight: 1.2
+      weight: .5
     hooks:
       - name: set-datatype
         args:
@@ -69,6 +87,8 @@ modules:
           scale: 0.25
           # method: inverse
           # offset: 1.2
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: range_z
         args: {max_z: -0.01}
 
@@ -83,13 +103,15 @@ modules:
       - name: set-srs
         args:
           src_srs: "EPSG:4326+9003"
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: rq
         args:
           reference: "gmrt/gebco/cudem"
           threshold: 5
           mode: "percent"
           builder: "grid"
-          res: 0.000277777
+          res: 1s
 
   # Global Marine Gravity Bathymetry
   - module: sysu
@@ -102,13 +124,15 @@ modules:
       - name: set-srs
         args:
           srs: "EPSG:4326+9003"
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: rq
         args:
           reference: "gebco"
           threshold: 20
           mode: "percent"
           builder: "grid"
-          res: 0.008333
+          res: 3s
 
   # Global Marine Gravity Bathymetry
   - module: margrav
@@ -124,13 +148,15 @@ modules:
       - name: range_z
         args:
           max_z: -0.1
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: rq
         args:
           reference: "gebco"
           threshold: 20
           mode: "percent"
           builder: "grid"
-          res: 0.008333
+          res: 3s
 
   - module: csb
     args:
@@ -150,13 +176,15 @@ modules:
       - name: set-srs
         args:
           srs: "EPSG:4326+9003"
+      - name: stream_reproject
+        args: {dst_srs: "EPSG:4326+3855"}
       - name: rq
         args:
           reference: "gebco"
           threshold: 20
           mode: "percent"
           builder: "grid"
-          res: 0.008333
+          res: 3s
 
   #   #  Bathymetry
   # - module: gebco

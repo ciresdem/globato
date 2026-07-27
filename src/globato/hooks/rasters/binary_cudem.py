@@ -53,6 +53,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         barrier=None,
         decimation_mode="weighted_mean",
         bathy_max_z=-0.01,
+        keep_steps=True,
         **kwargs,
     ):
         super().__init__(barrier=barrier, strip_bands=True, **kwargs)
@@ -72,6 +73,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.algos = parse_arg_to_list(algos, str)
         self.decimation_mode = str_or(decimation_mode, "weighted_mean")
         self.bathy_max_z = float_or(bathy_max_z, -0.01)
+        self.keep_steps = keep_steps
 
     def _setup_steps(self, src_path):
         # Steps
@@ -181,7 +183,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         "res": target_res,
                         "output": dst_path,
                         "crs": src_crs,
-                        "mode": self.decimation_mode,
+                        "mode": "mixed",  # self.decimation_mode,
+                        "weight_threshold": "/".join([str(x) for x in self.weights]),
+                        "overwrite": True,
                     },
                 },
                 "focus_sink:target=multi_stack",
@@ -198,6 +202,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
         current_algo,
         current_blend_dist,
         is_coarsest,
+        base_barrier,
     ):
         with rasterio.open(step_stack, "r+") as src:
             data = src.read()
@@ -205,6 +210,32 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
             z = data[0].astype("float64")
             w = data[2].astype("float64")
+
+            barrier_mask = None
+            if base_barrier is not None:
+                hr_mask, hr_transform = base_barrier
+
+                # If we are already at the base resolution, just use it
+                if src.transform == hr_transform and z.shape == hr_mask.shape:
+                    barrier_mask = hr_mask
+                else:
+                    warped_mask = np.zeros(z.shape, dtype="float32")
+                    reproject(
+                        source=hr_mask.astype("float32"),
+                        destination=warped_mask,
+                        src_transform=hr_transform,
+                        src_crs=src.crs,
+                        dst_transform=src.transform,
+                        dst_crs=src.crs,
+                        resampling=Resampling.average,  # Area-weighted average!
+                        num_threads=1,
+                    )
+                    # A coarse pixel is land if >50% of its high-res footprint is land
+                    barrier_mask = warped_mask >= 0.5
+
+            if self.bathy_max_z is not None and barrier_mask is not None:
+                water_mask = (~barrier_mask) & (z != ndv) & (~np.isnan(z))
+                z[water_mask] = np.minimum(z[water_mask], self.bathy_max_z)
 
             # We only process data at or above the current weight
             valid_mask = (z != ndv) & (~np.isnan(z))
@@ -214,11 +245,15 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 tier_zone = np.ones_like(core_mask, dtype=bool)
                 missing_mask = ~valid_mask
             else:
-                struct = scipy.ndimage.generate_binary_structure(2, 2)
-                tier_zone = scipy.ndimage.binary_dilation(
-                    core_mask, structure=struct, iterations=current_blend_dist
-                )
+                dist_to_core = scipy.ndimage.distance_transform_edt(~core_mask)
+                tier_zone = dist_to_core <= current_blend_dist
+
                 missing_mask = (~valid_mask) & tier_zone
+                # struct = scipy.ndimage.generate_binary_structure(2, 2)
+                # tier_zone = scipy.ndimage.binary_dilation(
+                #     core_mask, structure=struct, iterations=current_blend_dist
+                # )
+                # missing_mask = (~valid_mask) & tier_zone
 
             # Delegate Interpolation to the requested Hook
             y_miss, x_miss = np.where(missing_mask)
@@ -227,7 +262,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
                     f"[{self.name}] Filling {len(y_miss)} voids using '{current_algo}' for Weights above {current_weight}"
                 )
 
-                # Create isolated temporary files for the hook
                 temp_in = step_stack.replace(".tif", f"_{current_weight}_in.tif")
                 temp_out = step_stack.replace(".tif", f"_{current_weight}_out.tif")
 
@@ -255,7 +289,11 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 if os.path.exists(temp_out):
                     os.remove(temp_out)
             else:
-                logger.info(f"no points in tier {current_weight}")
+                logger.info("Tier is filled by data; nothing to interpolate")
+                # logger.info(f"no points in tier {current_weight}")
+
+            # if self.barrier is not None:
+            #     barrier_mask = self._create_barrier_mask(z.shape, src.transform)
 
             # Cross-fade with the upsampled background
             if previous_surface:
@@ -270,16 +308,31 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         dst_crs=src.crs,
                         src_nodata=bg_src.nodata,
                         dst_nodata=ndv,
-                        resampling=Resampling.cubic,
+                        resampling=Resampling.bilinear,
                         num_threads=1,
                     )
 
                 if not np.any(core_mask):
                     z[:] = bg_aligned[:]
                 else:
-                    dist = scipy.ndimage.distance_transform_cdt(
-                        ~core_mask, metric="taxicab"
-                    )
+                    # --- BARRIER-RESTRICTED DISTANCE TRANSFORM ---
+                    if barrier_mask is not None:
+                        # Distance to the nearest land data
+                        dist_land = scipy.ndimage.distance_transform_edt(
+                            ~(core_mask & barrier_mask)  # , metric="taxicab"
+                        )
+                        # Distance to the nearest water data
+                        dist_water = scipy.ndimage.distance_transform_edt(
+                            ~(core_mask & ~barrier_mask)  # , metric="taxicab"
+                        )
+                        # Merge them strictly along the barrier
+                        dist = np.where(barrier_mask, dist_land, dist_water)
+                    else:
+                        # Fallback if no barrier is provided
+                        dist = scipy.ndimage.distance_transform_edt(
+                            ~core_mask  # , metric="taxicab"
+                        )
+
                     if current_blend_dist > 0:
                         weights = np.clip(dist / float(current_blend_dist), 0.0, 1.0)
                         bg_only_mask = dist >= current_blend_dist
@@ -296,7 +349,6 @@ class BinaryCudemStepDown(RasterGlobalHook):
                         valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
                         valid_z = (z != ndv) & (~np.isnan(z))
 
-                        # blend_active = trans_mask & valid_bg
                         blend_active = trans_mask & valid_bg & valid_z
                         z[blend_active] = (
                             (1.0 - weights[blend_active]) * z[blend_active]
@@ -307,19 +359,55 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
                     fill_from_bg = remaining_holes & valid_bg_overall
                     z[fill_from_bg] = bg_aligned[fill_from_bg]
+                    # dist = scipy.ndimage.distance_transform_cdt(
+                    #     ~core_mask, metric="taxicab"
+                    # )
+                    # if current_blend_dist > 0:
+                    #     weights = np.clip(dist / float(current_blend_dist), 0.0, 1.0)
+                    #     bg_only_mask = dist >= current_blend_dist
+                    #     trans_mask = (dist > 0) & (dist < current_blend_dist)
+                    # else:
+                    #     # Anything outside the core mask is 100% background
+                    #     weights = np.ones_like(dist)
+                    #     bg_only_mask = dist > 0
+                    #     trans_mask = np.zeros_like(dist, dtype=bool)
 
-                if self.bathy_max_z is not None:
-                    barrier_mask = self._create_barrier_mask(z.shape, src.transform)
-                    if barrier_mask is not None:
-                        water_mask = (~barrier_mask) & (z != ndv) & (~np.isnan(z))
-                        z[water_mask] = np.minimum(z[water_mask], self.bathy_max_z)
+                    # z[bg_only_mask] = bg_aligned[bg_only_mask]
+
+                    # if np.any(trans_mask):
+                    #     valid_bg = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
+                    #     valid_z = (z != ndv) & (~np.isnan(z))
+
+                    #     # blend_active = trans_mask & valid_bg
+                    #     blend_active = trans_mask & valid_bg & valid_z
+                    #     z[blend_active] = (
+                    #         (1.0 - weights[blend_active]) * z[blend_active]
+                    #     ) + (weights[blend_active] * bg_aligned[blend_active])
+
+                    # remaining_holes = (z == ndv) | np.isnan(z)
+                    # valid_bg_overall = (bg_aligned != ndv) & (~np.isnan(bg_aligned))
+
+                    # fill_from_bg = remaining_holes & valid_bg_overall
+                    # z[fill_from_bg] = bg_aligned[fill_from_bg]
+
+                if self.bathy_max_z is not None and barrier_mask is not None:
+                    # barrier_mask = self._create_barrier_mask(z.shape, src.transform)
+                    # if barrier_mask is not None:
+                    water_mask = (~barrier_mask) & (z != ndv) & (~np.isnan(z))
+                    z[water_mask] = np.minimum(z[water_mask], self.bathy_max_z)
 
             src.write(z.astype(rasterio.float32), 1)
 
     def process_raster(self, src_path, dst_path, entry):
         previous_surface = None
-
         self._setup_steps(src_path)
+
+        base_barrier = None
+        if self.barrier is not None:
+            with rasterio.open(src_path) as base_src:
+                hr_mask = self._create_barrier_mask(base_src.shape, base_src.transform)
+                if hr_mask is not None:
+                    base_barrier = (hr_mask, base_src.transform)
 
         for i, res_str in enumerate(reversed(self.resolutions)):
             # current_weight = self.weights[::-1][i]
@@ -338,18 +426,29 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 current_algo,
                 current_blend_dist,
                 is_coarsest,
+                base_barrier=base_barrier,
             )
+
+            if previous_surface:
+                if not self.keep_steps:
+                    remove_glob2(f"{previous_surface.split('.')[0]}.*")
 
             previous_surface = step_stack
 
         if previous_surface:
-            shutil.move(previous_surface, dst_path)
-            remove_glob2(
-                "temp_stack_step*.tif",
-                "temp_interp_step*.tif",
-                "*.blend.tif",
-                "*_step_*.tif*",
-            )
+            if self.keep_steps:
+                shutil.copy(previous_surface, dst_path)
+            else:
+                shutil.move(previous_surface, dst_path)
+                # sutil.move(previous_surface, dst_path)
+
+                remove_glob2(
+                    "temp_stack_step*.tif",
+                    "temp_interp_step*.tif",
+                    "*.blend.tif",
+                    "*_step_*.tif*",
+                    f"{previous_surface.split('.')[0]}.*",
+                )
             logger.info(f"--- Successfully built Binary CUDEM DEM: {dst_path} ---")
             return True
 

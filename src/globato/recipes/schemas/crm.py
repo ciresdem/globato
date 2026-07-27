@@ -3,17 +3,18 @@
 
 """
 globato.schemas.crm
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 Registers CRM DEM-specific schema into the Fetchez engine.
+Enforces 1 arc-second resolution and target CRS across both module-level
+processing hooks and global pipeline assembly hooks.
 
 :copyright: (c) 2010-2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
 """
 
 import logging
-
-from fetchez.recipes.schemas import BaseSchema  # , SchemaRegistry
+from fetchez.recipes.schemas import BaseSchema
 from fetchez.spatial import parse_region
 
 logger = logging.getLogger(__name__)
@@ -23,17 +24,20 @@ class CRMSchema(BaseSchema):
     """The "CRM" schema.
 
     Enforces:
-      1 arc-second resolution
-      1/4 degree tiles
-      Buffer region for fetching
-      Crop output to delivery spec
-      Add CRM project metadata
-      Output ESPG is 4326+3855
+      - 1 arc-second resolution (0.0002777777777777778 deg)
+      - Standard compound CRS: EPSG:4326+3855 (WGS84 horizontal + NAVD88 vertical)
+      - Buffer region for fetch/grid coverage
+      - Crop/Cut output to delivery spec
+      - Inject resolution & CRS across module hooks (warps, masks, reprojectors)
+      - Align global hooks (multi_stack, provenance, source_masks, viz)
     """
 
     name = "crm"
-    meta_desc = "Coastal Relief Model Schema"
+    meta_desc = "Coastal Relief Model Schema (1 arc-second)"
     meta_category = "NCEI"
+
+    TARGET_SRS = "EPSG:4326+3855"
+    RES_DEG = 0.0002777777777777778  # 1 arc-second in decimal degrees
 
     @classmethod
     def apply(cls, config):
@@ -42,11 +46,9 @@ class CRMSchema(BaseSchema):
         if not dist_region:
             return config
 
-        res_deg = 0.0002777777777777778  # 1 arc-second
-        # buffer_deg = 100 * res_deg   # 100 cell buffer for fetching/gridding
-
+        # Expand processing region with a slight buffer to avoid edge artifacts
         proc_region = dist_region.copy()
-        proc_region.buffer(10)  # Buffering slightly to ensure overlap coverage
+        proc_region.buffer(10)  # 10-cell buffer
         config["region"] = proc_region.to_list()
         logger.debug(
             f"[Schema: {cls.name}] Expanded processing region to {proc_region}."
@@ -54,74 +56,114 @@ class CRMSchema(BaseSchema):
 
         global_hooks = config.get("global_hooks", [])
         modules = config.get("modules", [])
-
-        # Update Module reprojections
+        # Mutate Expanded Modules & Module-Level Hooks
         for module in modules:
             hooks = module.get("hooks", [])
 
             for hook in hooks:
-                if hook.get("name") in ["stream-reproject", "stream_reproject"]:
-                    if not hook.get("args", None):
-                        hook.setdefault("args", {})
-                    hook["args"].update({"dst_srs": "EPSG:4326+3855"})
+                hook_name = hook.get("name", "").replace("-", "_")
+                hook_args = hook.setdefault("args", {})
 
+                # Reprojection Hooks
+                if hook_name in ["stream_reproject", "reproject"]:
+                    hook_args["dst_srs"] = cls.TARGET_SRS
+                    logger.debug(
+                        f"[Schema: {cls.name}] Enforced dst_srs='{cls.TARGET_SRS}' in {hook_name}."
+                    )
+
+                # Raster Warping / Resampling Hooks
+                elif hook_name in ["raster_warp", "rio_warp", "warp"]:
+                    hook_args["res"] = cls.RES_DEG
+                    hook_args["dst_srs"] = cls.TARGET_SRS
+                    logger.debug(
+                        f"[Schema: {cls.name}] Enforced res={cls.RES_DEG} and srs in {hook_name}."
+                    )
+
+                # Point / Raster Masking
+                elif hook_name == "point_raster_mask":
+                    hook_args["res"] = cls.RES_DEG
+                    logger.debug(
+                        f"[Schema: {cls.name}] Enforced res={cls.RES_DEG} in point_raster_mask."
+                    )
+
+                # Resampling / Quality Filter Hooks
+                elif hook_name == "rq":
+                    hook_args["res"] = cls.RES_DEG
+                    logger.debug(
+                        f"[Schema: {cls.name}] Enforced res={cls.RES_DEG} in rq hook."
+                    )
+
+            # Insert safety range_z check right after data streaming starts
             insert_idx = len(hooks)
             for i, hook in enumerate(hooks):
-                if hook.get("name") in ["stream-init", "stream_data"]:
+                h_name = hook.get("name", "").replace("-", "_")
+                if h_name in ["stream_init", "stream_data"]:
                     insert_idx = i + 1
                     break
 
-            # Add range_z between Marians Trench and Mt. Everest for safety
-            # right after stream_data starts. This is in meters.
             hooks.insert(
                 insert_idx,
-                {"name": "range-z", "args": {"min_z": -11000, "max_z": 9000}},
+                {"name": "range_z", "args": {"min_z": -11000, "max_z": 9000}},
             )
             module["hooks"] = hooks
 
-            mod_name = module.get("module", "unknown")
-            logger.debug(
-                f"[Schema: {cls.name}] Injected 'range_z' into {mod_name} module."
-            )
-
-        # Update Stack parameters
+        # 3. Mutate Global Hooks
         for hook in global_hooks:
-            if hook.get("name") in ["multi_stack", "multi-stack"]:
-                hook.setdefault("args", {})
-                hook["args"].update(
+            hook_name = hook.get("name", "").replace("-", "_")
+            hook_args = hook.setdefault("args", {})
+
+            # Stacker alignment
+            if hook_name == "multi_stack":
+                hook_args.update(
                     {
-                        "resolution": res_deg,
+                        "resolution": cls.RES_DEG,
                         "registration": "grid",
-                        "srs": "EPSG:4326+3855",
+                        "srs": cls.TARGET_SRS,
+                        "weight_threshold": "1/.5/.25",
                     }
                 )
                 logger.debug(
-                    f"[Schema: {cls.name}] Changed 'multi-stack' resolution to {res_deg}."
-                )
-                logger.debug(
-                    f"[Schema: {cls.name}] Changed 'multi-stack' registration to 'grid'."
-                )
-                logger.debug(
-                    f"[Schema: {cls.name}] Changed 'multi-stack' srs to 'EPSG:4326+3855'."
+                    f"[Schema: {cls.name}] Aligned multi_stack: res={cls.RES_DEG}, srs={cls.TARGET_SRS}."
                 )
 
-            if hook.get("name") in ["viz_geoshade", "viz-geoshade"]:
-                hook.setdefault("args", {})
-                hook["args"].update(
+            # Provenance map alignment
+            elif hook_name == "provenance":
+                hook_args["res"] = cls.RES_DEG
+                hook_args["crs"] = cls.TARGET_SRS
+                logger.debug(
+                    f"[Schema: {cls.name}] Aligned provenance: res={cls.RES_DEG}."
+                )
+
+            # Source masks alignment
+            elif hook_name == "source_masks":
+                hook_args["res"] = cls.RES_DEG
+                logger.debug(
+                    f"[Schema: {cls.name}] Aligned source_masks: res={cls.RES_DEG}."
+                )
+
+            # Shading z-range alignment
+            elif hook_name == "viz_geoshade":
+                hook_args.update({"z_min": -3500, "z_max": 1500})
+                logger.debug(
+                    f"[Schema: {cls.name}] Aligned viz_geoshade z-range to [-3500, 1500]."
+                )
+
+            elif hook_name == "ms_binary_cudem":
+                hook_args.update(
                     {
-                        "z_min": -3500,
-                        "z_max": 1500,
+                        "resolutions": "1s/3s/9s/15s",
+                        "weights": "1/.5/.25/0",
+                        "steps": 3,
                     }
                 )
                 logger.debug(
-                    f"[Schema: {cls.name}] Changed 'viz_geoshade' z_range to [-3500 - 1500]."
+                    f"[Schema: {cls.name}] Aligned ms_binary_cudem: res={cls.RES_DEG}."
                 )
 
-        # Find where to insert the cut/crop hooks!
-        # We want to put it after dem_uncertainty, but before viz_geoshade
+        # 4. Inject Crop / Cut / Delivery Hooks
         insert_idx = len(global_hooks)
         for i, hook in enumerate(global_hooks):
-            if hook.get("name") in ["viz_geoshade", "viz-geoshade"]:
+            if hook.get("name", "").replace("-", "_") == "viz_geoshade":
                 insert_idx = i
                 break
 
@@ -132,32 +174,27 @@ class CRMSchema(BaseSchema):
         global_hooks.insert(
             insert_idx, {"name": "raster_crop", "args": {"output": delivery_fn}}
         )
-        logger.debug(f"[Schema: {cls.name}] Injected 'raster-crop' in global hooks.")
-
         global_hooks.insert(
             insert_idx,
             {
                 "name": "raster_cut",
-                "args": {
-                    "region": dist_region.to_list(),
-                },
+                "args": {"region": dist_region.to_list()},
             },
-        )
-        logger.debug(
-            f"[Schema: {cls.name}] Injected 'raster-cut' in global hooks with region: {dist_region}."
         )
 
         global_hooks.append(
             {
+                # "name": "format_cog",
+                # "args": {
+                #     "overviews": "2/4/8/16/32",
+                #     "resampling": "average",
+                # },
                 "name": "copy_artifact",
                 "args": {
                     "target_dir": "../_crm_deliverables",
                     "match": [delivery_fn, "hillshade.tif"],
                 },
             }
-        )
-        logger.debug(
-            f"[Schema: {cls.name}] Injected 'copy-artifact' in global hooks to copy delivery tifs to ../_crm_deliverables"
         )
 
         config["global_hooks"] = global_hooks

@@ -20,6 +20,7 @@ import threading
 from scipy.ndimage import map_coordinates
 
 import fetchez
+from fetchez.utils import str2inc
 
 from .base import GlobatoFilter
 
@@ -86,7 +87,7 @@ class ReferenceQuality(GlobatoFilter):
         self.threshold = float(threshold)
         self.mode = mode.lower()
         self.builder = builder.lower()
-        self.res = float(res)
+        self.res = str2inc(res)
         self.ref_fn = None
 
         self.target_srs = target_srs

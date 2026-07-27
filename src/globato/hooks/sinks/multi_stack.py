@@ -30,7 +30,6 @@ from fetchez.hooks import FetchHook
 from fetchez.utils import (
     colorize,
     CYAN,
-    BLUE,
     BOLD,
     format_dataset_id,
 )
@@ -585,10 +584,10 @@ class MultiStackHook(FetchHook):
 
         # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
         pts_str = colorize(f"{count:,}", BOLD) + " pts"
-        ds_str = colorize(dataset_str, BLUE)
+        # ds_str = colorize(dataset_str, BLUE)
         st_str = colorize(f"({stats_str})", CYAN)
 
-        logger_str = f"Stacked {ds_str} -> {pts_str} {st_str}"
+        logger_str = f"Stacked {dataset_str} -> {pts_str} {st_str}"
         # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({stats_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
         logger.info(logger_str)
 

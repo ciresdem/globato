@@ -1,0 +1,15 @@
+project:
+  name: "cudem-standard"
+  description: >
+    Production-grade 1/9-arc-second CUDEM.
+
+execution:
+  threads: 4
+
+schema: cudem
+
+modules:
+  - bundle: cudem-bathy-topo
+
+global_hooks:
+  - preset: mr-globato-cudem

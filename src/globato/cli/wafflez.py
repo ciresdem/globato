@@ -4,14 +4,19 @@
 """
 globato.cli.wafflez
 ~~~~~~~~~~~~~~~~~~
+
 The command-line interface for the wafflez group.
 
 list, dump, copy, validate, run, build
+
+:copyright: (c) 2025 - 2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
 """
 
 import os
 import sys
 import click
+import copy
 import json
 import yaml
 import logging
@@ -26,15 +31,14 @@ from fetchez.utils import (
     FetchezMainGroup,
     FetchezMainCommand,
 )
-from globato.utils import yield_parsed_regions, globatize_modules, make_recipe_config
+from globato.utils import globatize_modules, make_recipe_config
+from fetchez.spatial import yield_parsed_regions
 
 logger = logging.getLogger(__name__)
 
 WAFFLEZ_COMMANDS = {
     "Commmands": ["run", "build"],
 }
-
-# WAFFLEZ_COMMANDS = ["run", "build", "recipes"]
 
 
 @click.version_option(package_name="globato")
@@ -48,9 +52,8 @@ def wafflez_group():
 
     \b
       This is the GLOBATO automated DEM compilation engine. It takes overlapping
-      streams of geospatial data (waffles), seamlessly stacks them based on
-      quality weights, and interpolates the gaps to build continuous Digital
-      Elevation Models (DEMs).
+      streams of geospatial data, seamlessly stacks them based on quality weights,
+      and interpolates the gaps to build continuous Digital Elevation Models (DEMs).
 
     \b
     Core Commands:
@@ -142,8 +145,6 @@ def wafflez_run(
 ):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
-    import copy
-
     RecipeRegistry.load_all()
 
     base_config = _load_yaml(target)
@@ -155,6 +156,11 @@ def wafflez_run(
 
     if outname:
         base_config.setdefault("project", {})["name"] = outname
+
+    recipe_modules = globatize_modules(
+        base_config.get("modules"), crs=t_srs, res=increment
+    )
+    base_config["modules"] = recipe_modules
 
     if increment or t_srs or outname:
         increment = str2inc(increment)
@@ -693,7 +699,10 @@ def wafflez_build(
         sys.exit(1)
 
     compiled_modules = globatize_modules(
-        compile_sources(sources), shared_cache=shared_cache, crs=t_srs
+        compile_sources(sources),
+        shared_cache=shared_cache,
+        crs=t_srs,
+        res=increment,
     )
 
     if outdir is None:
