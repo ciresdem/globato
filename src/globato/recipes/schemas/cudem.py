@@ -14,7 +14,7 @@ Registers CUDEM DEM-specific schema into the Fetchez engine.
 from fetchez.recipes.schemas import BaseSchema  # , SchemaRegistry
 from fetchez.spatial import parse_region
 
-from globato.utils import globatize_modules
+# from globato.utils import globatize_modules
 
 
 class CUDEMSchema(BaseSchema):
@@ -46,62 +46,62 @@ class CUDEMSchema(BaseSchema):
 
         config["region"] = proc_region.to_list()
 
-        config["modules"] = globatize_modules(
-            config.get("modules"), crs="EPSG:4269+5703"
-        )
+        # config["modules"] = globatize_modules(
+        #     config.get("modules"), crs="EPSG:4269+5703"
+        # )
 
         global_hooks = config.get("global_hooks", [])
         insert_idx = len(global_hooks)
 
-        for i, hook in enumerate(global_hooks):
-            if hook.get("name", "").replace("-", "_") == "ms_binary_cudem":
-                insert_idx = i
-                break
+        # for i, hook in enumerate(global_hooks):
+        #     if hook.get("name", "").replace("-", "_") == "ms_binary_cudem":
+        #         insert_idx = i
+        #         break
 
-        blend_hooks = [
-            {
-                "name": "ms_blend",
-                "args": {
-                    "weight_threshold": "2.0",
-                    "blend_dist": 60,
-                },
-            },
-            {
-                "name": "ms_blend",
-                "args": {
-                    "weight_threshold": "1.0",
-                    "blend_dist": 60,
-                },
-            },
-            {
-                "name": "ms_blend",
-                "args": {
-                    "weight_threshold": "0.5",
-                    "blend_dist": 60,
-                },
-            },
-            {
-                "name": "ms_blend",
-                "args": {
-                    "weight_threshold": "0.25",
-                    "blend_dist": 60,
-                },
-            },
-            {
-                "name": "raster_write",
-                "args": {
-                    "suffix": "_final_blend",
-                    "artifact_id": "blended_checkpoint",
-                },
-            },
-            {
-                "name": "focus_sink",
-                "args": {
-                    "target": "blended_checkpoint",
-                },
-            },
-        ]
-        global_hooks[insert_idx:insert_idx] = blend_hooks
+        # blend_hooks = [
+        #     {
+        #         "name": "ms_blend",
+        #         "args": {
+        #             "weight_threshold": "2.0",
+        #             "blend_dist": 60,
+        #         },
+        #     },
+        #     {
+        #         "name": "ms_blend",
+        #         "args": {
+        #             "weight_threshold": "1.0",
+        #             "blend_dist": 60,
+        #         },
+        #     },
+        #     {
+        #         "name": "ms_blend",
+        #         "args": {
+        #             "weight_threshold": "0.5",
+        #             "blend_dist": 60,
+        #         },
+        #     },
+        #     {
+        #         "name": "ms_blend",
+        #         "args": {
+        #             "weight_threshold": "0.25",
+        #             "blend_dist": 60,
+        #         },
+        #     },
+        #     {
+        #         "name": "raster_write",
+        #         "args": {
+        #             "suffix": "_final_blend",
+        #             "artifact_id": "blended_checkpoint",
+        #         },
+        #     },
+        #     {
+        #         "name": "focus_sink",
+        #         "args": {
+        #             "target": "blended_checkpoint",
+        #         },
+        #     },
+        # ]
+        # global_hooks[insert_idx:insert_idx] = blend_hooks
 
         for i, hook in enumerate(global_hooks):
             if hook.get("name", "").replace("-", "_") == "raster_metadata":

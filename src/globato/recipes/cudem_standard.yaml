@@ -1,3 +1,4 @@
+---
 project:
   name: "cudem-standard"
   description: >
@@ -6,7 +7,7 @@ project:
 execution:
   threads: 4
 
-schema: cudem
+# schema: cudem
 
 modules:
   - bundle: cudem-bathy-topo
