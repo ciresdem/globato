@@ -1,0 +1,30 @@
+name: mr-globato-cudem
+description: "The standard CUDEM step-down, trim, and visualize pipeline."
+hooks:
+  - preset: mr-globato
+    args:
+      - name: ms_binary_cudem
+        args:
+          steps: 5
+          resolutions: .1111111s/.3333333s/1s/3s/9s/15s
+          weights:
+            - 3.0
+            - 2.0
+            - 1.0
+            - 0.5
+            - 0.25
+          blend_dists: 1/2/5/15/45/135
+      - name: multi_stack
+        args:
+          res: .1111111s
+          crs: "EPSG:4269+5703"
+          weight_threshold: 3.0/2.0/1.0/0.5/.25
+      - name: source_masks
+        args:
+          res: .1111111s
+      - name: provenance
+        args:
+          res: .1111111s
+      - name: raster_metadata
+        args:
+          tags: "Project=CUDEM,Author=NCEI"

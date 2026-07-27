@@ -23,8 +23,9 @@ import numpy as np
 from numpy.lib.recfunctions import append_fields
 
 from fetchez.core import run_fetchez
-from fetchez.registry import ModuleRegistry
+from fetchez.registry import ModuleRegistry, BundleRegistry
 from fetchez.utils import str2inc
+from fetchez.recipe import Recipe
 
 # from fetchez.utils import parse_source_string as fetchez_parse_source
 
@@ -147,35 +148,18 @@ def add_field_to_recarray(rec, name, dtype, default_val):
 
 
 # --- Region parsing ---
-def yield_parsed_regions(region_str):
-    """Universally parses a region string, location, or geojson file.
-
-    Yields (Region, feature_name) for every region found.
-    """
-
-    from fetchez.spatial import parse_region, Region
-
-    if not region_str:
-        yield None, None
-        return
-
-    try:
-        raw_regions = parse_region(region_str)
-    except Exception as e:
-        raise ValueError(f"Error parsing region '{region_str}': {e}")
-
-    is_batch = len(raw_regions) > 1
-    for i, r in enumerate(raw_regions):
-        t_reg = Region(*r)
-        # feat_name = f"tile_{i:03d}" if is_batch else None
-        feat_name = t_reg.format("fn") if is_batch else None
-        yield t_reg, feat_name
 
 
 # --- Source and Hook parsing ---
-def globatize_modules(modules, shared_cache=None, crs=None):
+def globatize_modules(modules, shared_cache=None, crs=None, res=None):
     abs_cache = os.path.abspath(shared_cache) if shared_cache else None
 
+    ModuleRegistry.load_all()
+    BundleRegistry.load_all()
+
+    # Expand the Modules & Bundles
+    modules = Recipe({})._expand_modules(modules)
+    res = str2inc(res)
     for mod in modules:
         hooks = mod.setdefault("hooks", [])
 
@@ -200,7 +184,7 @@ def globatize_modules(modules, shared_cache=None, crs=None):
                     0,
                     {
                         "name": "stream_reproject",
-                        "args": {"dst_srs": crs, "cache_dir": abs_cache or "."},
+                        "args": {"dst_srs": crs},  #  "cache_dir": abs_cache or "."},
                     },
                 )
         else:
@@ -213,6 +197,12 @@ def globatize_modules(modules, shared_cache=None, crs=None):
                 logger.debug(
                     f"Auto-injected 'stream-init' into module '{mod.get('module')}'"
                 )
+        if res:
+            for h in hooks:
+                h_args = h.get("args", {})
+                for arg in h_args.keys():
+                    if arg == "res":
+                        h_args[arg] = res
 
     return modules
 

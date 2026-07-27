@@ -1,0 +1,15 @@
+project:
+  name: "etopo-standard"
+  description: >
+    Production-grade 3-arc-second ETOPO.
+
+execution:
+  threads: 4
+
+schema: etopo
+
+modules:
+  - bundle: global-bathy-topo
+
+global_hooks:
+  - preset: mr-globato

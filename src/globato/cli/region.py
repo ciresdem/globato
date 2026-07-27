@@ -13,7 +13,7 @@ import math
 import sys
 
 from fetchez.utils import FetchezMainGroup, FetchezMainCommand
-from globato.utils import yield_parsed_regions
+from fetchez.spatial import yield_parsed_regions
 
 REGION_COMMANDS = ["echo", "buffer", "split", "transform"]
 

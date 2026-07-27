@@ -111,6 +111,7 @@ class RioWarpHook(FetchHook):
                             )
 
                 shutil.move(temp_fn, src_fn)
+                entry["dst_fn"] = src_fn
 
             except Exception as e:
                 logger.error(f"[{self.name}] Failed to warp {src_fn}: {e}")

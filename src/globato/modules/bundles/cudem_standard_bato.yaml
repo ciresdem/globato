@@ -1,9 +1,13 @@
-name: cudem_standard
-description: common data sources for CUDEMs
+name: cudem-bathy-topo
+description: >
+  Common data sources for CUDEMs.
+  1/9 arc-second at EPSG:4269+5703
 modules:
-
-    # CRM standard bundle
-  - bundle: crm_standard
+  # CRM standard bundle
+  - bundle: crm-bathy-topo
+    args:
+      res: .111111111s
+      dst_srs: "EPSG:4269+5703"
 
   # --- HIGH RES TOPOGRAPHY ---
   # - module: coned
@@ -27,15 +31,13 @@ modules:
       - name: raster_flats
         args:
           stage: "file"
-      - name: stream_data
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args: {dst_srs: "EPSG:4269+5703"}
       - name: point_raster_mask
         args:
           barrier: "coastline"
           invert: False
           res: .11111111s
-      - name: spatial_crop
       - name: range_z
         args: {min_z: 0.01}
 
@@ -47,9 +49,7 @@ modules:
       - name: set_datatype
         args:
           data_type: "ehydro-xyz"
-      - name: stream_data
       - name: stream_reproject
         args:
           dst_srs: "EPSG:4269+5703"
-      - name: spatial_crop
       - name: outlierz
