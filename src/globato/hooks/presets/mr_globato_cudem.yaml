@@ -28,4 +28,3 @@ hooks:
       - name: raster_metadata
         args:
           tags: "Project=CUDEM,Author=NCEI"
-
