@@ -146,3 +146,13 @@ exclude = [
 # ]
 # ignore_missing_imports = true
 # follow_untyped_imports = true
+
+[tool.pytest.ini_options]
+markers = [
+    "health: marks tests that require live network access to external APIs (run with '-m health')"
+]
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+    "ignore:.*Support for class-based `config` is deprecated.*",
+    "ignore::DeprecationWarning:planetary_computer.*"
+]
