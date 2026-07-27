@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "fetchez>=0.6.4",
+    "fetchez>=0.7.0",
     "transformez>=0.4.2",
     "numpy>1.24",
     "scipy",

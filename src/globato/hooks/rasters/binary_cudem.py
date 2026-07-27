@@ -315,6 +315,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
                 if not np.any(core_mask):
                     z[:] = bg_aligned[:]
                 else:
+                    logger.info(f"Blending step with background [ {current_weight} : {current_blend_dist} ]")
                     # --- BARRIER-RESTRICTED DISTANCE TRANSFORM ---
                     if barrier_mask is not None:
                         # Distance to the nearest land data
