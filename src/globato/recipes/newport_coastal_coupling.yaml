@@ -1,0 +1,45 @@
+---
+project:
+  name: "cncc"
+  description: >
+    Test DEM for the Coastal Coupling Workshop
+    Optimized for Newport, Oregon at 1/9 arc-second
+
+execution:
+  threads: 4
+
+# schema: cudem
+
+modules:
+  - bundle: cudem-bathy-topo
+  # Add High-Res lidar to to the standard bundle
+  - module: dav
+    args:
+      weight: 100
+      survey_id: "9693"
+    hooks:
+      - name: stream_data
+      - name: stream_reproject
+        args:
+          dst_srs: "EPSG:4269+5703"
+      - name: spatial_crop
+  # This lidar dataset has water surface returns and
+  # no bathymetry, so we just mask it to the coastline.
+  - module: dav
+    args:
+      weight: 10
+      survey_id: "575"
+    hooks:
+      - name: stream_data
+      - name: stream_reproject
+        args:
+          dst_srs: "EPSG:4269+5703"
+      - name: point_raster_mask
+        args:
+          barrier: osm
+          invert: false
+          res: "1s"
+      - name: spatial_crop
+
+global_hooks:
+  - preset: mr-globato-cudem
