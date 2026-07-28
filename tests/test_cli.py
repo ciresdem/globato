@@ -28,15 +28,6 @@ def test_cli_base_help(runner):
     assert result.exit_code == 0
     assert "Continuous Digital Elevation Models" in result.output
 
-    # expected_commands = [
-    #     "recipe",
-    #     "raster",
-    #     "region",
-    #     "fetch",
-    #     "pointz",
-    #     "viz",
-    #     "transform",
-    # ]
     expected_commands = [
         "cudem",
         "gritz",
