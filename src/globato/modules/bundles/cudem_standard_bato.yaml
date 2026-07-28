@@ -15,35 +15,6 @@ modules:
         args:
           dst_srs: "EPSG:4269+5703"
 
-  # High-priority topobathymetric lidar.
-  - module: dav
-    args:
-      weight: 100
-      survey_id: "9693"
-    hooks:
-      - name: stream_data
-      - name: stream_reproject
-        args:
-          dst_srs: "EPSG:4269+5703"
-      - name: spatial_crop
-
-  # Topographic lidar. Mask invalid surface returns over water.
-  - module: dav
-    args:
-      weight: 10
-      survey_id: "575"
-    hooks:
-      - name: stream_data
-      - name: stream_reproject
-        args:
-          dst_srs: "EPSG:4269+5703"
-      - name: point_raster_mask
-        args:
-          barrier: osm
-          invert: false
-          res: "1s"
-      - name: spatial_crop
-
   # --- HIGH RES TOPOGRAPHY ---
   # - module: coned
   #   args: {weight: 5.0}
