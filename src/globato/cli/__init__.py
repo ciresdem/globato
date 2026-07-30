@@ -23,7 +23,10 @@ import logging
 # from .run import run_cmd
 from .build import build_cmd
 from .sources import sources_group
+from .pointz import dump
+from .perspecto import perspecto_hillshade
 from fetchez.cli.recipes import run_recipe
+# from fetchez.cli.pipeline import pipeline_group
 
 from fetchez.cli import setup_logging
 from fetchez.utils import FetchezMainGroup
@@ -38,6 +41,9 @@ logger = logging.getLogger(__name__)
             "run",
             "build",
             "sources",
+            "dump",
+            "hillshade",
+            # "pipeline",
         ],
         # "Tools": [
         #     # "cudem",
@@ -79,6 +85,9 @@ cli.add_command(build_cmd, name="build")
 # cli.add_command(perspecto_group, name="perspecto")
 cli.add_command(sources_group, name="sources")
 cli.add_command(run_recipe, name="run")
+cli.add_command(dump, name="dump")
+cli.add_command(perspecto_hillshade, name="hillshade")
+# cli.add_command(pipeline_group, name="pipeline")
 
 
 if __name__ == "__main__":
