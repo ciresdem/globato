@@ -184,7 +184,8 @@ def globatize_modules(modules, shared_cache=None, crs=None, res=None):
                     0,
                     {
                         "name": "stream_reproject",
-                        "args": {"dst_srs": crs},  #  "cache_dir": abs_cache or "."},
+                        "args": {"dst_srs": crs},
+                        "cache_dir": abs_cache,
                     },
                 )
         else:
