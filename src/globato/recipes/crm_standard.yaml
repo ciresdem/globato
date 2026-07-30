@@ -10,7 +10,7 @@ execution:
   threads: 4
 
 schemas:
-  - name: check-modules
+  - name: validate-recipe
 
 modules:
   - bundle: crm-bathy-topo

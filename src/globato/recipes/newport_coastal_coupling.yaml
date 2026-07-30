@@ -8,7 +8,8 @@ project:
 execution:
   threads: 4
 
-# schema: cudem
+schemas:
+  - name: validate-recipe
 
 modules:
   - bundle: cudem-bathy-topo

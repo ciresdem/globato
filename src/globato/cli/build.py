@@ -340,7 +340,7 @@ def build_cmd(
             ]
 
         # Ensure schemas validate the generated recipe
-        config["schemas"] = [{"name": "check-modules"}]
+        config["schemas"] = [{"name": "validate-recipe"}]
 
         # --- Export or Execute ---
         if export:

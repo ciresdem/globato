@@ -6,7 +6,8 @@ project:
 execution:
   threads: 4
 
-schema: etopo
+schemas:
+  - name: validate-recipe
 
 modules:
   - bundle: global-bathy-topo
