@@ -1,8 +1,16 @@
+---
 name: crm-bathy-topo
 description: >
   Common data sources for coastal relief models.
   Adds some US-specific datasets to the global-bathy-topo bundle.
   Built for 1/3 arc-seconds @ epsg:4326+3855
+tags:
+  - globato
+  - bathymetry
+  - topography
+  - crm
+  - glob-stream
+  - glob-bundle
 modules:
 
   - bundle: global-bathy-topo

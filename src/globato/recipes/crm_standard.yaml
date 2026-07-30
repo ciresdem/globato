@@ -9,7 +9,8 @@ project:
 execution:
   threads: 4
 
-schema: crm-buffer
+schemas:
+  - name: check-modules
 
 modules:
   - bundle: crm-bathy-topo

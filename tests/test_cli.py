@@ -26,22 +26,12 @@ def test_cli_base_help(runner):
     result = runner.invoke(cli, ["--help"])
 
     assert result.exit_code == 0
-    assert "Continuous Digital Elevation Models" in result.output
+    assert "Globato: The ContinUous-DEM Generation Framework." in result.output
 
-    # expected_commands = [
-    #     "recipe",
-    #     "raster",
-    #     "region",
-    #     "fetch",
-    #     "pointz",
-    #     "viz",
-    #     "transform",
-    # ]
     expected_commands = [
-        "cudem",
-        "gritz",
-        "dlim",
-        "perspecto",
+        "build",
+        "run",
+        "sources",
     ]
     for cmd in expected_commands:
         assert cmd in result.output, f"Missing '{cmd}' command in CLI help!"
@@ -54,12 +44,13 @@ def test_recipe_build_save_only(runner):
         result = runner.invoke(
             cli,
             [
-                "cudem",
                 "build",
                 "-R",
                 "-120/-119/34/35",
                 "-E",
                 "1s",
+                "-D",
+                "test_dem",
                 "-O",
                 "test_dem",
                 "--export",
@@ -68,7 +59,8 @@ def test_recipe_build_save_only(runner):
         )
 
         assert result.exit_code == 0
-        assert "Globato recipe saved to test_dem_recipe.yaml" in result.output
+        assert "Globato recipe exported to" in result.output
+        assert "test_dem/test_dem_recipe.yaml" in result.output
         assert os.path.exists("test_dem/test_dem_recipe.yaml")
 
         with open("test_dem/test_dem_recipe.yaml", "r") as f:
@@ -78,7 +70,6 @@ def test_recipe_build_save_only(runner):
         assert config["modules"][0]["module"] == "mbdb"
 
         hooks = config["modules"][0]["hooks"]
-        print(hooks)
         # assert hooks[0]["name"] == "stream-init"  # stream-init gets auto-injected by fetchez now
         assert hooks[0]["name"] == "stream_reproject"
         assert hooks[0]["args"]["dst_srs"] == "EPSG:4326"
@@ -89,8 +80,8 @@ def test_recipe_build_save_only(runner):
 def test_recipe_info_source_eager(runner):
     """Test that the eager callback intercepts the command and exits cleanly."""
 
-    result = runner.invoke(cli, ["cudem", "build", "--info-source", "file"])
+    result = runner.invoke(cli, ["sources", "info", "file"])
 
     assert result.exit_code == 0
-    assert "SOURCE: FILE" in result.output
+    assert "SOURCE SUMMARY: file" in result.output
     assert "Explicitly pass specific local files" in result.output

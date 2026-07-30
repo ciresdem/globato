@@ -1,5 +1,6 @@
+---
 name: crm-alaska-bathy-topo
-desc: >
+desc: Alaska extention of the CRM bundle.
 tags:
   - globato
   - bathymetry
@@ -7,10 +8,9 @@ tags:
   - alaska
   - glob-stream
   - glob-bundle
-
 modules:
-
   - bundle: crm-bathy-topo
+
   # IFSAR 5m DEM
   - module: tnm
     args:

@@ -1,5 +1,13 @@
 name: etopo-bathy-topo
 description: common data sources for coastal relief models
+tags:
+  - globato
+  - bathymetry
+  - topography
+  - global
+  - ETOPO
+  - glob-stream
+  - glob-bundle
 modules:
 
   # TNM NED 1

@@ -3,6 +3,13 @@ name: cudem-bathy-topo
 description: >
   Common data sources for CUDEMs.
   1/9 arc-second at EPSG:4269+5703
+tags:
+  - globato
+  - bathymetry
+  - topography
+  - CONUS
+  - glob-stream
+  - glob-bundle
 modules:
 
   # CRM standard bundle

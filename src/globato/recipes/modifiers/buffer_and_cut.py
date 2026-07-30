@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+globato.recipes.modifiers.buffer_and_cut
+~~~~~~~~~~~~~~
+
+Modifies the recipes region value by buffering it and adding
+cut and crop hooks at the end to return the output to the
+desired region.
+
+:copyright: (c) 2010-2026 Regents of the University of Colorado
+:license: MIT, see LICENSE for more details.
+"""
+
+import logging
+from fetchez.utils import str2inc, float_or
+from fetchez.spatial import parse_region
+from fetchez.recipes.modifiers import BaseModifier
+
+logger = logging.getLogger(__name__)
+
+
+class RegionBufferModifier(BaseModifier):
+    name = "buffer-and-cut"
+    meta_desc = "Expands the target region by a specified amount or percentage and appends a cut hook."
+    meta_category = "Globato"
+    meta_aliases = ["buffer_and_cut"]
+
+    def __init__(self, cells=None, pct=None, increment=None, outname=None, **kwargs):
+        self.cells = float_or(cells)
+        self.pct = float_or(pct)
+        self.increment = str2inc(increment)
+        self.outname = outname
+
+    def apply(self, config):
+        region = config.get("region")
+        parsed_region = parse_region(region)[
+            0
+        ]  # update this to handle multiple regions.
+        if not region:
+            return config
+
+        if self.cells is None and self.pct is None:
+            logger.warning(
+                f"[{self.name}] No buffer provided. Defaulting to 5% buffer."
+            )
+            self.pct = 5.0
+
+        buffer_region = parsed_region.buffer(
+            pct=self.pct, x_inc=self.increment, y_inc=self.increment
+        )
+        delivery_region = parsed_region.buffer(
+            x_bv=self.cells * self.increment, y_bv=self.cells * self.increment
+        )
+        config["region"] = buffer_region.to_list()
+        if self.pct:
+            logger.info(f"[{self.name}] Expanded processing region to {buffer_region}.")
+
+        global_hooks = config.get("global_hooks", [])
+        insert_idx = len(global_hooks)
+
+        for i, hook in enumerate(global_hooks):
+            if hook.get("name", "").replace("-", "_") == "format_cog":
+                insert_idx = i
+                break
+
+        # if self.buffer_val or self.buffer_pct:
+        global_hooks.insert(
+            insert_idx,
+            {
+                "name": "raster_crop",
+                "args": {"output": f"{self.outname}_final.tif"},
+            },
+        )
+        global_hooks.insert(
+            insert_idx,
+            {
+                "name": "raster_cut",
+                "args": {
+                    "region": delivery_region.to_list(),
+                },
+            },
+        )
+        logger.info(
+            f"[{self.name}] Injected 'raster-cut' in global hooks with region: {delivery_region}."
+        )
+
+        return config
