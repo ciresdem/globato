@@ -45,7 +45,7 @@ except ImportError:
     BaseMultibeam = object
 
 try:
-    from fetchez.modules.nos_hydro import HydroNOS as BaseHydroNOS
+    from fetchez.modules.hydronos import HydroNOS as BaseHydroNOS
 except ImportError:
     BaseHydroNOS = object
 
@@ -150,7 +150,7 @@ class GlobMultibeam(BaseMultibeam):
     ]
     meta_category = "Globato"
 
-    def __init__(self, weight=1.0, want_inf=False, **kwargs):
+    def __init__(self, weight=1.0, want_inf=True, **kwargs):
         super().__init__(want_inf=want_inf, **kwargs)
 
         self.weight = weight
@@ -213,6 +213,7 @@ class GlobBAG(BaseHydroNOS):
         "glob-stream",
     ]
     meta_category = "Globato"
+    meta_desc = "NOAA NOS Hydrographic Surveys (BAG)"
 
     def __init__(self, weight=3.0, **kwargs):
         kwargs.pop("datatype")
@@ -233,6 +234,7 @@ class GlobNOSXYZ(BaseHydroNOS):
     name = "glob_nos"
     meta_tags = ["bathymetry", "nos", "noaa", "xyz", "legacy", "globato", "glob-stream"]
     meta_category = "Globato"
+    meta_desc = "NOAA NOS Hydrographic Surveys (XYZ soundings)"
 
     def __init__(self, weight=1.0, **kwargs):
         kwargs.pop("datatype")

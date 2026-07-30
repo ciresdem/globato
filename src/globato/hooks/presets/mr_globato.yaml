@@ -9,12 +9,12 @@ hooks:
   - name: provenance
     args:
       res: 3s
-      output: crm_{batch_name}_provenance.tif
+      output: "%name%_%batch_name%_provenance.tif"
 
   - name: source_masks
     args:
       res: 3s
-      output: crm_{batch_name}_sources.vrt
+      output: "%name%_%batch_name%_sources.vrt"
 
   - name: multi_stack
     args:
@@ -23,7 +23,7 @@ hooks:
       mode: mixed
       nodata: -9999.0
       weight_threshold: 0.5/.25
-      output: crm_{batch_name}_stack.tif
+      output: "%name%_%batch_name%_stack.tif"
 
   - name: focus_sink
     args:
@@ -71,7 +71,7 @@ hooks:
       barrier: osm
       algos: "interp_gmt:tension=1,verbose=True"
       # algos: interp_rbf
-      output: crm_{batch_name}.tif
+      output: "%name%_%batch_name%.tif"
 
   - name: focus_sink
     args: {target: "ms_binary_cudem"}
@@ -87,7 +87,7 @@ hooks:
 
   # - name: raster_crop
   #   args:
-  #     output: crm_{batch_name}_final.tif
+  #     output: "%name%_%batch_name%_final.tif"
 
   - name: format_cog
     args:
@@ -96,12 +96,12 @@ hooks:
 
   - name: viz_geoshade
     args:
-      output: crm_{batch_name}_hs.tif
+      output: "%name%_%batch_name%_hs.tif"
       cmap: coastal_relief
 
     # - name: copy_artifact
     #   args:
     #     target_dir: /home/ncei/Projects/globato/crm/vol6/crm_vol6/crm_out
     #     match:
-    #       - socal_crm_n33x50_w120x50_final.tif
-    #       - socal_crm_n33x50_w120x50_hs.tif
+    #       - "%name%_%batch_name%_final.tif"
+    #       - "%name%_%batch_name%_hs.tif"
