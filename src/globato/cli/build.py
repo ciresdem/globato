@@ -78,13 +78,11 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
 )
 @click.option(
     "--modifier",
-    "-m",
     multiple=True,
     help="Apply a recipe modifier at runtime (e.g., exclude_module:modules=csb/tnm).",
 )
 @click.option(
     "--schema",
-    "-s",
     multiple=True,
     help="Apply a domain schema validation to the recipe.",
 )
