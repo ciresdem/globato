@@ -50,13 +50,12 @@ class BinaryCudemStepDown(RasterGlobalHook):
         resolutions=None,  # ["3s", "9s", "15s"],  # E.g., 1s=Dense, 3s=Med, 9s=Sparse
         algos=None,  # ,["raster_fill", "raster_fill", "interp_rbf"],
         blend_dists=None,  # 20,
-        barrier=None,
         decimation_mode="weighted_mean",
         bathy_max_z=-0.01,
-        keep_steps=True,
+        keep_steps=False,
         **kwargs,
     ):
-        super().__init__(barrier=barrier, strip_bands=True, **kwargs)
+        super().__init__(strip_bands=True, **kwargs)
 
         self.valid_algos = [
             "interp_gmt",
