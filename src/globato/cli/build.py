@@ -77,6 +77,18 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
     "-W", "--weights", default="auto", help="Weight thresholds ('auto' or '1.0/0.5')."
 )
 @click.option(
+    "--modifier",
+    "-m",
+    multiple=True,
+    help="Apply a recipe modifier at runtime (e.g., exclude_module:modules=csb/tnm).",
+)
+@click.option(
+    "--schema",
+    "-s",
+    multiple=True,
+    help="Apply a domain schema validation to the recipe.",
+)
+@click.option(
     "--shared-cache",
     # type=click.Path(resolve_path=True),
     type=click.Path(),
@@ -86,6 +98,11 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
 @click.option("--export", is_flag=True, help="Save the generated YAML recipe to disk.")
 @click.option(
     "--refresh", is_flag=True, help="Force fresh API fetch, bypassing local cache."
+)
+@click.option(
+    "--ignore-failures",
+    is_flag=True,
+    help="Continue processing through failures (Warning: may result in incomplete data or products).",
 )
 @click.argument("sources", nargs=-1)
 def build_cmd(
@@ -104,11 +121,14 @@ def build_cmd(
     limits,
     weights,
     blend,
+    modifier,
+    schema,
     shared_cache,
     metadata,
     export,
     sources,
     refresh,
+    ignore_failures,
 ):
     """Build a Digital Elevation Model recipe, and execute it."""
 
@@ -127,6 +147,9 @@ def build_cmd(
         crs=t_srs,
         res=increment,
     )
+
+    parsed_modifiers = [parse_hook_string(m) for m in modifier]
+    parsed_schemas = [s for s in schema]
 
     base_outdir = os.path.abspath(outdir) if outdir else os.path.abspath(".")
 
@@ -348,6 +371,12 @@ def build_cmd(
         # Ensure schemas validate the generated recipe
         config["schemas"] = [{"name": "validate-recipe"}]
 
+        if parsed_modifiers:
+            config["modifiers"].extend(parsed_modifiers)
+
+        if schema:
+            config["schemas"].extend(parsed_schemas)
+
         # --- Export or Execute ---
         if export:
             os.makedirs(base_outdir, exist_ok=True)
@@ -364,7 +393,12 @@ def build_cmd(
             recipe = Recipe.from_dict(config)
 
             # Fetchez handles all directory switching, batching, and execution
-            recipe.run(outdir=outdir, shared_cache=shared_cache, refresh=refresh)
+            recipe.run(
+                outdir=outdir,
+                shared_cache=shared_cache,
+                refresh=refresh,
+                ignore_failures=ignore_failures,
+            )
             click.secho(
                 "✨ Successfully completed Globato build pipeline!",
                 fg="green",
