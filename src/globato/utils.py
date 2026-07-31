@@ -152,7 +152,7 @@ def add_field_to_recarray(rec, name, dtype, default_val):
 
 # --- Source and Hook parsing ---
 def globatize_modules(modules, shared_cache=None, crs=None, res=None):
-    abs_cache = os.path.abspath(shared_cache) if shared_cache else None
+    cache_dir = shared_cache
 
     ModuleRegistry.load_all()
     BundleRegistry.load_all()
@@ -164,8 +164,8 @@ def globatize_modules(modules, shared_cache=None, crs=None, res=None):
         hooks = mod.setdefault("hooks", [])
 
         # -- Shared Cache Directory --
-        if abs_cache and mod.get("module") not in ["file", "local_fs", "stdin"]:
-            mod.setdefault("args", {})["outdir"] = abs_cache
+        if cache_dir and mod.get("module") not in ["file", "local_fs", "stdin"]:
+            mod.setdefault("args", {})["outdir"] = cache_dir
 
         # --- Insert the target crs into stream-reproject etc. ---
         if crs:
@@ -177,15 +177,14 @@ def globatize_modules(modules, shared_cache=None, crs=None, res=None):
 
             if reproject_hook:
                 reproject_hook.setdefault("args", {})["dst_srs"] = crs
-                if abs_cache:
-                    reproject_hook.setdefault("args", {})["cache_dir"] = abs_cache
+                if cache_dir:
+                    reproject_hook.setdefault("args", {})["cache_dir"] = cache_dir
             else:
                 hooks.insert(
                     0,
                     {
                         "name": "stream_reproject",
-                        "args": {"dst_srs": crs},
-                        "cache_dir": abs_cache,
+                        "args": {"dst_srs": crs, "cache_dir": cache_dir},
                     },
                 )
         else:

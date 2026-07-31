@@ -44,7 +44,8 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
 @click.option(
     "-D",
     "--outdir",
-    type=click.Path(resolve_path=True),
+    # type=click.Path(resolve_path=True),
+    type=click.Path(),
     default=None,
     help="Base output directory.",
 )
@@ -77,11 +78,15 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
 )
 @click.option(
     "--shared-cache",
-    type=click.Path(resolve_path=True),
+    # type=click.Path(resolve_path=True),
+    type=click.Path(),
     help="Centralized cache directory.",
 )
 @click.option("--metadata", help="Global tags to inject.")
 @click.option("--export", is_flag=True, help="Save the generated YAML recipe to disk.")
+@click.option(
+    "--refresh", is_flag=True, help="Force fresh API fetch, bypassing local cache."
+)
 @click.argument("sources", nargs=-1)
 def build_cmd(
     region,
@@ -103,6 +108,7 @@ def build_cmd(
     metadata,
     export,
     sources,
+    refresh,
 ):
     """Build a Digital Elevation Model recipe, and execute it."""
 
@@ -345,7 +351,7 @@ def build_cmd(
         # --- Export or Execute ---
         if export:
             os.makedirs(base_outdir, exist_ok=True)
-            out_yaml = os.path.join(base_outdir, f"{outname}_recipe.yaml")
+            out_yaml = os.path.join(os.getcwd(), f"{outname}_recipe.yaml")
             with open(out_yaml, "w") as f:
                 yaml.dump(config, f, sort_keys=False)
             click.secho(
@@ -358,7 +364,7 @@ def build_cmd(
             recipe = Recipe.from_dict(config)
 
             # Fetchez handles all directory switching, batching, and execution
-            recipe.run(outdir=base_outdir, shared_cache=shared_cache)
+            recipe.run(outdir=outdir, shared_cache=shared_cache, refresh=refresh)
             click.secho(
                 "✨ Successfully completed Globato build pipeline!",
                 fg="green",
