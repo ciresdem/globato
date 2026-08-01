@@ -12,7 +12,6 @@ tags:
   - glob-stream
   - glob-bundle
 modules:
-
   - bundle: global-bathy-topo
     hooks:
       - name: raster_warp
@@ -22,31 +21,34 @@ modules:
       - name: stream_reproject
         args:
           dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
           # dst_srs: "EPSG:4326+3855"
 
   # TNM NED 1
-  # - module: tnm
-  #   args: {weight: 0.5, formats: "GeoTIFF", datasets: "1"}
-  #   hooks:
-  #     - name: raster_flats
-  #       args:
-  #         stage: "file"
-  #     - name: raster_warp
-  #       args: {res: 1s}
+  - module: tnm
+    args: {weight: 0.5, formats: "GeoTIFF", datasets: "1"}
+    hooks:
+      - name: raster_flats
+        args:
+          stage: "file"
+      - name: raster_warp
+        args: {res: 1s}
 
-  #     - name: stream_data
-  #     - name: stream_reproject
-  #       args: {dst_srs: "EPSG:4326+3855"}
-  #     - name: point_raster_mask
-  #       args:
-  #         barrier: "coastline"
-  #         invert: False
-  #         res: 1s
-  #     - name: spatial_crop
-  #     - name: range_z
-  #       args: {min_z: 0.01}
+      - name: stream_data
+      - name: stream_reproject
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
+      - name: point_raster_mask
+        args:
+          barrier: "coastline"
+          invert: False
+          res: 1s
+      - name: spatial_crop
+      - name: range_z
+        args: {min_z: 0.01}
 
-    # TNM NED 1/3
+  # TNM NED 1/3
   - module: tnm
     args: {weight: 1.0, formats: "GeoTIFF", datasets: "3"}
     hooks:
@@ -56,7 +58,9 @@ modules:
       - name: raster_warp
         args: {res: 1s}
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: point_raster_mask
         args:
           barrier: "coastline"
@@ -80,7 +84,9 @@ modules:
       args:
         data_type: bag
     - name: stream_reproject
-      args: {dst_srs: "EPSG:4326+3855"}
+      args:
+        dst_srs: "EPSG:4326+3855"
+        cache_dir: "%shared_cache%"
     - name: spatial_crop
 
   # - module: mbdb
@@ -118,6 +124,7 @@ modules:
         args:
           src_srs: "EPSG:4326+5866"
           dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: spatial_crop
       - name: outlierz
       - name: range_z
@@ -143,4 +150,5 @@ modules:
         args:
           src_srs: "EPSG:4326+5866"
           dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: spatial_crop
