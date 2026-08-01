@@ -14,7 +14,7 @@ desired region.
 """
 
 import logging
-from fetchez.utils import str2inc, float_or
+from fetchez.utils import str2inc, float_or, str_or
 from fetchez.spatial import parse_region
 from fetchez.recipes.modifiers import BaseModifier
 
@@ -27,10 +27,10 @@ class RegionBufferModifier(BaseModifier):
     meta_category = "Globato"
     meta_aliases = ["buffer_and_cut"]
 
-    def __init__(self, cells=None, pct=None, increment=None, outname=None, **kwargs):
-        self.cells = float_or(cells)
-        self.pct = float_or(pct)
-        self.increment = str2inc(increment)
+    def __init__(self, cells=None, pct=None, inc=None, outname=None, **kwargs):
+        self.cells = float_or(cells, 0)
+        self.pct = float_or(pct, 0)
+        self.inc = str2inc(str_or(inc, "1"))
         self.outname = outname
 
     def apply(self, config):
@@ -48,10 +48,10 @@ class RegionBufferModifier(BaseModifier):
             self.pct = 5.0
 
         buffer_region = parsed_region.copy().buffer(
-            pct=self.pct, x_inc=self.increment, y_inc=self.increment
+            pct=self.pct, x_inc=self.inc, y_inc=self.inc
         )
         delivery_region = parsed_region.copy().buffer(
-            x_bv=self.cells * self.increment, y_bv=self.cells * self.increment
+            x_bv=self.cells * self.inc, y_bv=self.cells * self.inc
         )
         config["region"] = buffer_region.to_list()
         if self.pct:

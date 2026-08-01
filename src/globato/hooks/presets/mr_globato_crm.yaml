@@ -11,7 +11,7 @@ hooks:
             - 1.0
             - 0.5
             - 0.25
-          blend_dists: 15/5/2/1
+          blend_dists: 30/10/5/2
       - name: multi_stack
         args:
           res: 1s
