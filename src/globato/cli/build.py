@@ -185,7 +185,7 @@ def build_cmd(
             auto_res_list = [base_res * (3**i) for i in range(len(weight_list) + 1)]
             blend_list = [int_or(b, 10) for b in str(blend).split("/")] if blend else []
 
-        outname = f"{outname}_%batch_name%"
+        batch_outname = "%name%_%batch_name%"
         # --- Base Pipeline Standard Hooks ---
         global_hooks = [
             {"name": "spatial-crop"},
@@ -195,11 +195,11 @@ def build_cmd(
             {"name": "drop_class"},
             {
                 "name": "provenance",
-                "args": {"res": increment, "output": f"{outname}_provenance.tif"},
+                "args": {"res": increment, "output": f"{batch_outname}_provenance.tif"},
             },
             {
                 "name": "source_masks",
-                "args": {"res": increment, "output": f"{outname}_sources.vrt"},
+                "args": {"res": increment, "output": f"{batch_outname}_sources.vrt"},
             },
         ]
 
@@ -221,7 +221,7 @@ def build_cmd(
                     "mode": stack_mode,
                     "nodata": nodata,
                     "weight_threshold": "/".join([str(x) for x in weight_list]),
-                    "output": f"{outname}_stack.tif",
+                    "output": f"{batch_outname}_stack.tif",
                 },
             }
         )
@@ -303,7 +303,7 @@ def build_cmd(
             if "barrier" not in args:
                 args["barrier"] = "osm"
 
-        algo_hook.setdefault("args", {})["output"] = f"{outname}.tif"
+        algo_hook.setdefault("args", {})["output"] = f"{batch_outname}.tif"
         global_hooks.append(algo_hook)
 
         # --- Add Clipping (-C) ---
@@ -331,7 +331,7 @@ def build_cmd(
         global_hooks.append(
             {
                 "name": "viz_geoshade",
-                "args": {"output": f"{outname}_hs.tif", "cmap": "coastal_relief"},
+                "args": {"output": f"{batch_outname}_hs.tif", "cmap": "coastal_relief"},
             }
         )
 
@@ -362,7 +362,7 @@ def build_cmd(
                         "cells": ext_cells,
                         "pct": ext_pct,
                         "increment": increment,
-                        "outname": outname,
+                        "outname": batch_outname,
                     },
                 }
             ]
