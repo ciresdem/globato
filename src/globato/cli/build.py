@@ -185,6 +185,7 @@ def build_cmd(
             auto_res_list = [base_res * (3**i) for i in range(len(weight_list) + 1)]
             blend_list = [int_or(b, 10) for b in str(blend).split("/")] if blend else []
 
+        outname = f"{outname}_%batch_name%"
         # --- Base Pipeline Standard Hooks ---
         global_hooks = [
             {"name": "spatial-crop"},
