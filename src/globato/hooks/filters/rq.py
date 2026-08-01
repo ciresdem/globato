@@ -20,7 +20,7 @@ import threading
 from scipy.ndimage import map_coordinates
 
 import fetchez
-from fetchez.utils import str2inc
+from fetchez.utils import str2inc, parse_arg_to_list
 
 from .base import GlobatoFilter
 
@@ -82,8 +82,7 @@ class ReferenceQuality(GlobatoFilter):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.ref_source = reference
-        self.ref_sources = [s.strip().lower() for s in str(reference).split("/")]
+        self.ref_sources = parse_arg_to_list(reference, str)
         self.threshold = float(threshold)
         self.mode = mode.lower()
         self.builder = builder.lower()
@@ -202,7 +201,7 @@ class ReferenceQuality(GlobatoFilter):
                 )
                 if files:
                     for f in files:
-                        if os.path.exists(f) and os.path.getsize(f) > 2000:
+                        if os.path.exists(f) and os.path.getsize(f) > 0:
                             valid_files.append(f)
             except Exception as e:
                 logger.warning(f"[RQ] Fetch failed for {source}: {e}")

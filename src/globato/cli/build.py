@@ -77,6 +77,16 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
     "-W", "--weights", default="auto", help="Weight thresholds ('auto' or '1.0/0.5')."
 )
 @click.option(
+    "--modifier",
+    multiple=True,
+    help="Apply a recipe modifier at runtime (e.g., exclude_module:modules=csb/tnm).",
+)
+@click.option(
+    "--schema",
+    multiple=True,
+    help="Apply a domain schema validation to the recipe.",
+)
+@click.option(
     "--shared-cache",
     # type=click.Path(resolve_path=True),
     type=click.Path(),
@@ -86,6 +96,11 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
 @click.option("--export", is_flag=True, help="Save the generated YAML recipe to disk.")
 @click.option(
     "--refresh", is_flag=True, help="Force fresh API fetch, bypassing local cache."
+)
+@click.option(
+    "--ignore-failures",
+    is_flag=True,
+    help="Continue processing through failures (Warning: may result in incomplete data or products).",
 )
 @click.argument("sources", nargs=-1)
 def build_cmd(
@@ -104,11 +119,14 @@ def build_cmd(
     limits,
     weights,
     blend,
+    modifier,
+    schema,
     shared_cache,
     metadata,
     export,
     sources,
     refresh,
+    ignore_failures,
 ):
     """Build a Digital Elevation Model recipe, and execute it."""
 
@@ -127,6 +145,9 @@ def build_cmd(
         crs=t_srs,
         res=increment,
     )
+
+    parsed_modifiers = [parse_hook_string(m) for m in modifier]
+    parsed_schemas = [s for s in schema]
 
     base_outdir = os.path.abspath(outdir) if outdir else os.path.abspath(".")
 
@@ -164,6 +185,7 @@ def build_cmd(
             auto_res_list = [base_res * (3**i) for i in range(len(weight_list) + 1)]
             blend_list = [int_or(b, 10) for b in str(blend).split("/")] if blend else []
 
+        batch_outname = "%name%_%batch_name%"
         # --- Base Pipeline Standard Hooks ---
         global_hooks = [
             {"name": "spatial-crop"},
@@ -173,11 +195,11 @@ def build_cmd(
             {"name": "drop_class"},
             {
                 "name": "provenance",
-                "args": {"res": increment, "output": f"{outname}_provenance.tif"},
+                "args": {"res": increment, "output": f"{batch_outname}_provenance.tif"},
             },
             {
                 "name": "source_masks",
-                "args": {"res": increment, "output": f"{outname}_sources.vrt"},
+                "args": {"res": increment, "output": f"{batch_outname}_sources.vrt"},
             },
         ]
 
@@ -199,7 +221,7 @@ def build_cmd(
                     "mode": stack_mode,
                     "nodata": nodata,
                     "weight_threshold": "/".join([str(x) for x in weight_list]),
-                    "output": f"{outname}_stack.tif",
+                    "output": f"{batch_outname}_stack.tif",
                 },
             }
         )
@@ -281,7 +303,7 @@ def build_cmd(
             if "barrier" not in args:
                 args["barrier"] = "osm"
 
-        algo_hook.setdefault("args", {})["output"] = f"{outname}.tif"
+        algo_hook.setdefault("args", {})["output"] = f"{batch_outname}.tif"
         global_hooks.append(algo_hook)
 
         # --- Add Clipping (-C) ---
@@ -309,7 +331,7 @@ def build_cmd(
         global_hooks.append(
             {
                 "name": "viz_geoshade",
-                "args": {"output": f"{outname}_hs.tif", "cmap": "coastal_relief"},
+                "args": {"output": f"{batch_outname}_hs.tif", "cmap": "coastal_relief"},
             }
         )
 
@@ -340,13 +362,19 @@ def build_cmd(
                         "cells": ext_cells,
                         "pct": ext_pct,
                         "increment": increment,
-                        "outname": outname,
+                        "outname": batch_outname,
                     },
                 }
             ]
 
         # Ensure schemas validate the generated recipe
         config["schemas"] = [{"name": "validate-recipe"}]
+
+        if parsed_modifiers:
+            config["modifiers"].extend(parsed_modifiers)
+
+        if schema:
+            config["schemas"].extend(parsed_schemas)
 
         # --- Export or Execute ---
         if export:
@@ -364,7 +392,12 @@ def build_cmd(
             recipe = Recipe.from_dict(config)
 
             # Fetchez handles all directory switching, batching, and execution
-            recipe.run(outdir=outdir, shared_cache=shared_cache, refresh=refresh)
+            recipe.run(
+                outdir=outdir,
+                shared_cache=shared_cache,
+                refresh=refresh,
+                ignore_failures=ignore_failures,
+            )
             click.secho(
                 "✨ Successfully completed Globato build pipeline!",
                 fg="green",

@@ -16,7 +16,6 @@ import os
 import logging
 import shutil
 import numpy as np
-import tempfile
 import rasterio
 from rasterio.windows import Window
 import fiona
@@ -25,9 +24,6 @@ from fetchez.hooks import FetchHook
 from fetchez.utils import float_or, parse_arg_to_list  # , inc2str
 
 logger = logging.getLogger(__name__)
-
-
-tmp_dir = tempfile.gettempdir()
 
 
 # =============================================================================
@@ -144,14 +140,16 @@ class RasterBaseHook(FetchHook):
 
         mod = getattr(self, "current_mod", None)
         region = getattr(mod, "region", None) if mod else None
-        outdir = os.path.dirname(self.output) if self.output else os.getcwd()
+
+        mod_outdir = getattr(mod, "outdir", getattr(mod, "_outdir", None))
+        cache_dir = mod_outdir if mod_outdir else os.getcwd()
 
         from globato.utils import resolve_barrier
 
         barrier_path = resolve_barrier(
             self.barrier,
             region=region,
-            outdir=os.path.join(outdir, "auto_barriers"),
+            outdir=os.path.join(cache_dir, "auto_barriers"),
             output_type="vector",
             include_rivers=include_rivers,
             include_lakes=include_lakes,
@@ -313,11 +311,15 @@ class RasterStreamHook(RasterBaseHook):
 
     def run(self, entries):
         logger.info(f"[{self.name}] Running in local mode on {len(entries)} entries")
-
         new_entries = []
+
+        local_tmp = os.path.abspath("tmp")
+        os.makedirs(local_tmp, exist_ok=True)
+
         for mod, entry in entries:
             # SET CURRENT MOD FOR COASTLINE GENERATION
             self.current_mod = mod
+
             if self.has_stream(entry):
                 stream = entry.get("stream")
                 entry["stream"] = self._stream_wrapper(stream, entry)
@@ -337,7 +339,7 @@ class RasterStreamHook(RasterBaseHook):
                 dst_fn = self.output
             else:
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
-                dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
+                dst_fn = os.path.join(local_tmp, f"{base_name}{self.suffix}.tif")
 
             logger.debug(f"Running local {self.name} on {os.path.basename(src_fn)}")
             try:
@@ -414,6 +416,10 @@ class RasterGlobalHook(RasterBaseHook):
     def run(self, entries):
         logger.info(f"[{self.name}] Running in global mode on {len(entries)} entries")
         new_entries = []
+
+        local_tmp = os.path.abspath("tmp")
+        os.makedirs(local_tmp, exist_ok=True)
+
         for mod, entry in entries:
             # SET CURRENT MOD FOR COASTLINE GENERATION
             self.current_mod = mod
@@ -428,14 +434,12 @@ class RasterGlobalHook(RasterBaseHook):
 
                 base_name = os.path.basename(src_fn)
                 drain_fn = os.path.join(
-                    tmp_dir, f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif"
+                    local_tmp,
+                    f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif",
                 )
-                # drain_fn = f"{os.path.splitext(src_fn)[0]}_drained_{self.name}.tif"
                 entry["dst_fn"] = drain_fn
-
                 drainer = RasterWrite(suffix="", inline=False)
                 drainer.run([(mod, entry)])
-
                 src_fn = entry.get("dst_fn")
 
             if not src_fn or not os.path.exists(src_fn):
@@ -446,7 +450,7 @@ class RasterGlobalHook(RasterBaseHook):
                 dst_fn = self.output
             else:
                 base_name = os.path.splitext(os.path.basename(src_fn))[0]
-                dst_fn = os.path.join(tmp_dir, f"{base_name}{self.suffix}.tif")
+                dst_fn = os.path.join(local_tmp, f"{base_name}{self.suffix}.tif")
 
             logger.debug(f"Running global {self.name} on {os.path.basename(src_fn)}")
             try:

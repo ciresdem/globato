@@ -47,13 +47,17 @@ class PointRasterMask(GlobatoFilter):
             logger.warning(f"[{self.name}] No barrier provided. Skipping.")
             return False
 
+        region = getattr(mod, "region", None)
+        mod_outdir = getattr(mod, "outdir", getattr(mod, "_outdir", None))
+        cache_dir = mod_outdir if mod_outdir else os.getcwd()
+
         target_crs = entry.get("src_srs", "EPSG:4326")
         from globato.utils import resolve_barrier
 
         barrier_path = resolve_barrier(
             self.barrier,
-            region=getattr(mod, "region", None),
-            outdir=os.path.join(os.getcwd(), "auto_barriers"),
+            region=region,
+            outdir=os.path.join(cache_dir, "auto_barriers"),
             res=self.res,
             include_rivers=True,
             include_lakes=True,

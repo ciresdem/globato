@@ -102,7 +102,7 @@ class MultiStackAccumulator:
         )
 
         logger.info(
-            f"Initializing Multi_Stack internal arrays at {self.xcount}/{self.ycount}"
+            f"Initializing Multi_Stack internal arrays at {self.xcount}/{self.ycount} {self.region}"
         )
 
     def _init_raster(self):

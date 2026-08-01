@@ -40,7 +40,9 @@ modules:
         args:
           data_type: "rio"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: range_z
         args: {min_z: 0.01}
 
@@ -61,7 +63,9 @@ modules:
         args:
           data_type: "rio"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: range_z
         args: {min_z: 0.01}
 
@@ -88,7 +92,9 @@ modules:
           # method: inverse
           # offset: 1.2
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: range_z
         args: {max_z: -0.01}
 
@@ -104,10 +110,12 @@ modules:
         args:
           src_srs: "EPSG:4326+9003"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: rq
         args:
-          reference: "gmrt/gebco/cudem"
+          reference: "gmrt/gebco"
           threshold: 5
           mode: "percent"
           builder: "grid"
@@ -125,7 +133,9 @@ modules:
         args:
           srs: "EPSG:4326+9003"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: rq
         args:
           reference: "gebco"
@@ -149,7 +159,9 @@ modules:
         args:
           max_z: -0.1
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: rq
         args:
           reference: "gebco"
@@ -177,7 +189,9 @@ modules:
         args:
           srs: "EPSG:4326+9003"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4326+3855"}
+        args:
+          dst_srs: "EPSG:4326+3855"
+          cache_dir: "%shared_cache%"
       - name: rq
         args:
           reference: "gebco"

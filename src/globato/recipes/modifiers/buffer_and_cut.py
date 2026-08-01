@@ -47,10 +47,10 @@ class RegionBufferModifier(BaseModifier):
             )
             self.pct = 5.0
 
-        buffer_region = parsed_region.buffer(
+        buffer_region = parsed_region.copy().buffer(
             pct=self.pct, x_inc=self.increment, y_inc=self.increment
         )
-        delivery_region = parsed_region.buffer(
+        delivery_region = parsed_region.copy().buffer(
             x_bv=self.cells * self.increment, y_bv=self.cells * self.increment
         )
         config["region"] = buffer_region.to_list()
