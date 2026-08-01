@@ -158,6 +158,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         import fetchez
 
+        local_tmp = os.path.abspath("tmp")
+        os.makedirs(local_tmp, exist_ok=True)
+
         logger.info(
             f"[{self.name}] Decimating to {target_res} using '{self.decimation_mode}'..."
         )
@@ -170,6 +173,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         decimated_stack = fetchez.get(
             "file",
+            outdir=local_tmp,
             region=region,
             region_srs=src_crs,
             path=src_path,

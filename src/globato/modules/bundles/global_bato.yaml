@@ -107,7 +107,7 @@ modules:
         args: {dst_srs: "EPSG:4326+3855"}
       - name: rq
         args:
-          reference: "gmrt/gebco/cudem"
+          reference: "gmrt/gebco"
           threshold: 5
           mode: "percent"
           builder: "grid"
