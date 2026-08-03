@@ -174,7 +174,7 @@ class RasterBaseHook(FetchHook):
         shape,
         transform,
         include_rivers=True,
-        include_lakes=True,
+        include_lakes=False,
         include_reefs=True,
         include_wetlands=True,
         include_breakwaters=True,

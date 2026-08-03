@@ -23,6 +23,7 @@ from shapely.ops import linemerge, unary_union, polygonize
 from fetchez.modules import FetchModule
 from fetchez.core import Fetch, urlencode, CUDEM_USER_AGENT
 from fetchez.cli import cli_opts
+from fetchez.utils import str2bool
 
 try:
     from fetchez.modules.gmrt import gmrt_fetch_point
@@ -71,36 +72,20 @@ class OSMLandmaskModule(FetchModule):
     ):
         super().__init__(name="osm_landmask", **kwargs)
 
-        self.include_water = str(include_water).lower() in ["true", "1", "t", "yes"]
-
+        self.include_water = str2bool(str(include_water))
         if include_rivers is None:
             self.include_rivers = self.include_water
         else:
-            self.include_rivers = str(include_rivers).lower() in [
-                "true",
-                "1",
-                "t",
-                "yes",
-            ]
+            self.include_rivers = str2bool(str(include_water))
 
         if include_lakes is None:
             self.include_lakes = self.include_water
         else:
-            self.include_lakes = str(include_lakes).lower() in ["true", "1", "t", "yes"]
+            self.include_lakes = str2bool(str(include_lakes))
 
-        self.include_reefs = str(include_reefs).lower() in ["true", "1", "t", "yes"]
-        self.include_wetlands = str(include_wetlands).lower() in [
-            "true",
-            "1",
-            "t",
-            "yes",
-        ]
-        self.include_breakwaters = str(include_breakwaters).lower() in [
-            "true",
-            "1",
-            "t",
-            "yes",
-        ]
+        self.include_reefs = str2bool(str(include_reefs))
+        self.include_wetlands = str2bool(str(include_wetlands))
+        self.include_breakwaters = str2bool(str(include_breakwaters))
 
         self.min_area_sqm = float(min_area_sqm)
         self.headers = HEADERS
@@ -116,13 +101,36 @@ class OSMLandmaskModule(FetchModule):
 
         return poly.area * deg_to_m_x * deg_to_m_y
 
+    def _get_filename_suffix(self):
+        """Generates a unique string based on the active inclusion flags."""
+
+        parts = []
+        if self.include_rivers:
+            parts.append("r")
+        if self.include_lakes:
+            parts.append("l")
+        if self.include_wetlands:
+            parts.append("w")
+        if self.include_reefs:
+            parts.append("rf")
+        if self.include_breakwaters:
+            parts.append("b")
+
+        suffix = "".join(parts)
+
+        if self.min_area_sqm > 0:
+            suffix += f"_m{int(self.min_area_sqm)}"
+
+        return f"_{suffix}" if suffix else ""
+
     def run(self):
         if not self.wgs_region:
             logger.error(f"[{self.name}] Requires a bounding box region to run.")
             return
 
         w, e, s, n = self.wgs_region
-        out_name = f"osm_landmask_{w}_{s}.geojson"
+        suffix = self._get_filename_suffix()
+        out_name = f"osm_landmask_{w}_{s}_{e}_{n}{suffix}.geojson"
         out_path = os.path.join(self._outdir, out_name)
 
         if os.path.exists(out_path):
@@ -168,18 +176,26 @@ class OSMLandmaskModule(FetchModule):
             query += """
             way["waterway"="riverbank"];
             relation["waterway"="riverbank"];
-            way["natural"="water"]["water"="river"];
-            relation["natural"="water"]["water"="river"];
+            way["natural"="water"]["water"~"river|estuary|bay"];
+            relation["natural"="water"]["water"~"river|estuary|bay"];
+            way["natural"="water"]["tidal"="yes"];
+            relation["natural"="water"]["tidal"="yes"];
             """
-
+            # way["waterway"="riverbank"];
+            # relation["waterway"="riverbank"];
+            # way["natural"="water"]["water"="river"];
+            # relation["natural"="water"]["water"="river"];
             # """
 
         # lakes/ponds
         if self.include_lakes:
             query += """
-            way["natural"="water"]["water"!="river"];
-            relation["natural"="water"]["water"!="river"];
+            way["natural"="water"]["water"!~"river|estuary|bay"]["tidal"!="yes"];
+            relation["natural"="water"]["water"!~"river|estuary|bay"]["tidal"!="yes"];
             """
+            # way["natural"="water"]["water"!="river"];
+            # relation["natural"="water"]["water"!="river"];
+            # """
 
         # reefs
         if self.include_reefs:
@@ -218,7 +234,9 @@ class OSMLandmaskModule(FetchModule):
 
         params = urlencode({"data": query})
         url = f"{OSM_API}?{params}"
-        dest = os.path.join(self._outdir, f"temp_osm_{w}_{s}.json")
+
+        suffix = self._get_filename_suffix()
+        dest = os.path.join(self._outdir, f"temp_osm_{w}_{s}_{e}_{w}{suffix}.json")
         f = Fetch(url, headers=HEADERS)
         if f.fetch_file(dest, method="GET", verbose=False) == 0:
             return dest
@@ -362,9 +380,15 @@ class OSMLandmaskModule(FetchModule):
                     is_coast = tags.get("natural") == "coastline"
                     is_river = (
                         tags.get("waterway") == "riverbank"
-                        or tags.get("water") == "river"
+                        or tags.get("water") in ["river", "estuary", "bay"]
+                        or tags.get("tidal") == "yes"
                     )
                     is_lake = tags.get("natural") == "water" and not is_river
+                    # is_river = (
+                    #     tags.get("waterway") == "riverbank"
+                    #     or tags.get("water") == "river"
+                    # )
+                    # is_lake = tags.get("natural") == "water" and not is_river
 
                     is_wetland = (
                         tags.get("waterway") == "tidal_channel"
