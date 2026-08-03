@@ -65,7 +65,6 @@ class RegionBufferModifier(BaseModifier):
                 insert_idx = i
                 break
 
-        # if self.buffer_val or self.buffer_pct:
         global_hooks.insert(
             insert_idx,
             {

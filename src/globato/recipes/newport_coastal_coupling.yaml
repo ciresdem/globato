@@ -27,22 +27,22 @@ modules:
       - name: spatial_crop
   # This lidar dataset has water surface returns and
   # no bathymetry, so we just mask it to the coastline.
-  - module: dav
-    args:
-      weight: 10
-      survey_id: "575"
-    hooks:
-      - name: stream_data
-      - name: stream_reproject
-        args:
-          dst_srs: "EPSG:4269+5703"
-          cache_dir: "%shared_cache%"
-      - name: point_raster_mask
-        args:
-          barrier: osm
-          invert: false
-          res: "1s"
-      - name: spatial_crop
+  # - module: dav
+  #   args:
+  #     weight: 10
+  #     survey_id: "575"
+  #   hooks:
+  #     - name: stream_data
+  #     - name: stream_reproject
+  #       args:
+  #         dst_srs: "EPSG:4269+5703"
+  #         cache_dir: "%shared_cache%"
+  #     - name: point_raster_mask
+  #       args:
+  #         barrier: osm
+  #         invert: false
+  #         res: "1s"
+  #     - name: spatial_crop
 
 global_hooks:
   - preset: mr-globato-cudem

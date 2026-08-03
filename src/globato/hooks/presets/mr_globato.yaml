@@ -69,7 +69,7 @@ hooks:
       steps: 2
       blend_dists: 2/10/02
       barrier: osm
-      algos: "interp_gmt:tension=1,verbose=True"
+      algos: "interp_gmt:tension=.75"
       # algos: interp_rbf
       output: "%name%_%batch_name%.tif"
 
