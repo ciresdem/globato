@@ -459,11 +459,12 @@ class RasterGlobalHook(RasterBaseHook):
                     self._clamp_raster(dst_fn)
                     self._strip_to_single_band(dst_fn)
 
-                    entry["src_fn"] = src_fn
-                    entry["dst_fn"] = dst_fn
+                    entry["src_fn"] = str(src_fn)
+                    entry["dst_fn"] = str(dst_fn)
                     entry.setdefault("artifacts", {})[self.name] = dst_fn
             except Exception as e:
-                logger.exception(f"GlobalHook {self.name} failed on {src_fn}: {e}")
+                logger.error(f'Global hook "{self.name}" failed on {src_fn}: {e}')
+                raise
 
             new_entries.append((mod, entry))
 

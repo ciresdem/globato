@@ -12,6 +12,11 @@ execution:
 schemas:
   - name: validate-recipe
 
+modifiers:
+  - name: buffer-and-cut
+    args:
+      pct: 20
+
 modules:
   - bundle: crm-bathy-topo
 
