@@ -98,9 +98,9 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
     "--refresh", is_flag=True, help="Force fresh API fetch, bypassing local cache."
 )
 @click.option(
-    "--ignore-failures",
+    "--fail-fast",
     is_flag=True,
-    help="Continue processing through failures (Warning: may result in incomplete data or products).",
+    help="Raise an exception on the first failure, otherwise continue processing through failures.",
 )
 @click.argument("sources", nargs=-1)
 def build_cmd(
@@ -126,7 +126,7 @@ def build_cmd(
     export,
     sources,
     refresh,
-    ignore_failures,
+    fail_fast,
 ):
     """Build a Digital Elevation Model recipe, and execute it."""
 
@@ -396,7 +396,7 @@ def build_cmd(
                 outdir=outdir,
                 shared_cache=shared_cache,
                 refresh=refresh,
-                ignore_failures=ignore_failures,
+                ignore_failures=not fail_fast,
             )
             click.secho(
                 "✨ Successfully completed Globato build pipeline!",
@@ -404,5 +404,7 @@ def build_cmd(
                 bold=True,
             )
 
-    except ValueError as e:
-        click.secho(str(e), fg="red")
+    except Exception as e:
+        click.secho(
+            f"Failed to execute Globato pipeline!: {str(e)}", fg="red", bold=True
+        )
