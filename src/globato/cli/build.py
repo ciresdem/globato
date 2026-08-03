@@ -404,5 +404,7 @@ def build_cmd(
                 bold=True,
             )
 
-    except ValueError as e:
-        click.secho(str(e), fg="red")
+    except Exception as e:
+        click.secho(
+            f"Failed to execute Globato pipeline!: {str(e)}", fg="red", bold=True
+        )
