@@ -76,7 +76,7 @@ class OSMLandmaskModule(FetchModule):
         if include_rivers is None:
             self.include_rivers = self.include_water
         else:
-            self.include_rivers = str2bool(str(include_water))
+            self.include_rivers = str2bool(str(include_rivers))
 
         if include_lakes is None:
             self.include_lakes = self.include_water

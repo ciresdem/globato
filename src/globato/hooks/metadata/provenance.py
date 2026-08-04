@@ -183,10 +183,18 @@ class SourceMasks(FetchHook):
     meta_category = "metadata"
     meta_aliases = ["source_masks"]
 
-    def __init__(self, res="1s", output_dir=None, output="source_masks.vrt", **kwargs):
+    def __init__(
+        self,
+        res="1s",
+        output_dir=None,
+        output="source_masks.vrt",
+        vector_output=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.res = str2inc(res)
         self.output = output
+        self.vector_output = vector_output
 
         base_name = os.path.splitext(self.output)[0]
         self.output_dir = output_dir or f"{base_name}_temp_masks"
@@ -399,6 +407,42 @@ class SourceMasks(FetchHook):
                 f.write("\n".join(xml_lines))
 
             logger.debug(f"VRT {self.output} built successfully.")
+
+            # --- Generate Vector Spatial Metadata, if requested ---
+            if self.vector_output:
+                logger.info(f"Polygonizing VRT to {self.vector_output}...")
+                try:
+                    import geopandas as gpd
+                    from rasterio.features import shapes
+                    from shapely.geometry import shape
+
+                    records = []
+                    with rasterio.open(self.output) as src:
+                        for i in range(1, src.count + 1):
+                            band = src.read(i)
+                            band_name = src.descriptions[i - 1] or f"Band_{i}"
+                            tags = src.tags(i)
+                            # Polygonize where pixel > 0
+                            geom_generator = shapes(
+                                band, mask=(band > 0), transform=src.transform
+                            )
+                            for geom, value in geom_generator:
+                                record = {"Name": band_name, "geometry": shape(geom)}
+                                record.update(tags)
+                                records.append(record)
+
+                    if records:
+                        gdf = gpd.GeoDataFrame(records, crs=src.crs)
+                        gdf = gdf.dissolve(by="MODULE").reset_index()
+                        gdf.to_file(self.vector_output, driver="GPKG", engine="pyogrio")
+                        logger.info(
+                            f"Spatial metadata vector saved to {self.vector_output}"
+                        )
+                    else:
+                        logger.debug("No valid geometries found to polygonize.")
+
+                except Exception as e:
+                    logger.error(f"Failed to generate spatial metadata vector: {e}")
 
         except Exception as e:
             logger.error(f"Failed to build VRT with rasterio: {e}")

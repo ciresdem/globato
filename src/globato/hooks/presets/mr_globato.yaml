@@ -15,6 +15,7 @@ hooks:
     args:
       res: 3s
       output: "%name%_%batch_name%_sources.vrt"
+      vector_output: "%name%_%batch_name%_sm.gpkg"
 
   - name: multi_stack
     args:
