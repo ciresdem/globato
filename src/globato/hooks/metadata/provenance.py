@@ -254,6 +254,7 @@ class SourceMasks(FetchHook):
                     "CATEGORY": getattr(mod, "meta_category", "Unknown"),
                     "AGENCY": getattr(mod, "meta_agency", "Unknown"),
                     "DATATYPE": entry.get("data_type", "Unknown"),
+                    "RESOLUTION": getattr(mod, "meta_resolution", "Varies"),
                     "URL": entry.get("url", "Unknown"),
                     "WEIGHT": str(getattr(mod, "weight", 1.0)),
                 }
