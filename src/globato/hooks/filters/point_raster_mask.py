@@ -107,4 +107,5 @@ class PointRasterMask(GlobatoFilter):
         if self.soft:
             return ~inside_mask
         else:
+            logger.debug(f"[{self.name}] Masked {np.count_nonzero(inside_mask)} points")
             return chunk[inside_mask]
