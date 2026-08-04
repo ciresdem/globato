@@ -48,7 +48,9 @@ modules:
     hooks:
       - name: unzip
       - name: filename_filter
-        args: {match: ".tif"}
+        args: {match: ".img"}
+      - name: filename_filter
+        args: {exclude: ".xml"}
       - name: raster_flats
         args:
           stage: "file"

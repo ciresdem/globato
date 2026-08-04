@@ -34,6 +34,9 @@ class BindGrid(FetchHook, RasterSampling):
     meta_category = "stream-transform"
     meta_consumes = "point-stream"
     meta_produces = "point-stream"
+    meta_desc = (
+        "Samples an external raster and binds the values to a point-stream column."
+    )
 
     # Map target columns to their required Globato numpy dtypes
     DTYPE_MAP = {
