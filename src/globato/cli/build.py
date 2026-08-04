@@ -199,7 +199,11 @@ def build_cmd(
             },
             {
                 "name": "source_masks",
-                "args": {"res": increment, "output": f"{batch_outname}_sources.vrt"},
+                "args": {
+                    "res": increment,
+                    "output": f"{batch_outname}_sources.vrt",
+                    "vector_output": f"{batch_outname}_sm.gpkg",
+                },
             },
         ]
 
