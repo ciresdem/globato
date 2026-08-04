@@ -34,6 +34,7 @@ class VectorFillHoles(FetchHook):
     name = "vector_fill_holes"
     meta_stage = "collection"  # post
     meta_category = "vector-op"
+    meta_desc = "Removes interior holes from vector polygons."
 
     def __init__(self, min_area=0.0, suffix="_filled", **kwargs):
         super().__init__(**kwargs)

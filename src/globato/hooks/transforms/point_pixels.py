@@ -334,6 +334,7 @@ class PixelsToPoints(FetchHook):
     meta_stage = "stream"
     meta_category = "stream-transform"
     meta_aliases = ["pixels_to_points"]
+    meta_desc = "Converts a raster-stream back into an xyz-recarray point stream."
 
     def _raster_to_xyz(self, raster_stream):
         _profile = next(raster_stream)
@@ -401,6 +402,7 @@ class Point2PixelStream(FetchHook):
     meta_stage = "stream"
     meta_category = "stream-transform"
     meta_aliases = ["point2pixel", "points_to_pixel"]
+    meta_desc = "Converts an xyz-recarray point-stream into a raster-stream."
 
     def __init__(self, x_inc=None, y_inc=None, want_sums=True, **kwargs):
         super().__init__(**kwargs)

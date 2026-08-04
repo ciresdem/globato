@@ -233,6 +233,76 @@ class SourceMasks(FetchHook):
         self._initialized = True
         logger.debug(f"Initialized Detailed Source Masks in ./{self.output_dir}")
 
+    def _write_qml_style(self, qml_path, unique_groups):
+        """Generates a dynamic Categorized QGIS styling file."""
+
+        palette = [
+            "228,26,28,150",  # Red
+            "55,126,184,150",  # Blue
+            "77,175,74,150",  # Green
+            "152,78,163,150",  # Purple
+            "255,127,0,150",  # Orange
+            "255,255,51,150",  # Yellow
+            "166,86,40,150",  # Brown
+        ]
+
+        categories_xml = ""
+        symbols_xml = ""
+
+        for i, group in enumerate(unique_groups):
+            # Loop back to start if we have more groups than colors
+            color = palette[i % len(palette)]
+
+            # The legend entry
+            categories_xml += (
+                f'    <category value="{group}" symbol="{i}" label="{group}"/>\n'
+            )
+
+            # The symbology definition
+            symbols_xml += f"""
+      <symbol type="fill" name="{i}" alpha="1">
+        <layer pass="0" class="SimpleFill" locked="0">
+          <prop k="color" v="{color}"/>
+          <prop k="outline_color" v="0,0,0,255"/>
+          <prop k="outline_width" v="0.3"/>
+          <prop k="style" v="solid"/>
+        </layer>
+      </symbol>"""
+
+        # The master QML template
+        qml_content = f"""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.10.0" styleCategories="Symbology|Labeling">
+
+  <previewExpression>"GROUP_ID"</previewExpression>
+  <!-- Categorized Renderer based on the GROUP_ID field -->
+  <renderer-v2 type="categorizedSymbol" attr="GROUP_ID">
+    <categories>
+{categories_xml}
+    </categories>
+    <symbols>
+{symbols_xml}
+    </symbols>
+  </renderer-v2>
+
+  <!-- Labeling: Automatically label using the GROUP_ID field -->
+  <labeling type="simple">
+    <settings>
+      <text-style fontFamily="sans-serif" fontSize="9" textColor="0,0,0,255">
+        <text-buffer bufferSize="1" bufferColor="255,255,255,255" bufferDraw="1"/>
+      </text-style>
+      <fieldName>"GROUP_ID"</fieldName>
+      <placement dist="0" quadOffset="4" placement="0"/>
+    </settings>
+  </labeling>
+</qgis>
+"""
+        try:
+            with open(qml_path, "w") as f:
+                f.write(qml_content)
+            logger.debug(f"Generated dynamic Categorized QML style file: {qml_path}")
+        except Exception as e:
+            logger.error(f"Failed to write QML file: {e}")
+
     def run(self, entries):
         if not self._initialized and entries:
             region = next(
@@ -251,6 +321,7 @@ class SourceMasks(FetchHook):
 
                 meta_tags = {
                     "MODULE": getattr(mod, "name", "Unknown"),
+                    "DATASET": getattr(mod, "title", getattr(mod, "name", "Unknown")),
                     "CATEGORY": getattr(mod, "meta_category", "Unknown"),
                     "AGENCY": getattr(mod, "meta_agency", "Unknown"),
                     "DATATYPE": entry.get("data_type", "Unknown"),
@@ -428,22 +499,50 @@ class SourceMasks(FetchHook):
                                 band, mask=(band > 0), transform=src.transform
                             )
                             for geom, value in geom_generator:
-                                record = {"Name": band_name, "geometry": shape(geom)}
+                                record = {
+                                    "Filename": band_name,
+                                    "geometry": shape(geom),
+                                }
                                 record.update(tags)
                                 records.append(record)
 
                     if records:
                         gdf = gpd.GeoDataFrame(records, crs=src.crs)
-                        gdf = gdf.dissolve(by="MODULE").reset_index()
+                        gdf = gdf.dissolve(
+                            by=["MODULE", "DATASET", "WEIGHT"]
+                        ).reset_index()
+                        gdf["GROUP_ID"] = (
+                            gdf["MODULE"]
+                            + " | "
+                            + gdf["DATASET"]
+                            + " (Wt: "
+                            + gdf["WEIGHT"].astype(str)
+                            + ")"
+                        )
+                        if "Filename" in gdf.columns:
+                            gdf = gdf.drop(columns=["Filename"])
+
+                        cols = gdf.columns.tolist()
+                        cols.insert(0, cols.pop(cols.index("GROUP_ID")))
+
+                        if "geometry" in cols:
+                            cols.append(cols.pop(cols.index("geometry")))
+
+                        gdf = gdf[cols]
+
                         gdf.to_file(self.vector_output, driver="GPKG", engine="pyogrio")
                         logger.info(
                             f"Spatial metadata vector saved to {self.vector_output}"
                         )
+
+                        unique_groups = gdf["GROUP_ID"].unique().tolist()
+                        qml_path = os.path.splitext(self.vector_output)[0] + ".qml"
+                        self._write_qml_style(qml_path, unique_groups)
                     else:
                         logger.debug("No valid geometries found to polygonize.")
 
                 except Exception as e:
-                    logger.error(f"Failed to generate spatial metadata vector: {e}")
+                    logger.exception(f"Failed to generate spatial metadata vector: {e}")
 
         except Exception as e:
             logger.error(f"Failed to build VRT with rasterio: {e}")
