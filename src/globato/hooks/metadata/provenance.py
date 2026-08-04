@@ -236,7 +236,6 @@ class SourceMasks(FetchHook):
     def _write_qml_style(self, qml_path, unique_groups):
         """Generates a dynamic Categorized QGIS styling file."""
 
-        # A distinct color palette (R, G, B, Alpha) to cycle through
         palette = [
             "228,26,28,150",  # Red
             "55,126,184,150",  # Blue
@@ -250,9 +249,9 @@ class SourceMasks(FetchHook):
         categories_xml = ""
         symbols_xml = ""
 
-        # Dynamically build the XML for each unique dataset group
         for i, group in enumerate(unique_groups):
-            color = palette[i % len(palette)]  # Loop back to start if we have >7 groups
+            # Loop back to start if we have more groups than colors
+            color = palette[i % len(palette)]
 
             # The legend entry
             categories_xml += (
@@ -275,7 +274,7 @@ class SourceMasks(FetchHook):
 <qgis version="3.10.0" styleCategories="Symbology|Labeling">
 
   <previewExpression>"GROUP_ID"</previewExpression>
-  <!-- Categorized Renderer based on the new GROUP_ID field -->
+  <!-- Categorized Renderer based on the GROUP_ID field -->
   <renderer-v2 type="categorizedSymbol" attr="GROUP_ID">
     <categories>
 {categories_xml}
@@ -285,7 +284,7 @@ class SourceMasks(FetchHook):
     </symbols>
   </renderer-v2>
 
-  <!-- Labeling: Automatically label using the new composite field -->
+  <!-- Labeling: Automatically label using the GROUP_ID field -->
   <labeling type="simple">
     <settings>
       <text-style fontFamily="sans-serif" fontSize="9" textColor="0,0,0,255">
