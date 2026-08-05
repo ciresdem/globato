@@ -34,9 +34,12 @@ extensions = [
     "sphinx.ext.githubpages",  # Auto-generate .nojekyll for GH Pages
     "sphinx_argparse_cli",  # argparse
     "myst_parser",  # Parse Markdown files
+    "sphinxcontrib.mermaid",  # mermaid support
 ]
 
-napoleon_google_docstring = True
+myst_fence_as_directive = ["mermaid"]
+
+xnapoleon_google_docstring = True
 napoleon_numpy_docstring = False
 napoleon_include_init_with_doc = False
 

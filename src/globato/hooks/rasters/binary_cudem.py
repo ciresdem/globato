@@ -76,55 +76,50 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self.keep_steps = keep_steps
 
     def _setup_steps(self, src_path):
-        # Steps
-        self.steps = (
-            max(
-                self.steps,
-                len(self.resolutions),
-                len(self.weights),
-                len(self.blend_dists),
-                len(self.algos),
-            )
-            - 1
+        # Determine total tiers needed (Target Steps + 1 Base Layer)
+        target_tiers = max(
+            self.steps + 1,
+            len(self.resolutions),
+            len(self.weights),
+            len(self.blend_dists),
+            len(self.algos),
         )
 
-        # Weights
-        # TODO: use src to determine defaults by percentile
+        self.steps = target_tiers - 1
+
+        # Weights: Auto-generate step-downs if not provided
         self.weights = sorted(self.weights, reverse=True)
         while len(self.weights) < self.steps:
             if len(self.weights) == 0:
-                self.weights.append(1)
-            next_weight = self.weights[-1] / 2
+                self.weights.append(1.0)
+            next_weight = self.weights[-1] / 2.0
             if next_weight == 0:
                 next_weight = 1e-20
             self.weights.append(next_weight)
 
+        # Ensure the final tier always catches everything (Weight 0)
         if self.weights[-1] > 0:
-            self.weights.append(0)
+            self.weights.append(0.0)
 
-        # Resolutions
+        # Resolutions: Auto-multiply by 3 if not provided
         with rasterio.open(src_path) as src:
             base_res = src.profile["transform"][0]
 
-        while len(self.resolutions) <= self.steps:
+        while len(self.resolutions) < target_tiers:
             if len(self.resolutions) == 0:
                 self.resolutions.append(base_res)
             self.resolutions.append(self.resolutions[-1] * 3)
 
-        # Algos
+        # Algos: Pad by repeating the last provided algo
         if len(self.algos) == 0:
             self.algos = ["raster_fill:max_dist=10"] * max(0, self.steps)
             self.algos.append("interp_rbf")
 
-        while len(self.algos) <= self.steps:
+        while len(self.algos) < target_tiers:
             self.algos.append(self.algos[-1])
 
-        # self.algos.append(
-        #    f"interp_rbf:smoothing={len(self.algos) * 60},neighbors=500,degree=1"
-        # )
-
-        # Blend Dists
-        while len(self.blend_dists) <= self.steps:
+        # Blend Dists: Pad by repeating the last provided distance
+        while len(self.blend_dists) < target_tiers:
             if len(self.blend_dists) == 0:
                 self.blend_dists.append(20)
             self.blend_dists.append(self.blend_dists[-1])
@@ -178,6 +173,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
             region=region,
             region_srs=src_crs,
             path=src_path,
+            use_cache=False,
             hooks=[
                 "set_datatype:data_type=multi-stack",
                 "stream-init",

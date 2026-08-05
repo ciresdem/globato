@@ -29,7 +29,7 @@ globato recipes info quick_coastal
 **Note**: `quick_coastal` is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.
 
 ## Step 2: Running a Curated Recipe
-Let's run the quick_coastal recipe. Globato's geographic engine is smart enough to understand place names, so we don't even need to look up bounding box coordinates. We just use the -R (Region) flag and prefix our search with `loc:`. Since by default the quick_coastal recipe will generate a DEM at 3 arc-seconds, lets increase the output resolution to 1 arc-second.
+Let's run the quick_coastal recipe. We can use the -R (Region) flag and prefix our search with `loc:`. Since by default the quick_coastal recipe will generate a DEM at 3 arc-seconds, lets increase the output resolution to 1 arc-second.
 
 ```bash
 globato cudem run quick_coastal -R loc:"portland, me -E 1s"
@@ -41,11 +41,11 @@ globato cudem run quick_coastal -R loc:"portland, me -E 1s"
 
 * It dispatched the fetchez engine to download elvation and bathymetry data for exactly that area.
 
-* It downloaded OpenStreetMap coastline vectors to act as a barrier.
+* It downloaded OpenStreetMap coastline vectors to act as a coastal barrier.
 
 * It dynamically stacked, interpolated, and cropped the data into a seamless grid.
 
-* It generated a colorized hillshade (_hillshade.tif) for immediate viewing.
+* It generated a colorized hillshade (_hs.tif) for immediate viewing.
 
 Check your current directory; you should see your brand new `quick_coastal` directory with the output DEM ready to load into QGIS or ArcGIS!
 
@@ -59,7 +59,7 @@ What if you want to build a DEM using completely different data, but don't want 
 Let's build a DEM using USGS 3DEP topography and NOAA MBDB (Multibeam) bathymetry.
 
 ```bash
-globato cudem build -R loc:"San Diego" tnm:datasets=3/4 mbdb -E 1s
+globato build -R loc:"San Diego" tnm:datasets=3/4 mbdb -E 1s -D SD_DEM
 ```
 
 Globato will output a custom San_Diego_recipe.yaml file into your directory and immediately execute it.
@@ -72,7 +72,7 @@ Raw data is rarely perfect. Globato allows you to attach processing "hooks" dire
 Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded and lets also remove hydro-flattened regions from the national map DEMs using the `raster_flats` hook.
 
 ```bash
-globato cudem build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s
+globato build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s -D SD_CLEAN_DEM
 ```
 
 *(Above: The just generated DEM of San Diego, California)*
