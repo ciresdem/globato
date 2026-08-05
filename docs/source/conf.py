@@ -120,4 +120,6 @@ intersphinx_mapping = {
     "requests": ("https://requests.readthedocs.io/en/latest/", None),
     "fetchez": ("https://fetchez.readthedocs.io/en/latest/", None),
     "transformez": ("https://transformez.readthedocs.io/en/latest/", None),
+    "numpy": ("https://numpy.org", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
 }
