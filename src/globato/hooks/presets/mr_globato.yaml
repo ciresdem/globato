@@ -70,8 +70,9 @@ hooks:
       steps: 2
       blend_dists: 2/10/02
       barrier: osm
-      algos: "interp_gmt:tension=.75"
+      # algos: "interp_gmt:tension=.75"
       # algos: interp_rbf
+      algos: raster_fill:max_distance=6/raster_fill:max_distance=12/interp_gmt:tension=.75
       output: "%name%_%batch_name%.tif"
 
   - name: focus_sink
