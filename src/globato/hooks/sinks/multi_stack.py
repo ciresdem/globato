@@ -86,7 +86,7 @@ class MultiStackAccumulator:
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
         self.xcount, self.ycount, self.dst_gt = self.region.geo_transform(
-            x_inc=self.x_inc, y_inc=self.y_inc, node="grid"
+            x_inc=self.x_inc, y_inc=self.y_inc, node="pixel"
         )
 
         self.transform = rasterio.transform.from_origin(

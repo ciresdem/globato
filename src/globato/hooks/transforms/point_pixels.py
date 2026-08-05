@@ -415,7 +415,7 @@ class Point2PixelStream(FetchHook):
 
         if region:
             xcount, ycount, _ = region.geo_transform(
-                x_inc=self.x_inc, y_inc=self.y_inc, node="grid"
+                x_inc=self.x_inc, y_inc=self.y_inc, node="pixel"
             )
 
             point_array = PointPixels(
@@ -435,7 +435,7 @@ class Point2PixelStream(FetchHook):
 
         if region:
             xcount, ycount, gt = region.geo_transform(
-                x_inc=self.x_inc, y_inc=self.y_inc, node="grid"
+                x_inc=self.x_inc, y_inc=self.y_inc, node="pixel"
             )
             transform = rasterio.transform.from_origin(gt[0], gt[3], gt[1], abs(gt[5]))
 
