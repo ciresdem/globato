@@ -35,6 +35,7 @@ class GeoHillshade(RasterStreamHook):
 
     name = "viz_geoshade"
     default_suffix = "_hillshade"
+    meta_desc = "Generate a Hillshade image of a raster."
     meta_category = "Raster-Stream"
 
     def __init__(

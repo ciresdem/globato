@@ -27,9 +27,11 @@ class RasterFootprintFill(RasterStreamHook):
     Requires a chunk buffer >= max_gap to prevent seamlines.
     """
 
-    name = "raster_footprint_fill"
+    name = "raster-xfootprint-fill"
     meta_stage = "stream"
-    meta_category = "raster-filter"
+    meta_category = "raster-stream"
+    meta_aliases = ["raster_footprint_fill"]
+    meta_desc = "Interpolates gaps within a dataset's footprint."
 
     def __init__(self, max_gap=10, **kwargs):
         super().__init__(**kwargs)

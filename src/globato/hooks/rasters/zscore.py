@@ -36,6 +36,7 @@ class RasterZScore(RasterStreamHook):
 
     name = "raster_zscore"
     default_suffix = "_zscore"
+    meta_desc = "Filter a raster based on local Z-Score."
 
     def __init__(self, threshold=3.0, kernel_size=5, **kwargs):
         super().__init__(**kwargs)

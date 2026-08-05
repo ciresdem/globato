@@ -29,6 +29,7 @@ class RasterMetadataHook(FetchHook):
 
     name = "raster_metadata"
     meta_stage = "collection"
+    meta_desc = "Inject global metadata tags into a raster."
     meta_category = "metadata"
 
     def __init__(self, tags=None, bands=None, **kwargs):

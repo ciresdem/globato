@@ -38,7 +38,9 @@ class VectorMask(GlobatoFilter, RasterSampling):
         res (float): Resolution of the internal mask (default 0.0001 ~10m).
     """
 
-    name = "vector_mask"
+    name = "vector-mask"
+    meta_desc = "Filters points based on a vector poylgon mask"
+    meta_aliases = ["vector_mask"]
 
     def __init__(self, vector=None, invert=False, res=0.0001, **kwargs):
         super().__init__(invert=invert, **kwargs)

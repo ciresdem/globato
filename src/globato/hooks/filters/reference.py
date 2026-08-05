@@ -55,6 +55,7 @@ class RasterMask(FetchHook, RasterSampling):
     name = "raster_mask"
     meta_stage = "stream"
     meta_category = "stream-filter"
+    meta_desc = "Filter a point stream with a raster mask."
 
     def __init__(self, mask_fn=None, invert=False, set_class=7, **kwargs):
         super().__init__(**kwargs)

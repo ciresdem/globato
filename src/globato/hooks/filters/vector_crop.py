@@ -33,7 +33,7 @@ class VectorCrop(GlobatoFilter):
     """
 
     name = "vector_crop"
-    desc = "Crop stream data using a polygon vector."
+    meta_desc = "Crop stream data using a polygon vector."
 
     def __init__(self, vector=None, soft=False, **kwargs):
         super().__init__(**kwargs)

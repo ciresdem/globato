@@ -33,6 +33,7 @@ class RasterFlats(RasterStreamHook):
 
     name = "raster_flats"
     default_suffix = "_deflat"
+    meta_desc = "Remove 'flat' areas from a raster"
 
     def __init__(self, size_threshold=1.0, **kwargs):
         super().__init__(**kwargs)

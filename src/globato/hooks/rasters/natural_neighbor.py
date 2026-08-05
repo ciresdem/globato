@@ -33,6 +33,7 @@ class NaturalNeighborSurface(RasterGlobalHook):
 
     name = "interp_nn"
     default_suffix = "_nn"
+    meta_desc = "Intpolate NoData voids using Natural Neighbor."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(self, max_points=50000, **kwargs):

@@ -23,6 +23,7 @@ class RasterClipHook(RasterStreamHook):
 
     name = "raster_clip"
     default_suffix = "_clipped"
+    meta_desc = "Clip a raster using vector geometries."
     # meta_stage = "file"
 
     def __init__(self, invert=False, **kwargs):

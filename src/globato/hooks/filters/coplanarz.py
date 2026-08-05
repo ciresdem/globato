@@ -24,7 +24,7 @@ class CoplanarZ(GlobatoFilter):
     """
 
     name = "coplanarz"
-    desc = "filter outliers that deviate from a fitted plane"
+    meta_desc = "filter outliers that deviate from a fitted plane"
 
     def __init__(self, radius=10, threshold=0.5, min_neighbors=3, **kwargs):
         super().__init__(**kwargs)

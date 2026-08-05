@@ -28,6 +28,7 @@ class UncertaintySurface(RasterGlobalHook):
 
     name = "dem_uncertainty"
     default_suffix = "_unc"
+    meta_desc = "Caclulates spatial interpolation uncertainty."
 
     def __init__(
         self,

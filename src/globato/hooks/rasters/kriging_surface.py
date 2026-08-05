@@ -33,6 +33,7 @@ class KrigingSurface(RasterGlobalHook):
 
     name = "interp_krige"
     default_suffix = "_krige"
+    meta_desc = "Intpolate NoData voids using Kriging."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(self, model="linear", nlags=6, max_points=10000, **kwargs):

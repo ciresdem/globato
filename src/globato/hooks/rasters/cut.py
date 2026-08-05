@@ -24,6 +24,7 @@ class RasterCut(RasterStreamHook):
 
     name = "raster_cut"
     default_suffix = "_cut"
+    meta_desc = "Cut a raster to a region"
 
     def process_chunk(self, data, ndv, entry, transform=None, window=None):
         """Masks pixels that fall outside the target region using local chunk coordinates."""

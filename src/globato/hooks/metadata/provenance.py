@@ -36,6 +36,7 @@ class ProvenanceHook(FetchHook):
     name = "provenance"
     meta_stage = "stream"
     meta_category = "metadata"
+    meta_desc = "Generate a dataset mask raster using Bit IDs."
 
     def __init__(self, res="1s", output="provenance.tif", **kwargs):
         super().__init__(**kwargs)
@@ -181,6 +182,7 @@ class SourceMasks(FetchHook):
     name = "source-masks"
     meta_stage = "stream"
     meta_category = "metadata"
+    meta_desc = "Generate source masks for all dataset and build a combined VRT/GPKG."
     meta_aliases = ["source_masks"]
 
     def __init__(

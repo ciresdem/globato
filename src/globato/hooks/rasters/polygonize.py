@@ -27,6 +27,7 @@ class RasterPolygonizeHook(FetchHook):
     """Converts a raster (like a binary mask or classified grid) into vector polygons."""
 
     name = "raster_polygonize"
+    meta_desc = "Convert a raster into vector polygons."
     meta_category = "raster-op"
     meta_stage = "post"
 

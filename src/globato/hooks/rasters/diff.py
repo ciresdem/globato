@@ -37,6 +37,7 @@ class RasterDiff(RasterGlobalHook):
 
     name = "raster_diff"
     default_suffix = "_diff"
+    meta_desc = "Calculate pixel-wise differences between rasters."
 
     def __init__(
         self,

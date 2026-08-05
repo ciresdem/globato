@@ -23,6 +23,7 @@ class RasterSieveHook(RasterStreamHook):
     """Removes small contiguous regions (noise, holes, puddles) from a raster."""
 
     name = "raster_sieve"
+    meta_desc = "Removes small contiguous regions from a raster."
     default_suffix = "_sieve"
 
     def __init__(self, size=100, connectivity=8, **kwargs):

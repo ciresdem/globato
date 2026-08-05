@@ -30,7 +30,7 @@ class WriteXYZ(FetchHook):
     name = "write_xyz"
     meta_stage = "stream"
     meta_category = "point-stream"
-    meta_desc = "Write a point stream to xyz"
+    meta_desc = "Write a point stream to xyz."
     meta_requires = "point-stream"
 
     def __init__(self, output="{base}_out.xyz", fmt="%.6f", artifact_id=None, **kwargs):
@@ -98,6 +98,7 @@ class XYZWrite(FetchHook):
     name = "xyz-write"
     meta_stage = "stream"
     meta_category = "stream-sink"
+    meta_desc = "Write a point stream to xyz."
     meta_aliases = ["xyz_write"]
 
     def __init__(self, output_path=None, **kwargs):

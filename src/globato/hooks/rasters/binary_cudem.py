@@ -37,10 +37,11 @@ logger = logging.getLogger(__name__)
 
 
 class BinaryCudemStepDown(RasterGlobalHook):
-    """Multi-Resolution Morphological step-down using Binary Coding."""
+    """Multi-Resolution Morphological step-down."""
 
     name = "ms_binary_cudem"
     default_suffix = "_binary_cudem"
+    meta_desc = "Intpolate NoData voids using Multi Resolution Morphological stacking."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(
