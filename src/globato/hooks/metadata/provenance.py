@@ -57,7 +57,7 @@ class ProvenanceHook(FetchHook):
 
         x_inc, y_inc = self.res, self.res
         self.xcount, self.ycount, self.dst_gt = region.geo_transform(
-            x_inc=x_inc, y_inc=y_inc, node="grid"
+            x_inc=x_inc, y_inc=y_inc, node="pixel"
         )
         self.transform = rasterio.transform.from_origin(
             region.xmin, region.ymax, x_inc, y_inc
@@ -211,7 +211,7 @@ class SourceMasks(FetchHook):
 
         x_inc, y_inc = self.res, self.res
         self.xcount, self.ycount, self.dst_gt = region.geo_transform(
-            x_inc=x_inc, y_inc=y_inc, node="grid"
+            x_inc=x_inc, y_inc=y_inc, node="pixel"
         )
         self.transform = rasterio.transform.from_origin(
             region.xmin, region.ymax, x_inc, y_inc

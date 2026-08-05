@@ -406,8 +406,9 @@ class BinaryCudemStepDown(RasterGlobalHook):
         self._setup_steps(src_path)
 
         base_barrier = None
-        if self.barrier is not None:
-            with rasterio.open(src_path) as base_src:
+        with rasterio.open(src_path) as base_src:
+            native_res = base_src.transform[0]
+            if self.barrier is not None:
                 hr_mask = self._create_barrier_mask(base_src.shape, base_src.transform)
                 if hr_mask is not None:
                     base_barrier = (hr_mask, base_src.transform)
@@ -420,7 +421,14 @@ class BinaryCudemStepDown(RasterGlobalHook):
             is_coarsest = i == 0
 
             step_stack = src_path.replace(".tif", f"_step_{inc2str(res_str)}.tif")
-            self._decimate_raster(src_path, step_stack, target_res=res_str)
+
+            if np.isclose(res_str, native_res, atol=1e-9):
+                logger.info(
+                    f"[{self.name}] Tier resolution matches base stack. Skipping decimation."
+                )
+                shutil.copy(src_path, step_stack)
+            else:
+                self._decimate_raster(src_path, step_stack, target_res=res_str)
 
             self._process_tier(
                 step_stack,

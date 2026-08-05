@@ -295,8 +295,15 @@ def build_cmd(
         if algo_hook["name"] in ["ms_cudem", "ms_binary_cudem"]:
             args = algo_hook.setdefault("args", {})
 
-            if "resolutions" not in args:
-                args["resolutions"] = "/".join([str(r) for r in auto_res_list])
+            if "resolutions" in args:
+                logger.warning(
+                    f"Overriding manual resolutions in -M to align with base increment (-E {increment})."
+                )
+
+            args["resolutions"] = "/".join([str(r) for r in auto_res_list])
+
+            # if "resolutions" not in args:
+            #     args["resolutions"] = "/".join([str(r) for r in auto_res_list])
 
             args["weights"] = weight_list  # Strip the trailing 0
             args["steps"] = len(weight_list)
