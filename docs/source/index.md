@@ -41,6 +41,7 @@ caption: User Guide
 hidden: true
 ---
 user_guide/index
+api/index
 ```
 
 Indices and tables

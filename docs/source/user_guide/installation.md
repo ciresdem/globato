@@ -31,7 +31,3 @@ git clone https://github.com/continuous-dems/globato.git
 cd globato
 pip install -e .
 ```
-
-## Module-Specific Dependencies
-
-*todo*

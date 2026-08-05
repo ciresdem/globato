@@ -66,7 +66,7 @@ class MultiStackAccumulator:
         weight_threshold="1",
         crs="EPSG:4326",
         verbose=False,
-        overwrite=False,
+        overwrite=True,
     ):
         self.region = Region.from_list(region)
         self.x_inc = abs(float(x_inc))
@@ -398,7 +398,7 @@ class MultiStackHook(FetchHook):
         weight_threshold="1",
         crs=None,
         drop_classes=None,
-        overwrite=False,
+        overwrite=True,
         **kwargs,
     ):
         super().__init__(**kwargs)

@@ -365,7 +365,7 @@ def build_cmd(
                     "args": {
                         "cells": ext_cells,
                         "pct": ext_pct,
-                        "increment": increment,
+                        "inc": increment,
                         "outname": batch_outname,
                     },
                 }

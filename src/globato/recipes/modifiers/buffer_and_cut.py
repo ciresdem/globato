@@ -14,7 +14,7 @@ desired region.
 """
 
 import logging
-from fetchez.utils import str2inc, float_or, str_or
+from fetchez.utils import str2inc, str2bool, float_or, str_or
 from fetchez.spatial import parse_region
 from fetchez.recipes.modifiers import BaseModifier
 
@@ -27,11 +27,17 @@ class RegionBufferModifier(BaseModifier):
     meta_category = "Globato"
     meta_aliases = ["buffer_and_cut"]
 
-    def __init__(self, cells=None, pct=None, inc=None, outname=None, **kwargs):
+    def __init__(
+        self, cells=None, pct=None, inc=None, outname=None, force=False, **kwargs
+    ):
         self.cells = float_or(cells, 0)
         self.pct = float_or(pct, 0)
         self.inc = str2inc(str_or(inc, "1"))
         self.outname = outname
+        self.force = str2bool(force)
+
+        if "increment" in kwargs.keys():
+            self.inc = str2inc(str_or(kwargs["increment"], "1"))
 
     def apply(self, config):
         region = config.get("region")
@@ -47,42 +53,53 @@ class RegionBufferModifier(BaseModifier):
             )
             self.pct = 5.0
 
-        buffer_region = parsed_region.copy().buffer(
-            pct=self.pct, x_inc=self.inc, y_inc=self.inc
-        )
-        delivery_region = parsed_region.copy().buffer(
-            x_bv=self.cells * self.inc, y_bv=self.cells * self.inc
-        )
-        config["region"] = buffer_region.to_list()
-        if self.pct:
-            logger.info(f"[{self.name}] Expanded processing region to {buffer_region}.")
-
+        valid = True
         global_hooks = config.get("global_hooks", [])
         insert_idx = len(global_hooks)
 
         for i, hook in enumerate(global_hooks):
             if hook.get("name", "").replace("-", "_") == "format_cog":
                 insert_idx = i
-                break
+                # break
+            if hook.get("name", "").replace("-", "_") == "raster_cut":
+                valid = False
 
-        global_hooks.insert(
-            insert_idx,
-            {
-                "name": "raster_crop",
-                "args": {"output": f"{self.outname}_final.tif"},
-            },
-        )
-        global_hooks.insert(
-            insert_idx,
-            {
-                "name": "raster_cut",
-                "args": {
-                    "region": delivery_region.to_list(),
+        if not valid and not self.force:
+            logger.warning(
+                "A raster_cut hook is already present in the recipe, skipping the modification, use 'force=True' to inject it anyway."
+            )
+
+        else:
+            buffer_region = parsed_region.copy().buffer(
+                pct=self.pct, x_inc=self.inc, y_inc=self.inc
+            )
+            delivery_region = parsed_region.copy().buffer(
+                x_bv=self.cells * self.inc, y_bv=self.cells * self.inc
+            )
+            config["region"] = buffer_region.to_list()
+            if self.pct:
+                logger.info(
+                    f"[{self.name}] Expanded processing region to {buffer_region}."
+                )
+
+            global_hooks.insert(
+                insert_idx,
+                {
+                    "name": "raster_crop",
+                    "args": {"output": f"{self.outname}_final.tif"},
                 },
-            },
-        )
-        logger.info(
-            f"[{self.name}] Injected 'raster-cut' in global hooks with region: {delivery_region}."
-        )
+            )
+            global_hooks.insert(
+                insert_idx,
+                {
+                    "name": "raster_cut",
+                    "args": {
+                        "region": delivery_region.to_list(),
+                    },
+                },
+            )
+            logger.info(
+                f"[{self.name}] Injected 'raster-cut' in global hooks with region: {delivery_region}."
+            )
 
         return config
