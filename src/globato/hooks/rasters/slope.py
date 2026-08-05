@@ -21,6 +21,7 @@ class RasterSlopeFilter(RasterStreamHook):
     """
 
     name = "raster_slope"
+    meta_desc = "Filters a raster based on local Slope."
     default_suffix = "_slope_filtered"
 
     def __init__(self, min_val=None, max_val=None, **kwargs):

@@ -36,6 +36,7 @@ class SDBInterpolation(RasterGlobalHook):
 
     name = "interp_sdb"
     default_suffix = "_sdb"
+    meta_desc = "Interpolate NoData voids using SDB."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(

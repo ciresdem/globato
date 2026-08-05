@@ -29,6 +29,7 @@ class RBFInterp(RasterStreamHook):
 
     name = "interp_rbf"
     default_suffix = "_rbf"
+    meta_desc = "Intpolate NoData voids using RBF."
     meta_consumes = "raster-stream"
     meta_produces = "raster-stream"
     meta_tags = ["globato", "interpolation", "multi-stack"]

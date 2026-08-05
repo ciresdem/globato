@@ -29,6 +29,7 @@ class RasterFill(RasterGlobalHook):
 
     name = "raster_fill"
     default_suffix = "_filled"
+    meta_desc = "Fill NoData voids in a raster."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(self, max_dist=1000, smoothing=3, **kwargs):

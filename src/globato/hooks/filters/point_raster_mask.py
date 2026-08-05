@@ -26,7 +26,7 @@ class PointRasterMask(GlobatoFilter):
     """
 
     name = "point_raster_mask"
-    desc = "Filter point streams using a boolean raster mask."
+    meta_desc = "Filter point streams using a boolean raster mask."
     meta_aliases = ["raster_mask", "point_mask", "coastline_crop"]
 
     def __init__(self, barrier=None, soft=False, invert=False, res="1s", **kwargs):

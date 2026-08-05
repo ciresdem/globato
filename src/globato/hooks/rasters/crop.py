@@ -23,7 +23,9 @@ class RasterCrop(RasterGlobalHook):
     Usage: --hook raster_crop
     """
 
-    name = "raster_crop"
+    name = "raster-crop"
+    meta_desc = "Crops a raster to remove NoData margins."
+    meta_aliases = ["raster_crop"]
     default_suffix = "_cropped"
 
     def process_raster(self, src_path, dst_path, entry):

@@ -24,6 +24,7 @@ class RasterMorphology(RasterStreamHook):
 
     name = "raster_morphology"
     default_suffix = "_morph"
+    meta_desc = "Apply morphological operations to a raster."
 
     def __init__(self, op="erosion", kernel=3, **kwargs):
         super().__init__(**kwargs)

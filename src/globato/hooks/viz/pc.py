@@ -24,6 +24,7 @@ class PointCloudViz(FetchHook):
     name = "viz_point_cloud"
     meta_stage = "file"
     meta_category = "stream-sink"
+    meta_desc = "Visualize a point cloud."
 
     def __init__(
         self,

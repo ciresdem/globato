@@ -34,6 +34,7 @@ class RasterBaseHook(FetchHook):
 
     meta_stage = "collection"
     default_suffix = "_processed"
+    meta_desc = "Process a raster file."
 
     def __init__(
         self,
@@ -476,8 +477,10 @@ class RasterCOG(RasterGlobalHook):
     Builds overviews (2, 4, 8, 16, 32) and aligns the byte structure for HTTP streaming.
     """
 
-    name = "format_cog"
+    name = "format-cog"
     default_suffix = "_cog"
+    meta_desc = "Transforms a stadard GeoTiff to a Cloud-Optimized GeoTiff (COG)."
+    meta_aliases = ["format_cog"]
 
     def __init__(self, overviews=[2, 4, 8, 16, 32], resampling="average", **kwargs):
         super().__init__(**kwargs)

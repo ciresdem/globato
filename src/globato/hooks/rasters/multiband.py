@@ -25,6 +25,7 @@ class BuildMultiBandHook(FetchHook):
     """
 
     name = "build_multiband"
+    meta_desc = "Combines multiple rasters into a multi-band raster."
     meta_stage = "collection"
     meta_category = "raster-op"
 

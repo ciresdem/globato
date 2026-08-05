@@ -27,6 +27,7 @@ class RasterLimitsHook(RasterStreamHook):
     name = "raster_limits"
     meta_stage = "stream"
     meta_category = "raster-filter"
+    meta_desc = "Applies limits to a raster stream."
 
     def __init__(self, min_z=None, max_z=None, **kwargs):
         super().__init__(**kwargs)

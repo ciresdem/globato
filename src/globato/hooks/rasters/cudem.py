@@ -35,6 +35,7 @@ class CudemStepDown(RasterGlobalHook):
 
     name = "ms_cudem"
     default_suffix = "_cudem"
+    meta_desc = "CUDEM multi resolution interpolation."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(

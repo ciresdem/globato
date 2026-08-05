@@ -9,6 +9,7 @@ class RasterStreamInit(RasterStreamHook):
     """Initiates a streaming generator directly from a GeoTIFF."""
 
     name = "raster_stream"
+    meta_desc = "Initiates a raster-stream."
     meta_stage = "manifest"  # post
     meta_category = "raster-stream"
 

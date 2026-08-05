@@ -91,6 +91,7 @@ class IDWSurface(RasterGlobalHook):
 
     name = "interp_idw"
     default_suffix = "_idw"
+    meta_desc = "Intpolate NoData voids using IDW."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(self, power=2.0, min_points=8, radius=None, **kwargs):

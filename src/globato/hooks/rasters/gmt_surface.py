@@ -45,6 +45,7 @@ class GmtSurface(RasterGlobalHook):
 
     name = "interp_gmt"
     default_suffix = "_gmt"
+    meta_desc = "Intpolate NoData voids using GMT surface."
     meta_tags = ["globato", "interpolation", "multi-stack"]
 
     def __init__(

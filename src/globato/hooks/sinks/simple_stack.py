@@ -187,6 +187,7 @@ class SimpleStack(FetchHook):
     name = "simple-stack"
     meta_stage = "stream"
     meta_category = "stream-sink"
+    meta_desc = "Simple weighted mean point stacking."
     meta_aliases = ["simple_stack"]
 
     def __init__(

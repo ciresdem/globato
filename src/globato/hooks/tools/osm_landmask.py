@@ -37,6 +37,7 @@ class OSMLandmask(FetchHook):
     name = "osm_landmask"
     meta_stage = "manifest"  # pre
     meta_category = "metadata"
+    meta_desc = "Generates an OSM landmask."
 
     def __init__(self, filename="landmask.geojson", **kwargs):
         super().__init__(**kwargs)
@@ -81,6 +82,7 @@ class OSMLandmask(FetchHook):
         if os.path.exists(osm_xml):
             os.remove(osm_xml)
 
+        # TODO: Attach the output (path) to the entries?
         return entries
 
     def _fetch_osm_rivers(self, region):

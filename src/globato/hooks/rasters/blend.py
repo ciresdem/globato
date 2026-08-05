@@ -41,6 +41,7 @@ class MultiStackBlend(RasterStreamHook):
     name = "ms_blend"
     default_suffix = "_blended"
     meta_category = "multi-stack"
+    meta_desc = "Blend the data in a Multi-Stack raster between weight zones."
 
     def __init__(
         self,
@@ -223,6 +224,7 @@ class RasterBlend(RasterGlobalHook):
     """
 
     name = "raster_blend"
+    meta_desc = "Blend raster data based on weight thresholds."
     default_suffix = "_blended"
 
     def __init__(
