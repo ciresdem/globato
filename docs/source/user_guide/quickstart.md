@@ -1,4 +1,6 @@
-# Quickstart: From Zero to DEM in 1 arc-second
+# ⚡ Quickstart
+
+**From Zero to DEM in 1 arc-second**
 
 Welcome to **Globato**, the continuous DEM generation framework. In this guide, we will go from installing the software to generating a production-ready Coastal Digital Elevation Model (DEM) of San Diego, California, in just a few terminal commands.
 

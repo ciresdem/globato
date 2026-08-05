@@ -1,4 +1,4 @@
-# DEM Generation
+# 🌎 DEM Generation
 
 **The Multi-Stack & Binary CUDEM Workflow**
 

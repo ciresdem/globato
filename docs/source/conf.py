@@ -23,6 +23,10 @@ nitpicky = True
 nitpick_ignore = [
     ("py:data", "typing.Union"),
     ("py:class", "wsgiref.types.WSGIEnvironment"),
+    ("py:class", "numpy.rec.recarray"),
+    ("py:class", "numpy.ndarray"),
+    ("py:class", "tkinter.getint"),
+    ("py:class", "tkinter.getdouble"),
 ]
 
 extensions = [
@@ -120,4 +124,6 @@ intersphinx_mapping = {
     "requests": ("https://requests.readthedocs.io/en/latest/", None),
     "fetchez": ("https://fetchez.readthedocs.io/en/latest/", None),
     "transformez": ("https://transformez.readthedocs.io/en/latest/", None),
+    "numpy": ("https://numpy.org", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
 }
