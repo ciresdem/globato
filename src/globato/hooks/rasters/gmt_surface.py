@@ -98,10 +98,19 @@ class GmtSurface(RasterGlobalHook):
             x_inc = src.res[0]
             y_inc = src.res[1]
 
-            region_str = f"{w}/{e}/{s}/{n}"
+            # Shift the GMT region bounds inward by half a cell.
+            # This forces GMT's native gridline nodes to perfectly align with our pixel centers.
+            w_shift = w + (x_inc / 2.0)
+            e_shift = e - (x_inc / 2.0)
+            s_shift = s + (y_inc / 2.0)
+            n_shift = n - (y_inc / 2.0)
+
+            region_str = f"{w_shift}/{e_shift}/{s_shift}/{n_shift}"
             spacing_str = f"{x_inc}/{y_inc}"
 
-            logger.info(f"[GmtSurface] Gridding {len(z_vals)} points via PyGMT...")
+            logger.info(
+                f"[GmtSurface] Gridding {len(z_vals)} points via PyGMT (Gridline workaround)..."
+            )
 
             try:
                 grid = pygmt.surface(
@@ -112,14 +121,17 @@ class GmtSurface(RasterGlobalHook):
                     spacing=spacing_str,
                     tension=self.tension,
                     convergence=self.convergence,
-                    # Optional: lower/upper limits if bathy constraints known
                     upper=self.gmt_upper,
-                    registration="pixel",
+                    # Run natively in gridline to avoid GMT pixel-registration bugs
+                    registration="gridline",
                     verbose=self.verbose,
                 )
+
                 result_arr = grid.values
                 result_arr = np.flipud(result_arr)
 
+                # Because we shifted the GMT bounds by half a cell, the output array dimensions
+                # perfectly match our original pixel-registered rasterio profile!
                 profile = src.profile.copy()
                 profile.update(dtype=rasterio.float32, nodata=nodata, count=1)
 
