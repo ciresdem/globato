@@ -67,6 +67,7 @@ docs = [
     "sphinx-argparse-cli",
     "pydata-sphinx-theme",
     "myst-parser",
+    "sphinxcontrib-mermaid"
 ]
 
 [project.urls]
