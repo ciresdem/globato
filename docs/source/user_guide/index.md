@@ -5,8 +5,9 @@ Welcome to the Globato user guide! Here you will find everything you need to kno
 ```{toctree}
 :maxdepth: 2
 
-quickstart
 installation
+quickstart
+philosophy
 dem_generation
 
 ```
