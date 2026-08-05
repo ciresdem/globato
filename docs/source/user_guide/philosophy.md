@@ -1,4 +1,7 @@
-# 🏗️ The Core Architecture: Fetchez vs. Globato
+# 🏗️ The Core Architecture
+
+**Fetchez vs. Globato**
+
 It is vital to understand that `globato` does not replace `fetchez`; it is completely powered by and extends it.
 
 * `fetchez` is the Engine: It provides the generator-based streaming framework, the infinite memory handling, coordinate transformations, and the foundational pipeline registries.
@@ -7,7 +10,7 @@ It is vital to understand that `globato` does not replace `fetchez`; it is compl
 
 Every time you execute a command like `globato cudem build`, the toolkit is simply assembling a native fetchez YAML recipe behind the scenes.
 
-# 🔀 Streaming Pipelines vs. Monolithic Processing
+# Streaming Pipelines vs. Monolithic Processing
 Traditional GIS scripts read an entire dataset into memory, process it, write it to a temporary file, and repeat. This method breaks when scaling globally.
 
 `fetchez` uses a pure Generator-Based Streaming Architecture. Data flows through the pipeline in manageable chunks. The hooks act as inline transformers:
@@ -17,7 +20,7 @@ Traditional GIS scripts read an entire dataset into memory, process it, write it
 
 Memory footprints remain entirely flat, whether you are processing a single harbor or an entire archipelago.
 
-# 🧪 Advanced Scripting Examples
+# Advanced Scripting Examples
 To prove that the recipe engine is a generic geospatial ETL framework, let's include two contrasting examples in the guide: one showing topobathy production and the other showing direct satellite validation.
 
 ## Example 1: Standardizing Topobathy (The Southern California CRM Recipe)

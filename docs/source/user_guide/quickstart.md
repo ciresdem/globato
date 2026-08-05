@@ -1,4 +1,4 @@
-# Quickstart
+# ⚡ Quickstart
 
 **From Zero to DEM in 1 arc-second**
 
