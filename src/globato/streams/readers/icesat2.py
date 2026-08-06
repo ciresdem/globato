@@ -898,6 +898,7 @@ class ATL03Reader(IceSat2Reader):
                 return STRtree(geoms)
         except Exception as e:
             logger.warning(f"Failed to build external landmask tree: {e}")
+            raise
 
         return None
 
