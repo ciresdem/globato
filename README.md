@@ -32,7 +32,7 @@ pip install globato
 
 If you are new to Globato, the best place to start is the Quickstart guide, which will take you from installation to generating your first DEM in under 5 minutes.
 
-* **[Quickstart: From Zero to DEM in 1/9 arc-second](https://globato.readthedocs.io/en/latest/user_guide/quickstart.html)**
+* **[Quickstart: From Zero to DEM in 1 arc-second](https://globato.readthedocs.io/en/latest/user_guide/quickstart.html)**
 
 ---
 

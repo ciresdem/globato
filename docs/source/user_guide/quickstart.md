@@ -1,6 +1,6 @@
 # ⚡ Quickstart
 
-**From Zero to DEM in 1/9 arc-second**
+**From Zero to DEM in 1 arc-second**
 
 Welcome to **Globato**, the continuous DEM generation framework. In this guide, we will go from installing the software to generating a production-ready Coastal Digital Elevation Model (DEM) of San Diego, California, in just a few terminal commands.
 
@@ -294,19 +294,8 @@ globato build -R loc:"San Diego" crm-bathy-topo -E 1s -O san_diego --shared-cach
 
 *(Above: The just generated DEM of San Diego, California)*
 
-## Step 4: Building a High Resolution `CUDEM` at 1/9 Arc-Second
-While the CRM is a great mid-resolution coastal model, what if we wanted even higher resolution? We can adjust the `-E` parameter in the `globato build` command to increase our output resolution. To support the higher resolution, lets use the `cudem-bathy-topo` data source bundle that holds high-resolution data for the continental U.S. including NED 1/9 and 1m topography, high resolution BAG and Multibeam bathyemtry and more!
-
-```bash
-globato build -R loc:"San Diego" cudem-bathy-topo -E .11111111s -O san_diego --shared-cache sd_data -D sd_cudem
-```
-
-![San Diego Ninth Arc-Second CUDEM](/_static/san_diego_cudem.png)
-
-*(Above: The just generated DEM of San Diego, California)*
-
 ## Next Steps
-Congratulations! You have successfully navigated the globato CLI, executed a curated recipe, generated custom DEMs on the fly and made a high-resolution Coastal DEM of San Diego, CA!
+Congratulations! You have successfully navigated the globato CLI, executed a curated recipe, generated a custom coastal DEM on the fly and made a 1 arc-second Coastal DEM of San Diego, CA!
 
 Check out the `CLI Syntax Guide` to master how to chain modules and hooks together.
 
