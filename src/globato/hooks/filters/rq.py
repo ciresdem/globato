@@ -79,6 +79,7 @@ class ReferenceQuality(GlobatoFilter):
         res=0.0008333333333333334,
         target_srs=None,
         iho_order="1",
+        overwrite=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -88,6 +89,7 @@ class ReferenceQuality(GlobatoFilter):
         self.builder = builder.lower()
         self.res = str2inc(res)
         self.ref_fn = None
+        self.overwrite = overwrite
 
         self.target_srs = target_srs
         self._transformer = None
@@ -198,6 +200,7 @@ class ReferenceQuality(GlobatoFilter):
                     region=region.copy().buffer(pct=5).to_list(),
                     region_srs=region.srs,
                     outdir=outdir,
+                    use_cache=True,
                 )
                 if files:
                     for f in files:
@@ -210,7 +213,9 @@ class ReferenceQuality(GlobatoFilter):
             logger.warning("[RQ] Primary references failed. Falling back to GEBCO...")
             try:
                 fallback = fetchez.get(
-                    "gebco", region=region.copy().buffer(pct=5).to_list()
+                    "gebco",
+                    region=region.copy().buffer(pct=5).to_list(),
+                    use_cache=True,
                 )
                 if fallback:
                     valid_files.extend(
@@ -249,14 +254,18 @@ class ReferenceQuality(GlobatoFilter):
             logger.error("[RQ] GDAL required for 'vrt' builder.")
             return files[0] if files else None
 
-        vrt_path = os.path.join(os.path.dirname(files[0]), f"rq_ref_{self.name}.vrt")
-        try:
-            vrt_options = gdal.BuildVRTOptions(resampleAlg="bilinear")
-            gdal.BuildVRT(vrt_path, files, options=vrt_options)
-            return vrt_path
-        except Exception as e:
-            logger.warning(f"[RQ] VRT Build failed: {e}. Using first file.")
-            return files[0]
+        vrt_path = os.path.joinx(
+            os.path.dirname(files[0]),
+            f"rq_ref_{self.name}_{self.wgs_region.format('fn')}.vrt",
+        )
+        if not os.path.exists(vrt_path):
+            try:
+                vrt_options = gdal.BuildVRTOptions(resampleAlg="bilinear")
+                gdal.BuildVRT(vrt_path, files, options=vrt_options)
+                return vrt_path
+            except Exception as e:
+                logger.warning(f"[RQ] VRT Build failed: {e}. Using first file.")
+                return files[0]
 
     def _build_grid(self, files, region):
         """Builds a mosaicked GeoTIFF using GridEngine."""
@@ -271,11 +280,20 @@ class ReferenceQuality(GlobatoFilter):
             f"[RQ] Gridding geographic reference surface ({nx}x{ny}) from {len(files)} files..."
         )
 
-        out_path = os.path.join(os.path.dirname(files[0]), f"rq_ref_{self.name}.tif")
+        out_path = os.path.join(
+            os.path.dirname(files[0]),
+            f"rq_ref_{self.name}_{self.wgs_region.format('fn')}.tif",
+        )
 
-        grid_data = GridEngine.load_and_interpolate(files, self.wgs_region, nx, ny)
+        if not os.path.exists(out_path):
+            try:
+                grid_data = GridEngine.load_and_interpolate(
+                    files, self.wgs_region, nx, ny
+                )
+                GridWriter.write(out_path, grid_data, self.wgs_region)
+            except Exception:
+                return None
 
-        GridWriter.write(out_path, grid_data, self.wgs_region)
         return out_path
 
     def filter_chunk(self, chunk):
