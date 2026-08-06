@@ -17,7 +17,7 @@ Globato uses **Recipes** (YAML configuration files) to define how data is downlo
 Let's see what is available:
 
 ```bash
-globato recipes list
+fetchez recipes list
 ```
 
 You should see quick_coastal and crm_standard in the list.
@@ -25,7 +25,7 @@ You should see quick_coastal and crm_standard in the list.
 If you want to know exactly what a recipe does before you run it, you can inspect it:
 
 ```bash
-globato recipes info quick_coastal
+fetchez recipes info quick_coastal
 ```
 
 **Note**: `quick_coastal` is a fast recipe that pulls raster-based elevation data to keep the fetching and processing fast.
@@ -58,25 +58,15 @@ Check your current directory; you should see your brand new `quick_coastal` dire
 ## Step 3: Building a Custom Recipe On-the-Fly
 What if you want to build a DEM using completely different data, but don't want to hand-write a YAML file? You can use the build command to string sources together instantly.
 
-Let's build a DEM using USGS 3DEP topography and NOAA MBDB (Multibeam) bathymetry.
+Let's build a DEM using the standard `global-bathy-topo` dataset bundle, which include NOAA MBDB (Multibeam) bathymetry, Copernicus topography, and more.
 
 ```bash
-globato build -R loc:"San Diego" tnm:datasets=3/4 mbdb -E 1s -D SD_DEM
+globato build -R loc:"San Diego" global-bathy-topo -E 1s -O san_diego -D sd_dem --shared-cache sd_data
 ```
 
-Globato will output a custom San_Diego_recipe.yaml file into your directory and immediately execute it.
+Globato will build a custom San_Diego DEM fetchez recipe and execute it!
 
-*(Above: The just generated DEM of San Diego, California)*
-
-## Step 4: Adding Data Filters (Hooks)
-Raw data is rarely perfect. Globato allows you to attach processing "hooks" directly to your data sources using a plus (`+`) sign.
-
-Let's rebuild that San Diego DEM, but this time, let's pass the NOAA Multibeam data through the `rq` (Raster Query) filter to clean up noisy data points before it gets gridded and lets also remove hydro-flattened regions from the national map DEMs using the `raster_flats` hook.
-
-```bash
-globato build -R loc:"San Diego" tnm:datasets=3/4+raster_flats mbdb+rq:threshold=10,mode=percent -E 1s -D SD_CLEAN_DEM
-```
-
+![San Diego 1s Example](/_static/san_diego_1s.png)
 *(Above: The just generated DEM of San Diego, California)*
 
 ## Next Steps

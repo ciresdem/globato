@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from fetchez.streams import BaseReader
+from fetchez.streams.readers import BaseReader
 from .schema import ensure_schema
 
 logger = logging.getLogger(__name__)

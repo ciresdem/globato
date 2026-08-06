@@ -34,8 +34,42 @@ from fetchez.utils import FetchezMainGroup
 logger = logging.getLogger(__name__)
 
 
+class GlobatoMainGroup(FetchezMainGroup):
+    """A custom Click Group that handles deprecated aliases."""
+
+    def get_command(self, ctx, cmd_name):
+        if cmd_name == "cudem":
+            click.secho(
+                " DEPRECATION WARNING: 'globato cudem' is deprecated and will be removed in a future release.\n"
+                "Please use 'globato build' to generate DEM or the `fetchez` CLI to discover and run recipes..",
+                fg="yellow",
+                err=True,
+            )
+            return click.Group.get_command(self, ctx, "build")
+
+        elif cmd_name == "persepcto":
+            click.secho(
+                " DEPRECATION WARNING: 'globato perspecto' is deprecated and will be removed in a future release.\n"
+                "Please use 'globato hillshade' to generate Hillshade images..",
+                fg="yellow",
+                err=True,
+            )
+            return click.Group.get_command(self, ctx, "hillshade")
+
+        elif cmd_name == "dlim":
+            click.secho(
+                " DEPRECATION WARNING: 'globato dlim' is deprecated and will be removed in a future release.\n"
+                "Please use 'globato dump' to process point cloud data..",
+                fg="yellow",
+                err=True,
+            )
+            return click.Group.get_command(self, ctx, "dump")
+
+        return click.Group.get_command(self, ctx, cmd_name)
+
+
 @click.group(
-    cls=FetchezMainGroup,
+    cls=GlobatoMainGroup,
     fetchez_commands={
         "Commands": [
             "run",
