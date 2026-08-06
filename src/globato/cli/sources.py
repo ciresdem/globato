@@ -19,7 +19,7 @@ from fetchez.registry import ModuleRegistry, BundleRegistry
 from fetchez.utils import FetchezMainGroup, FetchezMainCommand
 
 
-@click.group(cls=FetchezMainGroup, name="modifiers", fetchez_commands=["list", "info"])
+@click.group(cls=FetchezMainGroup, name="sources", fetchez_commands=["list", "info"])
 def sources_group():
     """Discover, search, and learn about globato sources.
 

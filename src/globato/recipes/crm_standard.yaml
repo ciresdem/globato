@@ -5,6 +5,8 @@ project:
     Blends high-res local topo (CoNED, 3DEP) with dense bathymetry
     (MBDB, NOS, eHydro) and fills deep water with GEBCO.
     Includes an embedded Spatial Uncertainty Band (Band 2).
+  tags:
+    - globato
 
 execution:
   threads: 4

@@ -2,6 +2,8 @@ project:
   name: "etopo-standard"
   description: >
     Production-grade 3-arc-second ETOPO.
+  tags:
+    - globato
 
 execution:
   threads: 4

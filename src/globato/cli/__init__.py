@@ -25,6 +25,7 @@ from .build import build_cmd
 from .sources import sources_group
 from .pointz import dump
 from .perspecto import perspecto_hillshade
+from .recipes import recipes_group
 from fetchez.cli.recipes import run_recipe
 # from fetchez.cli.pipeline import pipeline_group
 
@@ -74,10 +75,13 @@ class GlobatoMainGroup(FetchezMainGroup):
         "Commands": [
             "run",
             "build",
-            "sources",
             "dump",
             "hillshade",
             # "pipeline",
+        ],
+        "Discovery": [
+            "recipes",
+            "sources",
         ],
         # "Tools": [
         #     # "cudem",
@@ -121,6 +125,7 @@ cli.add_command(sources_group, name="sources")
 cli.add_command(run_recipe, name="run")
 cli.add_command(dump, name="dump")
 cli.add_command(perspecto_hillshade, name="hillshade")
+cli.add_command(recipes_group, name="recipes")
 # cli.add_command(pipeline_group, name="pipeline")
 
 
