@@ -79,6 +79,7 @@ class ReferenceQuality(GlobatoFilter):
         res=0.0008333333333333334,
         target_srs=None,
         iho_order="1",
+        overwrite=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -88,6 +89,7 @@ class ReferenceQuality(GlobatoFilter):
         self.builder = builder.lower()
         self.res = str2inc(res)
         self.ref_fn = None
+        self.overwrite = overwrite
 
         self.target_srs = target_srs
         self._transformer = None
