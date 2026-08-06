@@ -66,7 +66,7 @@ globato build -R loc:"San Diego" global-bathy-topo -E 1s -O san_diego -D sd_dem 
 
 Globato will build a custom San_Diego DEM fetchez recipe and execute it!
 
-![San Diego 1s Example](/_static/san_dieg_1s.png)
+![San Diego 1s Example](/_static/san_diego_1s.png)
 *(Above: The just generated DEM of San Diego, California)*
 
 ## Next Steps
