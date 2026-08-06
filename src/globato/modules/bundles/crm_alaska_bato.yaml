@@ -1,6 +1,6 @@
 ---
 name: crm-alaska-bathy-topo
-desc: Alaska extention of the CRM bundle.
+description: Alaska extention of the CRM bundle.
 tags:
   - globato
   - bathymetry
