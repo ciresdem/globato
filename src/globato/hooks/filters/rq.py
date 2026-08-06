@@ -284,8 +284,13 @@ class ReferenceQuality(GlobatoFilter):
         )
 
         if not os.path.exists(out_path):
-            grid_data = GridEngine.load_and_interpolate(files, self.wgs_region, nx, ny)
-            GridWriter.write(out_path, grid_data, self.wgs_region)
+            try:
+                grid_data = GridEngine.load_and_interpolate(
+                    files, self.wgs_region, nx, ny
+                )
+                GridWriter.write(out_path, grid_data, self.wgs_region)
+            except Exception:
+                return None
 
         return out_path
 
