@@ -2,6 +2,13 @@
 name: coupling-bathy-topo
 description: >
   Data bundle for the Coastal Coupling Workshop.
+tags:
+  - globato
+  - bathymetry
+  - topography
+  - crm
+  - glob-stream
+  - glob-bundle
 modules:
 - module: csb
   args:

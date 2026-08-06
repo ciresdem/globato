@@ -26,16 +26,17 @@ from globato.hooks.filters.outlierz import OutlierZ
 
 # from globato.hooks.filters.dropclass import DropClass
 from globato.hooks.filters.spatial_crop import SpatialCrop
+from globato.hooks.filters.point_raster_mask import PointRasterMask
 
 logger = logging.getLogger(__name__)
 
 try:
-    from fetchez.modules.fabdem import FabDEM as BaseFabDEM
+    from fetchez.modules.fabdem import FABDEM as BaseFABDEM
 except ImportError:
-    BaseFabDEM = object
+    BaseFABDEM = object
 
 try:
-    from fetchez.modules.copernicus import Copernicus as BaseCopernicus
+    from fetchez.modules.copernicus import CopernicusDEM as BaseCopernicus
 except ImportError:
     BaseCopernicus = object
 
@@ -53,7 +54,7 @@ except ImportError:
 @cli.cli_opts(
     help_text="Forest and Building (removed) Copernicus DEMs",
 )
-class GlobFabDEM(BaseFabDEM):
+class GlobFABDEM(BaseFABDEM):
     """Cleaned FABDEM Module.
 
     - Fetch Zip
@@ -80,14 +81,7 @@ class GlobFabDEM(BaseFabDEM):
         super().__init__(**kwargs)
 
         self.weight = 1
-
         self.add_hook(Unzip())
-        self.add_hook(DataStream())
-        self.add_hook(
-            ReferenceQuality(
-                reference="gebco_cog", threshold=50, mode="diff", set_class=7
-            )
-        )
 
 
 @cli.cli_opts(
@@ -96,8 +90,10 @@ class GlobFabDEM(BaseFabDEM):
 class GlobCopernicus(BaseCopernicus):
     """Cleaned Copernicus DEM.
 
+    Set `datatype` to 3 for COP-10 or 1 for COP-30
+
     Unzips, filters for .tif, sets rio datatype,
-    initiates stream, and drops anomalous 0-values.
+    initiates stream, and drops anomalous 0-valuesx.
     """
 
     name = "glob_copernicus"
@@ -123,7 +119,7 @@ class GlobCopernicus(BaseCopernicus):
         self.add_hook(Unzip())
         self.add_hook(FilenameFilter(match=".tif"))
         self.add_hook(SetDatatype(data_type="rio"))
-        self.add_hook(DataStream(chunk_size=100000))
+        self.add_hook(PointRasterMask(barrier="coastline", invert=False, res="3s"))
         self.add_hook(RangeZ(min_z=0.01))
 
 
@@ -155,17 +151,18 @@ class GlobMultibeam(BaseMultibeam):
 
         self.weight = weight
 
+        self.add_hook(FilenameFilter(match=".tif"))
         self.add_hook(SetSrs(srs="EPSG:4326+5866"))
         self.add_hook(DataStream())
         self.add_hook(SpatialCrop())
         self.add_hook(
             ReferenceQuality(
                 reference="gmrt/gebco",
-                threshold=10,
+                threshold=5,
                 mode="percent",
                 builder="grid",
-                res=0.008333,
-                set_class=7,
+                res="1s",
+                # set_class=7,
             )
         )
 
@@ -222,8 +219,8 @@ class GlobBAG(BaseHydroNOS):
         self.weight = weight
 
         self.add_hook(ValidateBAG())
-        self.add_hook(FilenameFilter(exclude="_Ellipsoid_", stage="pre"))
-        self.add_hook(DataStream())
+        self.add_hook(FilenameFilter(exclude="Ellipsoid", stage="pre"))
+        self.add_hook(SetDatatype(data_type="bag"))
         self.add_hook(SpatialCrop())
 
 
@@ -236,7 +233,7 @@ class GlobNOSXYZ(BaseHydroNOS):
     meta_category = "Globato"
     meta_desc = "NOAA NOS Hydrographic Surveys (XYZ soundings)"
 
-    def __init__(self, weight=1.0, **kwargs):
+    def __init__(self, weight=0.35, **kwargs):
         kwargs.pop("datatype")
         super().__init__(datatype="xyz", **kwargs)
 
@@ -245,4 +242,5 @@ class GlobNOSXYZ(BaseHydroNOS):
         self.add_hook(Unzip())
         self.add_hook(SetDatatype(data_type="nox-xyz"))
         self.add_hook(SetSrs(srs="EPSG:4326+5866"))
+        self.add_hook(SpatialCrop)
         self.add_hook(OutlierZ())

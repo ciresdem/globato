@@ -3,6 +3,8 @@ project:
   name: "cudem-standard"
   description: >
     Production-grade 1/9-arc-second CUDEM.
+  tags:
+    - globato
 
 execution:
   threads: 4

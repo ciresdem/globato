@@ -4,6 +4,9 @@ project:
   description: >
     Test DEM for the Coastal Coupling Workshop
     Optimized for Newport, Oregon at 1/9 arc-second
+  tags:
+    - globato
+    - workshop
 
 execution:
   threads: 4

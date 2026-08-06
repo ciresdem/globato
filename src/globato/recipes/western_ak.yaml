@@ -10,6 +10,8 @@ project:
     passes to smooth overlaps, and then a CUDEM-style step-down interpolation
     is applied at 1s / 3s / 9s scales using the coastline as a barrier to
     generate the final seamless terrain surface (western_alaska_dem.tif).
+  tags:
+    - globato
 
 execution:
   threads: 4
