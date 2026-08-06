@@ -21,8 +21,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "fetchez>=0.7.0",
-    "transformez>=0.4.2",
+    "fetchez>=0.8.0",
+    "transformez>=0.5.4",
     "numpy>1.24",
     "scipy",
     "shapely>=2.0.0",
@@ -44,7 +44,6 @@ dependencies = [
 [project.optional-dependencies]
 gmt = ["pygmt"]
 gdal = ["gdal"]
-# verde = ["verde"]
 # naturalneighbor = ["naturalneighbor"]
 interpolations = ["verde", "pykrige"]
 ml = ["scikit-learn"]
