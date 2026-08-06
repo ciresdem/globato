@@ -252,7 +252,10 @@ class ReferenceQuality(GlobatoFilter):
             logger.error("[RQ] GDAL required for 'vrt' builder.")
             return files[0] if files else None
 
-        vrt_path = os.path.joinx(os.path.dirname(files[0]), f"rq_ref_{self.name}.vrt")
+        vrt_path = os.path.joinx(
+            os.path.dirname(files[0]),
+            f"rq_ref_{self.name}_{self.wgs_region.format('fn')}.vrt",
+        )
         if not os.path.exists(vrt_path):
             try:
                 vrt_options = gdal.BuildVRTOptions(resampleAlg="bilinear")
@@ -275,7 +278,10 @@ class ReferenceQuality(GlobatoFilter):
             f"[RQ] Gridding geographic reference surface ({nx}x{ny}) from {len(files)} files..."
         )
 
-        out_path = os.path.join(os.path.dirname(files[0]), f"rq_ref_{self.name}.tif")
+        out_path = os.path.join(
+            os.path.dirname(files[0]),
+            f"rq_ref_{self.name}_{self.wgs_region.format('fn')}.tif",
+        )
 
         if not os.path.exists(out_path):
             grid_data = GridEngine.load_and_interpolate(files, self.wgs_region, nx, ny)
