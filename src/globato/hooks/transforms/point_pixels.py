@@ -342,7 +342,6 @@ class PixelsToPoints(FetchHook):
             bands, rows, cols = data.shape
 
             z_raw = data[0].flatten()
-
             if bands >= 7:
                 count = data[1].flatten()
 

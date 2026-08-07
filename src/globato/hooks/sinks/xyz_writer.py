@@ -19,28 +19,68 @@ from fetchez.hooks import FetchHook
 logger = logging.getLogger(__name__)
 
 
-class WriteXYZ(FetchHook):
+class XYZWrite(FetchHook):
     """Saves stream to an ASCII XYZ file and passes the stream onward.
 
     Args:
-        output (str): Filename template (default: '{base}_out.xyz')
-        fmt (str): Float formatting (default: '%.6f')
+        output_path (str): Static path or template (e.g., '{base}_out.xyz').
+        columns (list): Fields to export. Defaults to ["x", "y", "z"].
+        fmt (str): Float formatting. Defaults to '%.6f'.
     """
 
-    name = "write_xyz"
+    name = "xyz-write"
     meta_stage = "stream"
-    meta_category = "point-stream"
-    meta_desc = "Write a point stream to xyz."
-    meta_requires = "point-stream"
+    meta_category = "stream-sink"
+    meta_desc = "Write a point stream to an xyz file."
+    meta_aliases = ["xyz_write", "write_xyz"]
 
-    def __init__(self, output="{base}_out.xyz", fmt="%.6f", artifact_id=None, **kwargs):
+    def __init__(self, output_path=None, columns=None, fmt="%.6f", **kwargs):
         super().__init__(**kwargs)
-        self.output = output
+        self.output_path = output_path
         self.fmt = fmt
-        self.artifact_id = artifact_id or self.name
+        self.columns = columns or ["x", "y", "z"]
+
+        # Clean slate: If output_path is static (no formatting variables) and exists, wipe it!
+        if (
+            self.output_path
+            and "{" not in self.output_path
+            and os.path.exists(self.output_path)
+        ):
+            open(self.output_path, "w").close()
+
+    def _tap_stream(self, stream, out_fn):
+        """Lazy generator that writes chunks to disk while passing them downstream."""
+        logger.info(f"Tapping stream to XYZ: {out_fn or 'STDOUT'}")
+
+        # Open in append mode (safe for both batching and dynamic templates)
+        out_port = open(out_fn, "a") if out_fn else sys.stdout
+        total_pts = 0
+
+        try:
+            for chunk in stream:
+                if chunk is not None and len(chunk) > 0:
+                    total_pts += len(chunk)
+
+                    # Dynamically select requested columns that actually exist in the chunk
+                    cols_to_stack = [
+                        chunk[c] for c in self.columns if c in chunk.dtype.names
+                    ]
+
+                    if cols_to_stack:
+                        data = np.column_stack(cols_to_stack)
+                        np.savetxt(out_port, data, fmt=self.fmt, delimiter=" ")
+
+                # RE-YIELD chunk so downstream hooks receive the data!
+                yield chunk
+        finally:
+            if out_fn and out_port != sys.stdout:
+                out_port.close()
+
+        logger.info(f"Finished writing {total_pts} points to {out_fn or 'STDOUT'}")
 
     def run(self, entries):
         for mod, entry in entries:
+            # Catch raster streams and auto-convert them if this hook is placed too early
             if self.is_raster_stream(entry):
                 from globato.hooks.transforms.point_pixels import PixelsToPoints
 
@@ -50,87 +90,25 @@ class WriteXYZ(FetchHook):
             if not self.has_stream(entry):
                 continue
 
-            stream = entry.get("stream")
+            stream = entry["stream"]
             src_fn = entry.get("dst_fn", "unknown")
-            base = os.path.splitext(os.path.basename(src_fn))[0]
-            out_fn = self.output.format(base=base, name=mod.name)
 
-            if not os.path.isabs(out_fn):
-                out_dir = (
-                    os.path.dirname(src_fn) if src_fn != "unknown" else os.getcwd()
-                )
-                out_fn = os.path.join(out_dir, out_fn)
-
-            entry["stream"] = self._write_stream(stream, out_fn)
-            # entry.setdefault('artifacts', {})[self.name] = out_fn
-            entry.setdefault("artifacts", {})[self.artifact_id] = out_fn
-
-        return entries
-
-    def _write_stream(self, stream, out_fn):
-        logger.info(f"Tapping stream to XYZ: {out_fn}")
-        total_pts = 0
-
-        with open(out_fn, "w") as f:
-            for chunk in stream:
-                if len(chunk) == 0:
-                    yield chunk
-                    continue
-
-                total_pts += len(chunk)
-
-                cols = [chunk["x"], chunk["y"], chunk["z"]]
-                if "w" in chunk.dtype.names:
-                    cols.append(chunk["w"])
-
-                if "u" in chunk.dtype.names:
-                    cols.append(chunk["u"])
-
-                data = np.column_stack(cols)
-                np.savetxt(f, data, fmt=self.fmt, delimiter=" ")
-
-                yield chunk
-
-        logger.info(f"Finished writing {total_pts} points to {out_fn}")
-
-
-class XYZWrite(FetchHook):
-    name = "xyz-write"
-    meta_stage = "stream"
-    meta_category = "stream-sink"
-    meta_desc = "Write a point stream to xyz."
-    meta_aliases = ["xyz_write"]
-
-    def __init__(self, output_path=None, **kwargs):
-        super().__init__(**kwargs)
-        self.output_path = output_path
-
-    def run(self, entries):
-        out_port = open(self.output_path, "w") if self.output_path else sys.stdout
-
-        try:
-            for mod, entry in entries:
-                if not self.has_stream(entry):
-                    continue
-
-                stream = entry["stream"]
-                for chunk in stream:
-                    data = np.column_stack(
-                        (
-                            chunk["x"],
-                            chunk["y"],
-                            chunk["z"],
-                        )  # , chunk["w"], chunk["u"])
-                    )
-
-                    np.savetxt(
-                        out_port,
-                        data,
-                        fmt="%.6f",
-                        delimiter=" ",
-                    )
-        finally:
+            # Resolve dynamic filename if a template is used
+            out_fn = None
             if self.output_path:
-                out_port.close()
+                base = os.path.splitext(os.path.basename(src_fn))[0]
+                out_fn = self.output_path.format(base=base, name=mod.name)
+
+                if not os.path.isabs(out_fn):
+                    out_dir = (
+                        os.path.dirname(src_fn) if src_fn != "unknown" else os.getcwd()
+                    )
+                    out_fn = os.path.join(out_dir, out_fn)
+
+            # Apply the lazy stream tap
+            entry["stream"] = self._tap_stream(stream, out_fn)
+
+            if out_fn:
+                entry.setdefault("artifacts", {})[self.name] = out_fn
 
         return entries
