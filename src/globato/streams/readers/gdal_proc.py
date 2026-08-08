@@ -22,7 +22,7 @@ except ImportError:
     HAS_GDAL = False
 
 from fetchez.utils import int_or
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 

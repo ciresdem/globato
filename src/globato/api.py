@@ -14,7 +14,7 @@ import os
 import logging
 import numpy as np
 import pandas as pd
-from typing import Union, List, Iterator
+from typing import Union, List, Iterator, Optional, cast
 
 from fetchez.modules import FetchModule
 from fetchez.registry import ReaderRegistry, ProfileRegistry
@@ -43,20 +43,20 @@ class GlobatoStream:
         self._iterator = _wrapper()
         return self
 
-    def reproject(self, dst_srs: str):
-        from globato.hooks.transforms.reproject import stream_reproject_chunk
+    # def reproject(self, dst_srs: str):
+    #     from globato.hooks.transforms.reproject import stream_reproject_chunk
 
-        def _repro_func(chunk):
-            return stream_reproject_chunk(chunk, self.src_srs, dst_srs)
+    #     def _repro_func(chunk):
+    #         return stream_reproject_chunk(chunk, self.src_srs, dst_srs)
 
-        return self.map(_repro_func)
+    #     return self.map(_repro_func)
 
     def crop(self, region: List[float]):
         from globato.hooks.transforms.crop import stream_crop_chunk
 
         return self.map(stream_crop_chunk, region=region)
 
-    def to_dataframe(self, limit: int = None) -> pd.DataFrame:
+    def to_dataframe(self, limit: Optional[int] = None) -> pd.DataFrame:
         chunks = []
         count = 0
         for chunk in self._iterator:
@@ -85,12 +85,14 @@ class GlobatoStream:
     def to_numpy(self) -> np.recarray:
         chunks = list(self._iterator)
         if not chunks:
-            return np.array([], dtype=[("x", "f8"), ("y", "f8"), ("z", "f4")])
-        return np.concatenate(chunks)
+            return cast(
+                np.recarray, np.array([], dtype=[("x", "f8"), ("y", "f8"), ("z", "f4")])
+            )
+        return cast(np.recarray, np.concatenate(chunks))
 
 
 def read(
-    source: Union[str, FetchModule], data_type: str = None, **kwargs
+    source: Union[str, FetchModule], data_type: Optional[str] = None, **kwargs
 ) -> GlobatoStream:
     """The entry point for the Globato API.
 

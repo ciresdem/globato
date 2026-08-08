@@ -19,7 +19,7 @@ import shlex
 import logging
 import numpy as np
 
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 from globato.utils import add_field_to_recarray
 

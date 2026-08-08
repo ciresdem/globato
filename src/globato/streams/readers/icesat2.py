@@ -28,7 +28,7 @@ from fetchez import utils
 from fetchez import spatial
 
 # from fetchez.core import run_fetchez
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 try:
     from sklearn.cluster import DBSCAN

@@ -17,7 +17,7 @@ import laspy as lp
 from rasterio.warp import transform_bounds
 
 from fetchez.utils import str_or
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
