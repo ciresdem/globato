@@ -40,7 +40,6 @@ class XYZWrite(FetchHook):
         self.fmt = fmt
         self.columns = columns or ["x", "y", "z"]
 
-        # Clean slate: If output_path is static (no formatting variables) and exists, wipe it!
         if (
             self.output_path
             and "{" not in self.output_path
@@ -50,9 +49,9 @@ class XYZWrite(FetchHook):
 
     def _tap_stream(self, stream, out_fn):
         """Lazy generator that writes chunks to disk while passing them downstream."""
-        logger.info(f"Tapping stream to XYZ: {out_fn or 'STDOUT'}")
 
-        # Open in append mode (safe for both batching and dynamic templates)
+        logger.debug(f"Tapping stream to XYZ: {out_fn or 'STDOUT'}")
+
         out_port = open(out_fn, "a") if out_fn else sys.stdout
         total_pts = 0
 
@@ -61,7 +60,6 @@ class XYZWrite(FetchHook):
                 if chunk is not None and len(chunk) > 0:
                     total_pts += len(chunk)
 
-                    # Dynamically select requested columns that actually exist in the chunk
                     cols_to_stack = [
                         chunk[c] for c in self.columns if c in chunk.dtype.names
                     ]
@@ -70,13 +68,12 @@ class XYZWrite(FetchHook):
                         data = np.column_stack(cols_to_stack)
                         np.savetxt(out_port, data, fmt=self.fmt, delimiter=" ")
 
-                # RE-YIELD chunk so downstream hooks receive the data!
                 yield chunk
         finally:
             if out_fn and out_port != sys.stdout:
                 out_port.close()
 
-        logger.info(f"Finished writing {total_pts} points to {out_fn or 'STDOUT'}")
+        logger.debug(f"Finished writing {total_pts} points to {out_fn or 'STDOUT'}")
 
     def run(self, entries):
         for mod, entry in entries:
@@ -93,19 +90,19 @@ class XYZWrite(FetchHook):
             stream = entry["stream"]
             src_fn = entry.get("dst_fn", "unknown")
 
-            # Resolve dynamic filename if a template is used
             out_fn = None
             if self.output_path:
                 base = os.path.splitext(os.path.basename(src_fn))[0]
                 out_fn = self.output_path.format(base=base, name=mod.name)
 
                 if not os.path.isabs(out_fn):
-                    out_dir = (
-                        os.path.dirname(src_fn) if src_fn != "unknown" else os.getcwd()
-                    )
+                    if "{" in self.output_path and src_fn != "unknown":
+                        out_dir = os.path.dirname(src_fn)
+                    else:
+                        out_dir = os.getcwd()
+
                     out_fn = os.path.join(out_dir, out_fn)
 
-            # Apply the lazy stream tap
             entry["stream"] = self._tap_stream(stream, out_fn)
 
             if out_fn:

@@ -868,6 +868,62 @@ class ATL03Reader(IceSat2Reader):
             logger.warning(f"Inland water classification failed: {e}")
         return df
 
+    def classify_canopy_algo(
+        self,
+        df,
+        min_height=1.5,
+        ground_window=1000,
+        roughness_window=21,
+        min_roughness=0.4,
+        max_reflectance=0.45,
+    ):
+        """Attept to identify false-positive ground photons in dense vegetation and reclassifies them as canopy."""
+
+        try:
+            logger.debug("Attempting to reclassify false-positive canopy photons...")
+
+            # Only target photons currently classified as Ground (1) or Unclassified (-1)
+            target_mask = (df["confidence"] >= 3) & (df["ph_h_classed"].isin([-1, 1]))
+            if not np.any(target_mask):
+                return df
+
+            subset = df[target_mask].copy()
+
+            ground_proxy = (
+                subset["photon_height"]
+                .rolling(
+                    window=ground_window, center=True, min_periods=ground_window // 4
+                )
+                .quantile(0.05)
+            )
+            ground_proxy = ground_proxy.bfill().ffill()
+
+            hag = subset["photon_height"] - ground_proxy
+            roller = subset["photon_height"].rolling(
+                window=roughness_window, center=True, min_periods=5
+            )
+            subset["local_roughness"] = roller.std()
+
+            is_canopy = (hag >= min_height) & (
+                subset["local_roughness"] >= min_roughness
+            )
+
+            if "reflectance" in subset.columns and subset["reflectance"].notna().any():
+                is_dark = subset["reflectance"] <= max_reflectance
+                is_canopy = is_canopy & is_dark
+
+            canopy_indices = subset.index[is_canopy]
+            if len(canopy_indices) > 0:
+                df.loc[canopy_indices, "ph_h_classed"] = 2  # Set to ATL08 Canopy Class
+                logger.info(
+                    f"Reclassified {len(canopy_indices)} false ground photons to Canopy (Class 2)"
+                )
+
+        except Exception as e:
+            logger.warning(f"Canopy classification failed: {e}")
+
+        return df
+
     def _get_land_tree(self):
         """Fetches the OSM coastline landmask for the region and builds an STRtree."""
 
@@ -879,7 +935,10 @@ class ATL03Reader(IceSat2Reader):
 
         try:
             land_results = fetchez.get(
-                "osm_landmask", region=self.region.to_list(), outdir=self.cache_dir
+                "osm_landmask",
+                region=self.region.to_list(),
+                outdir=self.cache_dir,
+                ignore_failures=False,
             )
             if not land_results:
                 return None
@@ -912,11 +971,15 @@ class ATL03Reader(IceSat2Reader):
                 region=self.region.to_list(),
                 outdir=self.cache_dir,
                 hooks=["unzip"],
+                ignore_failures=False,
             )
         elif source.lower() == "gba":
             # Global Building Atlas -> Class 7 (Buildings/Noise)
             bldg_results = fetchez.get(
-                "gba", region=self.region.to_list(), outdir=self.cache_dir
+                "gba",
+                region=self.region.to_list(),
+                outdir=self.cache_dir,
+                ignore_failures=False,
             )
 
         if not bldg_results:
@@ -1284,6 +1347,9 @@ class ATL03Reader(IceSat2Reader):
         df = self.classify_inland_water_algo(
             df, max_roughness=0.45, max_reflectance=0.2, max_range=1, fill_gaps=True
         )
+        # logger.debug("Apply Canopy Classifications")
+        # df = self.classify_canopy_algo(df)
+
         logger.debug("Apply Building Classifications")
         df = self.classify_buildings_algo(df)
 
