@@ -119,11 +119,3 @@ modules:
     args:
       dst_srs: EPSG:4269+5703
   - name: outlierz
-- module: dav
-  hooks:
-  - name: stream_reproject
-    args:
-      dst_srs: epsg:4269+5703
-  args:
-    survey_id: 9693
-    weight: 100
