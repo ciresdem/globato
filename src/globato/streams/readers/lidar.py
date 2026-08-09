@@ -16,14 +16,14 @@ import numpy as np
 import laspy as lp
 from rasterio.warp import transform_bounds
 
-from fetchez.utils import str_or
+from fetchez.utils import str_or, int_or
 from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 
 
 class LASReader(BaseGlobatoReader):
-    """Process LAS/LAZ lidar files using laspy."""
+    """Process LAS/LAZ and COPC lidar files using laspy."""
 
     name = "lidar-point-reader"
     meta_category = "point-stream"
@@ -35,10 +35,13 @@ class LASReader(BaseGlobatoReader):
         self,
         path: str,
         classes="2/29/40",
+        chunk_size=500000,
         **kwargs,
     ):
         super().__init__(path, **kwargs)
         self.src_fn = path
+        self.chunk_size = int_or(chunk_size, 500000)
+
         try:
             if isinstance(str_or(classes), str):
                 self.classes = [int(x) for x in str(classes).split("/")]
@@ -63,7 +66,6 @@ class LASReader(BaseGlobatoReader):
 
                 # Manual VLR check
                 for vlr in lasf.header.vlrs:
-                    # Record ID 2112 is "OGC Coordinate System WKT"
                     if vlr.record_id == 2112:
                         try:
                             srs = vlr.string
@@ -82,11 +84,21 @@ class LASReader(BaseGlobatoReader):
 
         try:
             with lp.open(self.src_fn) as lasf:
+                is_copc = hasattr(lasf, "query")
+
+                if self.src_fn.lower().endswith(".copc.laz") and not is_copc:
+                    logger.debug(
+                        f"File {self.src_fn} is named .copc.laz but lacks COPC structural VLRs. "
+                        "Falling back to standard chunked LAZ reading."
+                    )
+
+                w, e, s, n = -np.inf, np.inf, -np.inf, np.inf
+
                 if self.region is not None:
                     w, e, s, n = self.region
                     las_srs = self.get_srs()
 
-                    # If the LAS file has an SRS, transform our 4326 region bounds to match it
+                    # Transform region to match LAS SRS
                     if las_srs and las_srs != "EPSG:4326":
                         try:
                             w, s, e, n = transform_bounds(
@@ -95,48 +107,72 @@ class LASReader(BaseGlobatoReader):
                         except Exception:
                             pass
 
-                    # Native LAS bounds
                     las_w, las_s = lasf.header.x_min, lasf.header.y_min
                     las_e, las_n = lasf.header.x_max, lasf.header.y_max
 
-                    # If the file entirely misses the region, abort
                     if las_w > e or las_e < w or las_s > n or las_n < s:
                         logger.debug(
                             f"Skipping {self.src_fn}: Bounding box falls outside requested region."
                         )
                         return
 
-                for chunk in lasf.chunk_iterator(2_000_000):
-                    if self.classes:
-                        mask = np.isin(chunk.classification, self.classes)
-                        points_x = chunk.x[mask]
-                        points_y = chunk.y[mask]
-                        points_z = chunk.z[mask]
-                    else:
-                        points_x = chunk.x
-                        points_y = chunk.y
-                        points_z = chunk.z
+                # Choose Iterator (COPC Spatial Query vs Standard Chunking)
+                if is_copc and self.region is not None:
+                    # laspy COPC query requires an AABB (mins, maxs)
+                    mins = np.array([w, s])
+                    maxs = np.array([e, n])
+                    logger.debug(f"Using COPC spatial query for {self.src_fn}")
+                    # CopcReader.query returns an iterator of points intersecting the box
+                    try:
+                        chunk_iter = lasf.query(mins, maxs)
+                    except Exception:
+                        logger.debug(
+                            f"Copc query failed; falling back to standard chunking: {e}"
+                        )
+                        chunk_iter = lasf.chunk_iterator(self.chunk_size)
+                else:
+                    chunk_iter = lasf.chunk_iterator(self.chunk_size)
 
+                full_dtype = [
+                    ("x", "f8"),
+                    ("y", "f8"),
+                    ("z", "f4"),
+                    ("w", "f4"),
+                    ("u", "f4"),
+                    ("classification", "u1"),
+                    ("confidence", "i2"),
+                ]
+
+                for chunk in chunk_iter:
+                    mask = np.ones(len(chunk.x), dtype=bool)
+
+                    if self.classes:
+                        mask &= np.isin(chunk.classification, self.classes)
+
+                    if self.region is not None and not is_copc:
+                        mask &= (
+                            (chunk.x >= w)
+                            & (chunk.x <= e)
+                            & (chunk.y >= s)
+                            & (chunk.y <= n)
+                        )
+
+                    points_x = chunk.x[mask]
                     count = len(points_x)
+
                     if count == 0:
                         continue
 
-                    points = np.zeros(
-                        count,
-                        dtype=[
-                            ("x", "f8"),
-                            ("y", "f8"),
-                            ("z", "f4"),
-                            ("w", "f4"),
-                            ("u", "f4"),
-                        ],
-                    )
+                    points = np.empty(count, dtype=full_dtype)
 
                     points["x"] = points_x
-                    points["y"] = points_y
-                    points["z"] = points_z
+                    points["y"] = chunk.y[mask]
+                    points["z"] = chunk.z[mask]
+                    points["classification"] = chunk.classification[mask]
+
                     points["w"] = 1.0
                     points["u"] = 0.0
+                    points["confidence"] = 1
 
                     yield points
 
