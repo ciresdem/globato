@@ -163,7 +163,7 @@ class PointPixels:
         local_py = pixel_y - min_py
 
         # ==========================================
-        # FAST PATH: Mode == "sums" (Using bincount)
+        # Mode == "sums" (Using bincount)
         # ==========================================
         if mode == "sums":
             # Flatten 2D coordinates to 1D index
@@ -223,7 +223,7 @@ class PointPixels:
             return out_arrays, this_srcwin, self.dst_gt
 
         # ==========================================
-        # SLOW PATH: Mode != "sums" (Legacy fallback)
+        # Mode != "sums" (Legacy fallback)
         # ==========================================
         pixel_xy = np.vstack((local_py, local_px)).T
 
