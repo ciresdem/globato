@@ -1,5 +1,5 @@
 import numpy as np
-from globato.streams.base import BaseGlobatoReader
+from globato.streams.readers.base import BaseGlobatoReader
 
 
 class MockGlobatoReader(BaseGlobatoReader):
