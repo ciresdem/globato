@@ -240,7 +240,8 @@ class OSMLandmask(FetchHook):
         merged = linemerge(lines)
         coastline_geom = unary_union(merged)
 
-        region_box = box(*region)
+        west, east, south, north = region
+        region_box = box(west, south, east, north)
 
         cut_width = 1e-6
         cutters = coastline_geom.buffer(cut_width)
