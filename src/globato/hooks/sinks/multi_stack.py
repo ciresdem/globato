@@ -184,32 +184,30 @@ class MultiStackAccumulator:
         col_off, row_off, width, height = sub_win
         window = Window(col_off, row_off, width, height)
 
+        incoming_count = arrays["count"]
+        valid_new = incoming_count > 0
+
+        if not np.any(valid_new):
+            return
+
         with self.lock:
-            # with rasterio.open(self.sums_fn, 'r+') as dst:
             current_data = self.dataset.read(window=window)
 
             def get_band(name):
                 return current_data[self.BAND_MAP[name] - 1]
 
-            valid_new = arrays["count"] > 0
-
-            # current_data[current_data == -9999] = 0
-            # current_data[np.isnan(current_data)] = 0
-
-            # ONLY zero out pixels that are actively receiving new data!
             for i in range(current_data.shape[0]):
                 band = current_data[i]
-                mask = valid_new & ((band == -9999) | np.isnan(band))
-                band[mask] = 0
+                band[valid_new & ((band == -9999) | np.isnan(band))] = 0
 
             if self.mode in ["mean", "weighted_mean"]:
                 get_band("z")[valid_new] += arrays["z"][valid_new]
 
-                # Safely fallback for weight keys
                 wt_arr = arrays.get("weights", arrays.get("weight", 0))
                 get_band("weights")[valid_new] += wt_arr[valid_new]
+                get_band("count")[valid_new] += incoming_count[valid_new]
 
-                get_band("count")[valid_new] += arrays["count"][valid_new]
+                # Uncertainty sum of squares
                 get_band("uncertainty")[valid_new] += np.square(
                     arrays["uncertainty"][valid_new]
                 )
@@ -298,14 +296,6 @@ class MultiStackAccumulator:
                 get_band("z")[update_mask] = arrays["z"][update_mask]
                 get_band("count")[update_mask] = 1
 
-            # # Determine the tier (0, 1, 2) based on the incoming point weights
-            # bit_tiers = np.digitize(arrays["weight"], self.wts)
-            # bits = 1 << bit_tiers
-            # bitmask = get_band("bitmask")[valid_new].astype(np.uint16)
-            # bitmask |= bits[valid_new].astype(np.uint16)
-            # get_band("bitmask")[valid_new] = bitmask.astype(np.float64)
-
-            # dst.write(current_data, window=window)
             self.dataset.write(current_data, window=window)
 
     def finalize(self, ndv=-9999):
