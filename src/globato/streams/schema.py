@@ -12,6 +12,9 @@ Makes sure incoming format streams make the correct rec-array
 """
 
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
@@ -24,6 +27,7 @@ def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
       - classification (uint8): Defaults to 0
       - confidence (int16): Defaults to 1
     """
+    required_fields = {"x", "y", "z"}
 
     for chunk in stream:
         if chunk is None or len(chunk) == 0:
@@ -33,6 +37,12 @@ def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
         if not names:
             yield chunk
             continue
+
+        missing_required = required_fields - set(names)
+        if missing_required:
+            err_msg = f"Raw chunk missing required elevation fields: {missing_required}. Available: {names}"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
 
         missing_fields = []
         if "w" not in names:
@@ -44,6 +54,7 @@ def ensure_schema(stream, module_weight=1.0, module_unc=0.0):
         if "confidence" not in names:
             missing_fields.append(("confidence", "i2"))
 
+        # If perfectly formatted, just apply weight/unc scaling and yield
         if not missing_fields:
             if module_weight != 1.0:
                 chunk["w"] *= module_weight
