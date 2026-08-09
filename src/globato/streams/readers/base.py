@@ -9,6 +9,7 @@ globato.streams.readers.base
 :license: MIT, see LICENSE for more details.
 """
 
+import numpy as np
 import logging
 from fetchez.streams.readers import BaseReader
 from ..schema import ensure_schema
@@ -39,3 +40,11 @@ class BaseGlobatoReader(BaseReader):
         yield from ensure_schema(
             raw_stream, module_weight=self.module_weight, module_unc=self.module_unc
         )
+
+    def _extract_bounds(self, chunk):
+        """Required for automatic .inf generation."""
+
+        xmin, xmax = np.min(chunk["x"]), np.max(chunk["x"])
+        ymin, ymax = np.min(chunk["y"]), np.max(chunk["y"])
+        zmin, zmax = np.min(chunk["z"]), np.max(chunk["z"])
+        return xmin, xmax, ymin, ymax, zmin, zmax, len(chunk)
