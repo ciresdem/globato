@@ -223,7 +223,6 @@ class SourceMasks(FetchHook):
             os.makedirs(self.output_dir)
 
         crs_val = getattr(region, "srs", "EPSG:4326") or "EPSG:4326"
-
         self.profile = {
             "driver": "GTiff",
             "dtype": "uint8",
@@ -513,10 +512,43 @@ class SourceMasks(FetchHook):
                                 records.append(record)
 
                     if records:
+                        from urllib.parse import urlparse
+
                         gdf = gpd.GeoDataFrame(records, crs=src.crs)
+                        agg_funcs = {}
+
+                        for col in gdf.columns:
+                            if col in ["MODULE", "DATASET", "WEIGHT", "geometry"]:
+                                continue
+                            elif "DATE" in col.upper() or "YEAR" in col.upper():
+                                # Create a range: min - max
+                                agg_funcs[col] = lambda x: (
+                                    f"{x.dropna().min()} - {x.dropna().max()}"
+                                    if x.dropna().min() != x.dropna().max()
+                                    else str(x.dropna().min())
+                                )
+                            elif "URL" in col.upper():
+                                # Extract unique base domains instead of keeping massive URLs
+                                agg_funcs[col] = lambda x: ", ".join(
+                                    set(
+                                        urlparse(str(u)).netloc
+                                        if str(u).startswith("http")
+                                        else str(u)
+                                        for u in x.dropna()
+                                        if str(u) != "Unknown"
+                                    )
+                                )
+                            else:
+                                # For all other fields, join unique values into a comma-separated list
+                                agg_funcs[col] = lambda x: ", ".join(
+                                    map(str, set(x.dropna()))
+                                )
+
+                        # Apply the custom aggregation during the dissolve
                         gdf = gdf.dissolve(
-                            by=["MODULE", "DATASET", "WEIGHT"]
+                            by=["MODULE", "DATASET", "WEIGHT"], aggfunc=agg_funcs
                         ).reset_index()
+
                         gdf["GROUP_ID"] = (
                             gdf["MODULE"]
                             + " | "
@@ -527,6 +559,15 @@ class SourceMasks(FetchHook):
                         )
                         if "Filename" in gdf.columns:
                             gdf = gdf.drop(columns=["Filename"])
+
+                        if "AREA_OR_POINT" in gdf.columns:
+                            gdf = gdf.drop(columns=["AREA_OR_POINT"])
+
+                        if "DATA_TYPE" in gdf.columns and "DATATYPE" in gdf.columns:
+                            gdf = gdf.drop(columns=["DATA_TYPE"])
+
+                        if "NAME" in gdf.columns:
+                            gdf = gdf.drop(columns=["NAME"])
 
                         cols = gdf.columns.tolist()
                         cols.insert(0, cols.pop(cols.index("GROUP_ID")))
