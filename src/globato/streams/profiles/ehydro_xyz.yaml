@@ -2,8 +2,9 @@ name: ehydro-xyz
 description: USAGE E-Hydro
 stream-type: "point-stream"
 reader:
-  name: "fiona-point-reader"
+  name: "pyogrio-point-reader"
   args:
     z_field: "Z_label"
     z_scale: -0.3048
     vert_srs: "EPSG:5866"
+    chunk_size: 1000000

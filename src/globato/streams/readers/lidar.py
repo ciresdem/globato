@@ -16,7 +16,7 @@ import numpy as np
 import laspy as lp
 from rasterio.warp import transform_bounds
 
-from fetchez.utils import str_or, int_or
+from fetchez.utils import str_or, int_or, str2bool
 from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
@@ -35,12 +35,14 @@ class LASReader(BaseGlobatoReader):
         self,
         path: str,
         classes="2/29/40",
-        chunk_size=500000,
+        chunk_size=1000000,
+        in_memory=False,
         **kwargs,
     ):
         super().__init__(path, **kwargs)
         self.src_fn = path
-        self.chunk_size = int_or(chunk_size, 500000)
+        self.chunk_size = int_or(chunk_size, 1000000)
+        self.in_memory = str2bool(in_memory)
 
         try:
             if isinstance(str_or(classes), str):
@@ -116,16 +118,17 @@ class LASReader(BaseGlobatoReader):
                         )
                         return
 
-                # Choose Iterator (COPC Spatial Query vs Standard Chunking)
-                if is_copc and self.region is not None:
-                    # laspy COPC query requires an AABB (mins, maxs)
+                # If in_memory is true, just read in the whole file at once.
+                if self.in_memory and not is_copc:
+                    logger.debug(f"Reading {self.src_fn} using in-memory mode...")
+                    chunk_iter = [lasf.read()]
+                elif is_copc and self.region is not None:
                     mins = np.array([w, s])
                     maxs = np.array([e, n])
                     logger.debug(f"Using COPC spatial query for {self.src_fn}")
-                    # CopcReader.query returns an iterator of points intersecting the box
                     try:
                         chunk_iter = lasf.query(mins, maxs)
-                    except Exception:
+                    except Exception as e:
                         logger.debug(
                             f"Copc query failed; falling back to standard chunking: {e}"
                         )
@@ -144,37 +147,46 @@ class LASReader(BaseGlobatoReader):
                 ]
 
                 for chunk in chunk_iter:
-                    mask = np.ones(len(chunk.x), dtype=bool)
+                    if len(chunk) == 0:
+                        continue
 
                     if self.classes:
-                        mask &= np.isin(chunk.classification, self.classes)
+                        class_mask = np.isin(chunk.classification, self.classes)
+                        if not np.any(class_mask):
+                            continue
+                        chunk = chunk[class_mask]
 
                     if self.region is not None and not is_copc:
-                        mask &= (
-                            (chunk.x >= w)
-                            & (chunk.x <= e)
-                            & (chunk.y >= s)
-                            & (chunk.y <= n)
+                        x_vals = chunk.x
+                        y_vals = chunk.y
+                        spatial_mask = (
+                            (x_vals >= w)
+                            & (x_vals <= e)
+                            & (y_vals >= s)
+                            & (y_vals <= n)
                         )
+                        if not np.any(spatial_mask):
+                            continue
+                        chunk = chunk[spatial_mask]
 
-                    points_x = chunk.x[mask]
-                    count = len(points_x)
-
+                    count = len(chunk)
                     if count == 0:
                         continue
 
                     points = np.empty(count, dtype=full_dtype)
-
-                    points["x"] = points_x
-                    points["y"] = chunk.y[mask]
-                    points["z"] = chunk.z[mask]
-                    points["classification"] = chunk.classification[mask]
-
+                    points["x"] = chunk.x
+                    points["y"] = chunk.y
+                    points["z"] = chunk.z
+                    points["classification"] = chunk.classification
                     points["w"] = 1.0
                     points["u"] = 0.0
                     points["confidence"] = 1
 
-                    yield points
+                    if self.in_memory and count > self.chunk_size:
+                        for i in range(0, count, self.chunk_size):
+                            yield points[i : i + self.chunk_size]
+                    else:
+                        yield points
 
         except Exception as e:
             logger.error(f"LAS/Z processing failed for {self.src_fn}: {e}")
