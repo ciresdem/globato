@@ -15,7 +15,7 @@ import logging
 import h5py
 import numpy as np
 
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 

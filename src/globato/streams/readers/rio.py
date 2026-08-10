@@ -20,7 +20,7 @@ from rasterio.errors import WindowError
 
 from fetchez.utils import int_or
 
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 logging.getLogger("rasterio").setLevel(logging.ERROR)

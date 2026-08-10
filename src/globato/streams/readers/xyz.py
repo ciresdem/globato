@@ -17,7 +17,7 @@ import numpy as np
 
 from fetchez.utils import int_or, float_or
 
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 

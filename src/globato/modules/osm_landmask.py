@@ -571,8 +571,8 @@ class OSMLandmaskModule(FetchModule):
             for poly in polygonize(linemerge(island_lines)):
                 island_polys.append(poly)
 
-        w, e, s, n = region
-        region_box = box(w, s, e, n)
+        west, east, south, north = region
+        region_box = box(west, south, east, north)
         land_polys = []
 
         if not coast_lines:

@@ -19,7 +19,7 @@ from fetchez.cli import cli_opts
 from fetchez.modules.earthdata import IceSat2
 
 # from globato.streams.readers.icesat2 import IceSat2Stream
-from globato.hooks.sinks.xyz_writer import WriteXYZ
+from globato.hooks.sinks.xyz_writer import XYZWrite
 from fetchez.hooks.copy_artifact import CopyArtifactHook
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class ICESat2ClassyModule(FetchModule):
         #     )
         # )
 
-        fetcher.add_hook(WriteXYZ())
+        fetcher.add_hook(XYZWrite())
 
         fetcher.add_hook(
             CopyArtifactHook(target_dir="../_icesat2_deliverables", match=[".nc"])

@@ -19,7 +19,7 @@ import logging
 import numpy as np
 import pandas as pd
 
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 from globato.utils import yield_cmd
 from fetchez.utils import float_or

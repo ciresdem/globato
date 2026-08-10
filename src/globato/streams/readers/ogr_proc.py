@@ -22,7 +22,8 @@ except ImportError:
     HAS_OGR = False
 
 from fetchez.utils import float_or
-from globato.streams import BaseGlobatoReader
+
+from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
 

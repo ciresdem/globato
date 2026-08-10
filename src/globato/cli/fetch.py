@@ -14,7 +14,7 @@ import logging
 
 from fetchez.registry import ModuleRegistry
 from fetchez.core import run_fetchez
-from globato.utils import yield_parsed_regions
+from fetchez.utils import yield_parsed_regions
 
 logger = logging.getLogger(__name__)
 

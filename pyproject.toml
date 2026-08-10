@@ -53,6 +53,7 @@ full = ["globato[gmt,gdal,interpolations,ml]"]
 
 [dependency-groups]
 dev = [
+    "pre-commit",
     "mypy",
 ]
 test = [
@@ -93,6 +94,9 @@ globato_recipe_schemas = "globato.recipes.schemas"
 
 [project.entry-points."fetchez.recipes.modifiers"]
 globato_recipe_schemas = "globato.recipes.modifiers"
+
+[project.entry-points."fetchez.streams"]
+globato_stream_readers = "globato.streams"
 
 [project.entry-points."fetchez.streams.readers"]
 globato_stream_readers = "globato.streams.readers"
@@ -136,22 +140,33 @@ exclude = [
 
 # # --- Devtools configuration ---
 
-# [tool.mypy]
-# mypy_path = "src"
-# packages = ["globato"]
-# python_version = "3.12"
-# disable_error_code = ["import-untyped"]
-# # strict = true
+[tool.mypy]
+mypy_path = "src"
+packages = ["globato"]
+python_version = "3.12"
+exclude = ["^build/", "^dist/", "^\\.venv/"]
+disable_error_code = ["import-untyped"]
+# strict = true
 
-# [[tool.mypy.overrides]]
-# module = [
-#     "matplotlib.*",
-#     "rasterio.*",
-#     "scipy.*",
-#     "pyproj.*",
-#     "fetchez.*",
-# ]
-# ignore_missing_imports = true
+[[tool.mypy.overrides]]
+module = [
+    "matplotlib.*",
+    "rasterio.*",
+    "scipy.*",
+    "pyproj.*",
+    "fetchez.*",
+    "osgeo",
+    "pygmt",
+    "pykrige.*",
+    "naturalneighbor",
+    "sklearn.*",
+    "verde",
+    "h3",
+    "h5netcdf.*",
+    "polars",
+    "netCDF4",
+]
+ignore_missing_imports = true
 # follow_untyped_imports = true
 
 [tool.pytest.ini_options]

@@ -82,17 +82,8 @@ class PointPixels:
             )
 
     def __call__(self, points, weight=1.0, uncertainty=0.0, mode="mean"):
-        """Process points into a gridded array.
+        """Process points into a gridded array."""
 
-        Args:
-            points (np.recarray): Input data containing 'x', 'y', 'z'.
-            weight (float): Global weight multiplier.
-            uncertainty (float): Global uncertainty value.
-            mode (str): Aggregation mode.
-                        Options: 'mean', 'min', 'max', 'median', 'std', 'var', 'sums'.
-        """
-
-        # mrl: removed 'mask': None
         out_arrays = {
             "z": None,
             "count": None,
@@ -107,11 +98,9 @@ class PointPixels:
         if points is None or len(points) == 0:
             return out_arrays, None, None
 
-        # If input points are pandas dataframe, tranform it to recarray
         if hasattr(points, "to_records"):
             points = points.to_records(index=False)
 
-        # Ensure region and geotransform are set
         if self.src_region is None:
             self.init_region_from_points(points)
         elif self.dst_gt is None:
@@ -135,35 +124,13 @@ class PointPixels:
             if "u" in points.dtype.names
             else np.zeros_like(pixel_z)
         )
-        # points_x = np.array(points["x"])
-        # points_y = np.array(points["y"])
-        # pixel_z = np.array(points["z"])
-
-        # # This still gives a warning sometimes:
-        # #  RuntimeWarning: invalid value encountered in divide
-        # #  pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
-        # #  RuntimeWarning: invalid value encountered in cast
-        # # TODO: Figure this out and fix.
-        # pixel_w = (
-        #     np.array(points["w"])
-        #     if "w" in points.dtype.names
-        #     else np.ones_like(pixel_z)
-        # )
-        # pixel_u = (
-        #     np.array(points["u"])
-        #     if "u" in points.dtype.names
-        #     else np.zeros_like(pixel_z)
-        # )
 
         pixel_w[np.isnan(pixel_w)] = 1
         pixel_u[np.isnan(pixel_u)] = 0
 
-        # Convert to pixel coordinates
-        # dst_gt: [origin_x, pixel_width, 0, origin_y, 0, pixel_height]
         pixel_x = np.floor((points_x - self.dst_gt[0]) / self.dst_gt[1]).astype(int)
         pixel_y = np.floor((points_y - self.dst_gt[3]) / self.dst_gt[5]).astype(int)
 
-        # Filter pixels outside window
         valid_mask = (
             (pixel_x >= 0)
             & (pixel_x < self.x_size)
@@ -174,29 +141,90 @@ class PointPixels:
         if not np.any(valid_mask):
             return out_arrays, None, None
 
-        # Apply mask
-        pixel_x = pixel_x[valid_mask]
-        pixel_y = pixel_y[valid_mask]
-        pixel_z = pixel_z[valid_mask]
-        pixel_w = pixel_w[valid_mask]
-        pixel_u = pixel_u[valid_mask]
-        points_x = points_x[valid_mask]
-        points_y = points_y[valid_mask]
-
-        if len(pixel_x) == 0:
-            return out_arrays, None, None
+        pixel_x, pixel_y = pixel_x[valid_mask], pixel_y[valid_mask]
+        pixel_z, pixel_w, pixel_u = (
+            pixel_z[valid_mask],
+            pixel_w[valid_mask],
+            pixel_u[valid_mask],
+        )
+        points_x, points_y = points_x[valid_mask], points_y[valid_mask]
 
         # Local Source Window Calculation
         min_px, max_px = int(np.min(pixel_x)), int(np.max(pixel_x))
         min_py, max_py = int(np.min(pixel_y)), int(np.max(pixel_y))
 
-        this_srcwin = (min_px, min_py, max_px - min_px + 1, max_py - min_py + 1)
+        rows = max_py - min_py + 1
+        cols = max_px - min_px + 1
+        this_srcwin = (min_px, min_py, cols, rows)
+        grid_shape = (rows, cols)
+        max_idx = rows * cols
 
-        # Shift to local coordinates
         local_px = pixel_x - min_px
         local_py = pixel_y - min_py
 
-        # Unique pixel identification (row-major: y, x)
+        # ==========================================
+        # Mode == "sums" (Using bincount)
+        # ==========================================
+        if mode == "sums":
+            # Flatten 2D coordinates to 1D index
+            flat_indices = local_py * cols + local_px
+            ww = pixel_w * weight
+
+            # Direct Accumulation
+            grid_count = np.bincount(flat_indices, minlength=max_idx).reshape(
+                grid_shape
+            )
+            grid_w = np.bincount(flat_indices, weights=ww, minlength=max_idx).reshape(
+                grid_shape
+            )
+            grid_z = np.bincount(
+                flat_indices, weights=pixel_z * ww, minlength=max_idx
+            ).reshape(grid_shape)
+            grid_x = np.bincount(
+                flat_indices, weights=points_x * ww, minlength=max_idx
+            ).reshape(grid_shape)
+            grid_y = np.bincount(
+                flat_indices, weights=points_y * ww, minlength=max_idx
+            ).reshape(grid_shape)
+
+            # Uncertainty via mathematical standard deviation: sqrt(E[x^2] - E[x]^2)
+            grid_z_sum = np.bincount(
+                flat_indices, weights=pixel_z, minlength=max_idx
+            ).reshape(grid_shape)
+            grid_z_sq = np.bincount(
+                flat_indices, weights=(pixel_z**2), minlength=max_idx
+            ).reshape(grid_shape)
+
+            with np.errstate(invalid="ignore", divide="ignore"):
+                mean_z = grid_z_sum / grid_count
+                var_z = (grid_z_sq / grid_count) - (mean_z**2)
+                var_z = np.clip(var_z, 0, None)
+                std_z = np.sqrt(var_z)
+
+            grid_u_sq = np.bincount(
+                flat_indices, weights=(pixel_u**2), minlength=max_idx
+            ).reshape(grid_shape)
+            grid_u = np.sqrt(grid_u_sq + (uncertainty**2) + (std_z**2))
+
+            # Mask out empty pixels
+            empty_mask = grid_count == 0
+            grid_z[empty_mask] = np.nan
+            grid_x[empty_mask] = np.nan
+            grid_y[empty_mask] = np.nan
+            grid_u[empty_mask] = 0.0
+
+            out_arrays["z"] = grid_z
+            out_arrays["x"] = grid_x
+            out_arrays["y"] = grid_y
+            out_arrays["count"] = grid_count
+            out_arrays["weight"] = grid_w
+            out_arrays["uncertainty"] = grid_u
+
+            return out_arrays, this_srcwin, self.dst_gt
+
+        # ==========================================
+        # Mode != "sums" (Legacy fallback)
+        # ==========================================
         pixel_xy = np.vstack((local_py, local_px)).T
 
         unq, unq_idx, unq_inv, unq_cnt = np.unique(
@@ -204,16 +232,11 @@ class PointPixels:
         )
 
         # Initial values
-        if mode == "sums":
-            ww = pixel_w[unq_idx] * weight
-            zz = pixel_z[unq_idx] * ww
-            xx = points_x[unq_idx] * ww
-            yy = points_y[unq_idx] * ww
-        else:
-            zz = pixel_z[unq_idx]
-            ww = pixel_w[unq_idx]
-            xx = points_x[unq_idx]
-            yy = points_y[unq_idx]
+
+        zz = pixel_z[unq_idx]
+        ww = pixel_w[unq_idx]
+        xx = points_x[unq_idx]
+        yy = points_y[unq_idx]
 
         uu = pixel_u[unq_idx]
 
@@ -267,19 +290,6 @@ class PointPixels:
                 yy[cnt_msk] = [np.mean(points_y[idx]) for idx in dup_indices]
                 dup_stds = np.zeros(len(dup_indices))
 
-            elif mode == "sums":
-                zz[cnt_msk] = [
-                    np.sum(pixel_z[idx] * pixel_w[idx] * weight) for idx in dup_indices
-                ]
-                xx[cnt_msk] = [
-                    np.sum(points_x[idx] * pixel_w[idx] * weight) for idx in dup_indices
-                ]
-                yy[cnt_msk] = [
-                    np.sum(points_y[idx] * pixel_w[idx] * weight) for idx in dup_indices
-                ]
-                ww[cnt_msk] = [np.sum(pixel_w[idx] * weight) for idx in dup_indices]
-                dup_stds = [np.std(pixel_z[idx]) for idx in dup_indices]
-
             # uncertainty
             uu[cnt_msk] = np.sqrt(np.power(uu[cnt_msk], 2) + np.power(dup_stds, 2))
 
@@ -288,11 +298,6 @@ class PointPixels:
 
         # -- Safety First ---
         if grid_shape[0] <= 0 or grid_shape[1] <= 0:
-            for key in out_arrays:
-                out_arrays[key] = None
-            return out_arrays, None, None
-
-        if mode == "sums" and np.sum(unq_cnt) == 0:
             for key in out_arrays:
                 out_arrays[key] = None
             return out_arrays, None, None
@@ -314,11 +319,8 @@ class PointPixels:
 
         # Weights
         out_arrays["weight"] = np.ones(grid_shape)
-        if mode == "sums":
-            out_arrays["weight"][unq[:, 0], unq[:, 1]] = ww
-        else:
-            out_arrays["weight"][:] = weight
-            out_arrays["weight"][unq[:, 0], unq[:, 1]] *= ww * unq_cnt
+        out_arrays["weight"][:] = weight
+        out_arrays["weight"][unq[:, 0], unq[:, 1]] *= ww * unq_cnt
 
         # Helper coords for calling class to map back
         out_arrays["pixel_x"] = local_px
@@ -342,7 +344,6 @@ class PixelsToPoints(FetchHook):
             bands, rows, cols = data.shape
 
             z_raw = data[0].flatten()
-
             if bands >= 7:
                 count = data[1].flatten()
 

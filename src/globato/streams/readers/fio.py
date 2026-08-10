@@ -15,7 +15,7 @@ import logging
 import numpy as np
 
 from fetchez.utils import float_or
-from globato.streams import BaseGlobatoReader
+from .base import BaseGlobatoReader
 
 try:
     import fiona
