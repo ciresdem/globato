@@ -43,7 +43,7 @@ extensions = [
 
 myst_fence_as_directive = ["mermaid"]
 
-xnapoleon_google_docstring = True
+napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 napoleon_include_init_with_doc = False
 
