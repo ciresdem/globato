@@ -67,13 +67,15 @@ class ProvenanceHook(FetchHook):
             src_region=region, x_size=self.xcount, y_size=self.ycount
         )
 
+        crs_val = getattr(region, "srs", "EPSG:4326") or "EPSG:4326"
+
         profile = {
             "driver": "GTiff",
             "dtype": "uint32",  # Supports up to 32 modules
             "count": 1,
             "width": self.xcount,
             "height": self.ycount,
-            "crs": "EPSG:4326",
+            "crs": crs_val,
             "transform": self.transform,
             "compress": "lzw",
             "nodata": 0,
@@ -220,13 +222,15 @@ class SourceMasks(FetchHook):
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
+        crs_val = getattr(region, "srs", "EPSG:4326") or "EPSG:4326"
+
         self.profile = {
             "driver": "GTiff",
             "dtype": "uint8",
             "count": 1,
             "width": self.xcount,
             "height": self.ycount,
-            "crs": "EPSG:4326",
+            "crs": crs_val,
             "transform": self.transform,
             "compress": "lzw",
             "nodata": 0,
