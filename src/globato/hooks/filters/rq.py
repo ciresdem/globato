@@ -106,6 +106,8 @@ class ReferenceQuality(GlobatoFilter):
         else:  # Default to Order 1
             self.iho_a, self.iho_b = 0.5, 0.013
 
+        self.nodata = -9999
+
     def setup(self, mod, entry):
         """Called once before stream processing starts."""
 
@@ -128,41 +130,36 @@ class ReferenceQuality(GlobatoFilter):
         # self.target_region = self.wgs_region.buffer(pct=5)
 
         outdir = getattr(mod, "_outdir")
-        if not self.ref_fn:
-            files = self._fetch_reference_files(region, outdir)
+        with T_LOCK:
+            if not getattr(self, "_is_setup", False):
+                if not self.ref_fn:
+                    files = self._fetch_reference_files(region, outdir)
+                    if not files:
+                        logger.error(
+                            "[RQ] No valid reference data found. Disabling filter!"
+                        )
+                        return False
 
-            if not files:
-                logger.error(
-                    f"[RQ] No valid reference data found for {region}. Disabling RQ filter to prevent crash!"
-                )
-                return False
+                    if self.builder == "grid" and HAS_GRID_ENGINE:
+                        self.ref_fn = self._build_grid(files, region)
+                    else:
+                        self.ref_fn = self._build_vrt(files, region)
 
-            if self.builder == "grid" and HAS_GRID_ENGINE:
-                self.ref_fn = self._build_grid(files, region)
-            else:
-                self.ref_fn = self._build_vrt(files, region)
+                try:
+                    # Open, read to memory, and CLOSE the file handle immediately
+                    with rasterio.open(self.ref_fn) as src:
+                        self.inv_transform = ~src.transform
+                        ref_raw = src.read(1).astype("float64")
+                        self.nodata = src.nodata if src.nodata is not None else -9999
+                        self.ref_height = src.height
+                        self.ref_width = src.width
 
-            if not self.ref_fn or not os.path.exists(self.ref_fn):
-                logger.error(
-                    "[RQ] Builder failed to generate a reference surface. Disabling RQ filter."
-                )
-                return False
+                    self.ref_data = np.where(ref_raw == self.nodata, np.nan, ref_raw)
+                    self._is_setup = True
 
-        try:
-            self.src = rasterio.open(self.ref_fn)
-            # Store the inverse transform matrix to map points to fractional pixels natively
-            self.inv_transform = ~self.src.transform
-            ref_raw = self.src.read(1).astype("float64")
-            nodata = self.src.nodata if self.src.nodata is not None else -9999
-
-            # Standardize NoData to NaN so the bilinear interpolator ignores voids cleanly
-            self.ref_data = np.where(ref_raw == nodata, np.nan, ref_raw)
-            # self.ref_data = self.src.read(1)
-        except Exception as e:
-            logger.error(
-                f"[RQ] Failed to open generated reference surface: {e}. Disabling RQ filter."
-            )
-            return False
+                except Exception as e:
+                    logger.error(f"[RQ] Failed to open reference surface: {e}")
+                    return False
 
         # if target_region:
         #     self.target_srs = target_region.srs
@@ -297,18 +294,19 @@ class ReferenceQuality(GlobatoFilter):
         return out_path
 
     def filter_chunk(self, chunk):
-        nodata = self.src.nodata if self.src.nodata is not None else -9999
+        # nodata = self.nodata if self.nodata is not None else -9999
         rx, ry, rz = chunk["x"], chunk["y"], chunk["z"]
 
         # if self.target_srs:
         if self._transformer:
-            rx, ry, rz = self._transformer.transform(rx, ry, rz)
+            with T_LOCK:
+                rx, ry, rz = self._transformer.transform(rx, ry, rz)
 
         cols, rows = self.inv_transform * (rx, ry)
 
         # rows, cols = rasterio.transform.rowcol(self.src.transform, rx, ry)
-        rows = np.clip(rows, 0, self.src.height - 1)
-        cols = np.clip(cols, 0, self.src.width - 1)
+        rows = np.clip(rows, 0, self.ref_height - 1)
+        cols = np.clip(cols, 0, self.ref_width - 1)
 
         # ref_vals = self.ref_data[rows, cols]
         ref_vals = map_coordinates(
@@ -319,7 +317,7 @@ class ReferenceQuality(GlobatoFilter):
             cval=np.nan,
             prefilter=False,
         )
-        valid_ref = (ref_vals != nodata) & (~np.isnan(ref_vals))
+        valid_ref = (ref_vals != self.nodata) & (~np.isnan(ref_vals))
 
         diff = np.abs(rz - ref_vals)
         is_outlier = np.zeros(len(chunk), dtype=bool)
@@ -357,7 +355,10 @@ class ReferenceQuality(GlobatoFilter):
             )
 
         if hasattr(self, "src"):
-            self.src.close()
+            try:
+                self.src.close()
+            except Exception:
+                pass
 
         if self.ref_fn and os.path.exists(self.ref_fn):
             if self.ref_fn.endswith(".vrt"):
