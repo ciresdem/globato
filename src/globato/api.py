@@ -35,7 +35,7 @@ def read(
 
     Handles local file paths, directories, fetchez modules, and recipes.
     All reader options (data_type, classes, vertical_datum, etc.) are
-    forwarded via **kwargs.
+    forwarded via kwargs.
     """
 
     modules = _compile_modules(
