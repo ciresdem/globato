@@ -18,6 +18,8 @@ import json
 import logging
 import threading
 import numpy as np
+import tempfile
+from pathlib import Path
 # from tqdm import tqdm
 
 import rasterio
@@ -84,7 +86,9 @@ class MultiStackAccumulator:
         self.overwrite = overwrite
 
         base, ext = os.path.splitext(self.output_fn)
-        self.sums_fn = f"{base}.sums{ext}"
+        self.sums_fn = str(
+            Path(Path(tempfile.gettempdir()) / f"{base}.sums{ext}").resolve()
+        )
 
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
@@ -142,8 +146,8 @@ class MultiStackAccumulator:
             "crs": CRS.from_string(self.crs) if self.crs else None,
             "transform": self.transform,
             "tiled": True,
-            "compress": "lzw",
-            "predictor": 2,
+            # "compress": "lzw",
+            # "predictor": 2,
             "bigtiff": "YES",
         }
 
@@ -315,6 +319,8 @@ class MultiStackAccumulator:
         with rasterio.open(self.sums_fn, "r") as src:
             profile = src.profile.copy()
             profile["dtype"] = "float32"
+            profile["compress"] = "lzw"
+            profile["predictor"] = 2
 
             with rasterio.open(self.output_fn, "w", **profile) as dst:
                 dst.colorinterp = [ColorInterp.undefined] * dst.count
