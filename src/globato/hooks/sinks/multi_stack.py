@@ -41,6 +41,9 @@ from globato import __version__
 logger = logging.getLogger(__name__)
 
 
+INIT_LOCK = threading.Lock()
+
+
 # MULTI_STACK ACCUMULATOR
 class MultiStackAccumulator:
     """Multi-band statistical grid accumulator"""
@@ -404,32 +407,33 @@ class MultiStackHook(FetchHook):
         self.overwrite = overwrite
 
     def _init_accumulator(self, region):
-        if self._accumulator:
-            return
+        with INIT_LOCK:
+            if self._accumulator:
+                return
 
-        if isinstance(self.res, str) and self.res.endswith("s"):
-            inc = float(self.res[:-1]) / 3600.0
-            x_inc, y_inc = inc, inc
-        elif "/" in str(self.res):
-            x_inc, y_inc = map(float, self.res.split("/"))
-        else:
-            inc = float(self.res)
-            x_inc, y_inc = inc, inc
+            if isinstance(self.res, str) and self.res.endswith("s"):
+                inc = float(self.res[:-1]) / 3600.0
+                x_inc, y_inc = inc, inc
+            elif "/" in str(self.res):
+                x_inc, y_inc = map(float, self.res.split("/"))
+            else:
+                inc = float(self.res)
+                x_inc, y_inc = inc, inc
 
-        logger.info(
-            f"Initializing Multi_Stack: {self.output} @ {x_inc},{y_inc} ({self.mode})"
-        )
-        self._accumulator = MultiStackAccumulator(
-            region=region,
-            x_inc=x_inc,
-            y_inc=y_inc,
-            output_fn=self.output,
-            mode=self.mode,
-            weight_threshold=self.weight_threshold,
-            crs=self.crs,
-            verbose=True,
-            overwrite=self.overwrite,
-        )
+            logger.info(
+                f"Initializing Multi_Stack: {self.output} @ {x_inc},{y_inc} ({self.mode})"
+            )
+            self._accumulator = MultiStackAccumulator(
+                region=region,
+                x_inc=x_inc,
+                y_inc=y_inc,
+                output_fn=self.output,
+                mode=self.mode,
+                weight_threshold=self.weight_threshold,
+                crs=self.crs,
+                verbose=True,
+                overwrite=self.overwrite,
+            )
 
     def run(self, entries):
         if not self._accumulator:
