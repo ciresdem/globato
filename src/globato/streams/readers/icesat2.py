@@ -20,6 +20,8 @@ import pandas as pd
 import logging
 import fiona
 import shapely
+import json
+import math
 from shapely.strtree import STRtree
 from shapely.geometry import shape
 
@@ -257,6 +259,33 @@ class ATL03Reader(IceSat2Reader):
         self.dbscan_min_samples = utils.int_or(dbscan_min_samples, 10)
 
         self.orientDict = {0: "l", 1: "r", 21: "error"}
+
+    def generate_inf(self, out_path=None):
+        """Generate inf file that reads HDF5 metadata natively, bypassing chunks."""
+
+        out_path = out_path or f"{self.path}.inf"
+        try:
+            with h5.File(self.path, "r") as f:
+                w = f.attrs.get("geospatial_lon_min", -180.0)
+                e = f.attrs.get("geospatial_lon_max", 180.0)
+                s = f.attrs.get("geospatial_lat_min", -90.0)
+                n = f.attrs.get("geospatial_lat_max", 90.0)
+
+            wkt = f"POLYGON (({w} {n}, {e} {n}, {e} {s}, {w} {s}, {w} {n}))"
+            meta = {
+                "numpts": 0,  # Update this to extract numpys from header
+                "minmax": [float(w), float(e), float(s), float(n), -math.inf, math.inf],
+                "wkt": wkt,
+            }
+
+            with open(out_path, "w") as out:
+                json.dump(meta, out, indent=4)
+
+            return meta
+
+        except Exception as e:
+            logger.debug(f"Failed to extract native HDF5 bounds: {e}")
+            return {}
 
     # ==============================================
     # Fetch AUX ATL* Data (Stubbed for Fetchez)
