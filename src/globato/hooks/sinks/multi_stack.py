@@ -18,6 +18,8 @@ import json
 import logging
 import threading
 import numpy as np
+import tempfile
+from pathlib import Path
 # from tqdm import tqdm
 
 import rasterio
@@ -39,6 +41,9 @@ from ..transforms.point_pixels import PointPixels
 from globato import __version__
 
 logger = logging.getLogger(__name__)
+
+
+INIT_LOCK = threading.Lock()
 
 
 # MULTI_STACK ACCUMULATOR
@@ -81,7 +86,9 @@ class MultiStackAccumulator:
         self.overwrite = overwrite
 
         base, ext = os.path.splitext(self.output_fn)
-        self.sums_fn = f"{base}.sums{ext}"
+        self.sums_fn = str(
+            Path(Path(tempfile.gettempdir()) / f"{base}.sums{ext}").resolve()
+        )
 
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
@@ -139,8 +146,8 @@ class MultiStackAccumulator:
             "crs": CRS.from_string(self.crs) if self.crs else None,
             "transform": self.transform,
             "tiled": True,
-            "compress": "lzw",
-            "predictor": 2,
+            # "compress": "lzw",
+            # "predictor": 2,
             "bigtiff": "YES",
         }
 
@@ -312,6 +319,8 @@ class MultiStackAccumulator:
         with rasterio.open(self.sums_fn, "r") as src:
             profile = src.profile.copy()
             profile["dtype"] = "float32"
+            profile["compress"] = "lzw"
+            profile["predictor"] = 2
 
             with rasterio.open(self.output_fn, "w", **profile) as dst:
                 dst.colorinterp = [ColorInterp.undefined] * dst.count
@@ -404,32 +413,33 @@ class MultiStackHook(FetchHook):
         self.overwrite = overwrite
 
     def _init_accumulator(self, region):
-        if self._accumulator:
-            return
+        with INIT_LOCK:
+            if self._accumulator:
+                return
 
-        if isinstance(self.res, str) and self.res.endswith("s"):
-            inc = float(self.res[:-1]) / 3600.0
-            x_inc, y_inc = inc, inc
-        elif "/" in str(self.res):
-            x_inc, y_inc = map(float, self.res.split("/"))
-        else:
-            inc = float(self.res)
-            x_inc, y_inc = inc, inc
+            if isinstance(self.res, str) and self.res.endswith("s"):
+                inc = float(self.res[:-1]) / 3600.0
+                x_inc, y_inc = inc, inc
+            elif "/" in str(self.res):
+                x_inc, y_inc = map(float, self.res.split("/"))
+            else:
+                inc = float(self.res)
+                x_inc, y_inc = inc, inc
 
-        logger.info(
-            f"Initializing Multi_Stack: {self.output} @ {x_inc},{y_inc} ({self.mode})"
-        )
-        self._accumulator = MultiStackAccumulator(
-            region=region,
-            x_inc=x_inc,
-            y_inc=y_inc,
-            output_fn=self.output,
-            mode=self.mode,
-            weight_threshold=self.weight_threshold,
-            crs=self.crs,
-            verbose=True,
-            overwrite=self.overwrite,
-        )
+            logger.info(
+                f"Initializing Multi_Stack: {self.output} @ {x_inc},{y_inc} ({self.mode})"
+            )
+            self._accumulator = MultiStackAccumulator(
+                region=region,
+                x_inc=x_inc,
+                y_inc=y_inc,
+                output_fn=self.output,
+                mode=self.mode,
+                weight_threshold=self.weight_threshold,
+                crs=self.crs,
+                verbose=True,
+                overwrite=self.overwrite,
+            )
 
     def run(self, entries):
         if not self._accumulator:
