@@ -85,10 +85,10 @@ class MultiStackAccumulator:
         self.lock = threading.Lock()
         self.overwrite = overwrite
 
-        base, ext = os.path.splitext(self.output_fn)
-        self.sums_fn = str(
-            Path(Path(tempfile.gettempdir()) / f"{base}.sums{ext}").resolve()
-        )
+        # base, ext = os.path.splitext(self.output_fn)
+        base = Path(self.output_fn).name
+        ext = Path(self.output_fn).suffix
+        self.sums_fn = str(Path(tempfile.gettempdir()) / f"{base}.sums{ext}")
 
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
