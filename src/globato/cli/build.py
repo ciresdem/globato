@@ -92,6 +92,7 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
     type=click.Path(),
     help="Centralized cache directory.",
 )
+@click.option("--threads", default=4, help="Number of parallel threads (default: 4).")
 @click.option("--metadata", help="Global tags to inject.")
 @click.option("--export", is_flag=True, help="Save the generated YAML recipe to disk.")
 @click.option(
@@ -122,6 +123,7 @@ def build_cmd(
     modifier,
     schema,
     shared_cache,
+    threads,
     metadata,
     export,
     sources,
@@ -362,6 +364,7 @@ def build_cmd(
             compiled_modules,
             global_hooks,
             crs=t_srs,
+            threads=threads,
         )
 
         # --- Inject the Modifier ---
