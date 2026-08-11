@@ -19,6 +19,7 @@ import logging
 import threading
 import numpy as np
 import tempfile
+import uuid
 # from tqdm import tqdm
 
 import rasterio
@@ -87,7 +88,11 @@ class MultiStackAccumulator:
         # base, ext = os.path.splitext(self.output_fn)
         base_name = os.path.basename(self.output_fn)
         name, ext = os.path.splitext(base_name)
-        self.sums_fn = os.path.join(tempfile.gettempdir(), f"{name}.sums{ext}")
+        unique_id = uuid.uuid4().hex[:8]
+
+        self.sums_fn = os.path.join(
+            tempfile.gettempdir(), f"{name}_{unique_id}.sums{ext}"
+        )
 
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
