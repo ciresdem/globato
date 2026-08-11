@@ -90,6 +90,22 @@ class OSMLandmaskModule(FetchModule):
         self.min_area_sqm = float(min_area_sqm)
         self.headers = HEADERS
 
+    def _generate_cache_key(self):
+        """Override to strictly hash only the region and flags, ignoring all paths."""
+
+        import hashlib
+
+        region_str = self.wgs_region.format("fn") if self.wgs_region else "global"
+
+        # Build a strict state string using only the properties that affect the API output
+        state = (
+            f"{region_str}_{self.include_water}_{self.include_rivers}_"
+            f"{self.include_lakes}_{self.include_reefs}_{self.include_wetlands}_"
+            f"{self.include_breakwaters}_{self.min_area_sqm}"
+        )
+
+        return hashlib.sha256(state.encode("utf-8")).hexdigest()
+
     def _get_area_sqm(self, poly):
         """Approximates the area of a WGS84 polygon in square meters."""
 
