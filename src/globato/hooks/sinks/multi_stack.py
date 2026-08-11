@@ -19,7 +19,6 @@ import logging
 import threading
 import numpy as np
 import tempfile
-from pathlib import Path
 # from tqdm import tqdm
 
 import rasterio
@@ -86,9 +85,9 @@ class MultiStackAccumulator:
         self.overwrite = overwrite
 
         # base, ext = os.path.splitext(self.output_fn)
-        base = Path(self.output_fn).name
-        ext = Path(self.output_fn).suffix
-        self.sums_fn = str(Path(tempfile.gettempdir()) / f"{base}.sums{ext}")
+        base_name = os.path.basename(self.output_fn)
+        name, ext = os.path.splitext(base_name)
+        self.sums_fn = os.path.join(tempfile.gettempdir(), f"{name}.sums{ext}")
 
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
@@ -371,6 +370,13 @@ class MultiStackAccumulator:
                     STATISTICS_STDDEV=str(stats.std),
                     DESCRIPTION=desc,
                 )
+
+        if os.path.exists(self.sums_fn):
+            try:
+                os.remove(self.sums_fn)
+                logger.debug(f"Removed temporary scratch file: {self.sums_fn}")
+            except OSError as e:
+                logger.warning(f"Could not remove scratch file: {e}")
 
         return self.output_fn
 
