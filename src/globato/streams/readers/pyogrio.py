@@ -18,10 +18,16 @@ from fetchez.utils import float_or
 import pyogrio
 import shapely
 import pandas as pd
+import warnings
 
 from .base import BaseGlobatoReader
 
 logger = logging.getLogger(__name__)
+
+
+warnings.filterwarnings(
+    "ignore", message="Measured \\(M\\) geometry types are not supported.*"
+)
 
 
 class PyogrioReader(BaseGlobatoReader):
