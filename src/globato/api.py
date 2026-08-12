@@ -17,7 +17,6 @@ import yaml
 import logging
 from typing import Union, List, Optional
 
-
 from fetchez.recipe import Recipe
 from fetchez.registry import HookRegistry
 from fetchez.utils import int_or, str2inc, parse_hook_string, compile_sources
@@ -76,6 +75,7 @@ def build(
     export: bool = False,
     refresh: bool = False,
     fail_fast: bool = False,
+    **kwargs,
 ) -> bool:
     """Build a Digital Elevation Model recipe and execute it programmatically."""
 
