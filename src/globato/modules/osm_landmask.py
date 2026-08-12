@@ -151,7 +151,8 @@ class OSMLandmaskModule(FetchModule):
 
         if os.path.exists(out_path):
             logger.info(f"[OSM] Using existing landmask: {out_path}")
-            self.add_entry_to_results(f"file://{out_path}", out_path, "osm_landmask")
+            out_name = os.path.basename(out_path)
+            self.add_entry_to_results(f"file://{out_name}", out_path, "osm_landmask")
             return self
 
         logger.info(f"[OSM] Fetching coastline for {self.wgs_region}...")
@@ -173,7 +174,8 @@ class OSMLandmaskModule(FetchModule):
             os.remove(osm_xml)
 
         if os.path.exists(out_path):
-            self.add_entry_to_results(f"file://{out_path}", out_path, "osm_landmask")
+            out_name = os.path.basename(out_path)
+            self.add_entry_to_results(f"file://{out_name}", out_path, "osm_landmask")
 
         return self
 
