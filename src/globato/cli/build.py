@@ -41,7 +41,7 @@ CONTEXT_SETTINGS = dict(max_content_width=220)
     default=None,
     help="Base output directory.",
 )
-# @click.option("-F", "--format", default="GTiff", help="Output Format.")
+@click.option("-F", "--format", default="GTiff", help="Output Format.")
 @click.option("-P", "--t-srs", default="EPSG:4326", help="Target Projection")
 @click.option("-N", "--nodata", type=float, default=-9999.0, help="NoData Value.")
 @click.option(

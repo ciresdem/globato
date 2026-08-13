@@ -56,6 +56,7 @@ def build(
     sources: Union[str, List[str]],
     region: Union[str, List[float]],
     increment: str,
+    format: str = "GTiff",
     outname: str = "globato_dem",
     outdir: Optional[str] = None,
     t_srs: str = "EPSG:4326",
