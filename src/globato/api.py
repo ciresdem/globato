@@ -237,10 +237,10 @@ def build(
         return True
 
     recipe = Recipe.from_dict(config)
-    recipe.run(
+    iterations = recipe.run(
         outdir=outdir,
         shared_cache=shared_cache,
         refresh=refresh,
         ignore_failures=not fail_fast,
     )
-    return True
+    yield from iterations

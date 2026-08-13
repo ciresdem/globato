@@ -116,7 +116,9 @@ def build_cmd(sources, **kwargs):
             )
 
         # Delegate execution directly to the Python API
-        globato.api.build(sources=sources, **kwargs)
+        # for _config, _region, _batch_name, _cache_dir, _base_outdir, _tile_dir in globato.api.build(sources=sources, **kwargs):
+        #     click.secho(f"Processing: {batch_name} recipe.", bold=True)
+        [g for g in globato.api.build(sources=sources, **kwargs)]
 
         if kwargs.get("export"):
             click.secho(
