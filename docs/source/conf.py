@@ -36,12 +36,17 @@ extensions = [
     "sphinx.ext.intersphinx",  # Link to other projects' docs
     "sphinx.ext.viewcode",  # Add links to source code
     "sphinx.ext.githubpages",  # Auto-generate .nojekyll for GH Pages
+    "sphinx.ext.mathjax",
     "sphinx_argparse_cli",  # argparse
     "myst_parser",  # Parse Markdown files
     "sphinxcontrib.mermaid",  # mermaid support
 ]
 
 myst_fence_as_directive = ["mermaid"]
+
+myst_enable_extensions = [
+    "dollarmath",
+]
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False

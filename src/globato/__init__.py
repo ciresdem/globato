@@ -28,6 +28,6 @@ except ImportError:
     __version__ = "dev"
 
 # --- API ----
-from .api import read
+from .api import read, build
 
-__all__ = ["read"]
+__all__ = ["read", "build"]
