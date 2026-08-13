@@ -203,6 +203,7 @@ def build(
             "args": {"output": f"{batch_outname}_hs.tif", "cmap": "coastal_relief"},
         }
     )
+    global_hooks.append({"name": "cleanup_tmp", "args": {"target_dir": "tmp"}})
 
     # --- Build Config ---
     config = make_recipe_config(
