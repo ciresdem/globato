@@ -83,7 +83,7 @@ modules:
       - name: filter_field
         args:
           field: confidence
-          min_val: 1
+          min_val: 3
       - name: dynamic-weight
         args:
           source_field: confidence
@@ -91,12 +91,18 @@ modules:
           scale: 0.25
           # method: inverse
           # offset: 1.2
+      - name: dynamic-weight
+        args:
+          source_field: z
+          method: linear
       - name: stream_reproject
         args:
           dst_srs: "EPSG:4326+3855"
           cache_dir: "%shared_cache%"
       - name: range_z
-        args: {max_z: -0.01}
+        args:
+          min_z: -10.0
+          max_z: -0.01
 
   # NCEI Multibeam
   - module: mbdb
