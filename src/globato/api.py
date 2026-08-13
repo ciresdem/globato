@@ -235,13 +235,13 @@ def build(
         with open(out_yaml, "w") as f:
             yaml.dump(config, f, sort_keys=False)
         logger.info(f"Globato recipe exported to {out_yaml}.")
-        return True
 
-    recipe = Recipe.from_dict(config)
-    iterations = recipe.run(
-        outdir=outdir,
-        shared_cache=shared_cache,
-        refresh=refresh,
-        ignore_failures=not fail_fast,
-    )
-    yield from iterations
+    else:
+        recipe = Recipe.from_dict(config)
+        iterations = recipe.run(
+            outdir=outdir,
+            shared_cache=shared_cache,
+            refresh=refresh,
+            ignore_failures=not fail_fast,
+        )
+        yield from iterations
