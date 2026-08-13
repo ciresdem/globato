@@ -13,6 +13,8 @@ execution:
 
 schemas:
   - name: validate-recipe
+  - name: validate-paths
+  - name: validate-parameters
 
 modifiers:
   - name: buffer-and-cut
