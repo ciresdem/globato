@@ -15,7 +15,7 @@ Provides interface for streaming, processing, and accessing geospatial data.
 import os
 import yaml
 import logging
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Generator
 
 from fetchez.recipe import Recipe
 from fetchez.registry import HookRegistry
@@ -77,7 +77,7 @@ def build(
     refresh: bool = False,
     fail_fast: bool = False,
     **kwargs,
-) -> bool:
+) -> Generator:
     """Build a Digital Elevation Model recipe and execute it programmatically."""
 
     HookRegistry.load_all()
