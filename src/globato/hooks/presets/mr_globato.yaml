@@ -107,3 +107,6 @@ hooks:
     #     match:
     #       - "%name%_%batch_name%_final.tif"
     #       - "%name%_%batch_name%_hs.tif"
+
+  - name: cleanup_tmp
+    args: {"target_dir": "tmp"}

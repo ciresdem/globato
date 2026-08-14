@@ -21,20 +21,27 @@ logger = logging.getLogger(__name__)
 
 
 class PointRasterMask(GlobatoFilter):
-    """Filters or flags a point stream using a raster mask (e.g., Coastline).
-    Dramatically faster than VectorCrop for complex shorelines and dense point clouds.
-    """
+    """Filters or flags a point stream using a raster mask (e.g., Coastline)."""
 
     name = "point_raster_mask"
     meta_desc = "Filter point streams using a boolean raster mask."
     meta_aliases = ["raster_mask", "point_mask", "coastline_crop"]
 
-    def __init__(self, barrier=None, soft=False, invert=False, res="1s", **kwargs):
+    def __init__(
+        self,
+        barrier=None,
+        soft=False,
+        invert=False,
+        res="1s",
+        skip_entry=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.barrier = barrier
         self.soft = str2bool(soft)
         self.invert = str2bool(invert)
         self.res = res
+        self.skip_entry = skip_entry
 
         # In-memory arrays
         self.mask_array = None
@@ -45,6 +52,10 @@ class PointRasterMask(GlobatoFilter):
     def setup(self, mod, entry):
         if not self.barrier:
             logger.warning(f"[{self.name}] No barrier provided. Skipping.")
+            return False
+
+        if self.skip_entry and str2bool(entry.get(self.skip_entry)):
+            logger.warning(f"[{self.name}] {self.skip_entry} detected. Skipping.")
             return False
 
         region = getattr(mod, "region", None)

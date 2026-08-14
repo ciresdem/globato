@@ -112,11 +112,9 @@ modules:
         args:
           match: ".fbt"
       - name: stream_data
-      - name: set-srs
-        args:
-          src_srs: "EPSG:4326+9003"
       - name: stream_reproject
         args:
+          src_srs: "EPSG:4326+9003"
           dst_srs: "EPSG:4326+3855"
           cache_dir: "%shared_cache%"
       - name: rq
