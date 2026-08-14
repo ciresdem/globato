@@ -1,0 +1,32 @@
+name: glob-dav
+description: "NOAA Digital Coast Lidar - with dynamic weighting and clipping."
+tags:
+  - globato
+  - bathymetry
+  - topography
+  - lidar
+  - glob-stream
+modules:
+  - module: dav
+    args:
+      cull: true
+    hooks:
+      - name: dynamic-weight
+        args:
+          source_field: "year"
+          method: "chronological"
+          seed: 1995
+          offset: 1
+          scale: 3.33
+          on_entry: true
+          stage: manifest
+      - name: stream_reproject
+        args:
+          dst_srs: "EPSG:4269+5703"
+          cache_dir: "%shared_cache%"
+      - name: point_raster_mask
+        args:
+          barrier: "coastline"
+          invert: false
+          res: .11111111s
+          skip_entry: "is_bathy"

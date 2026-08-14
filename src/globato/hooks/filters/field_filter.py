@@ -44,7 +44,6 @@ class StreamFieldFilter(FetchHook):
                 yield chunk
                 continue
 
-            print(min(chunk[self.field]))
             mask = np.ones(len(chunk), dtype=bool)
             if self.min_val is not None:
                 mask &= chunk[self.field] >= self.min_val
@@ -53,7 +52,6 @@ class StreamFieldFilter(FetchHook):
                 mask &= chunk[self.field] <= self.max_val
 
             valid_chunk = chunk[mask]
-            print(valid_chunk)
             if len(valid_chunk) > 0:
                 yield valid_chunk
 

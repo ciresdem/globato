@@ -55,7 +55,9 @@ modules:
         args:
           stage: "file"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4269+5703"}
+        args:
+          dst_srs: "EPSG:4269+5703"
+          cache_dir: "%shared_cache%"
       - name: point_raster_mask
         args:
           barrier: "coastline"
@@ -64,7 +66,6 @@ modules:
       - name: range_z
         args:
           min_z: 0.01
-          cache_dir: "%shared_cache%"
 
   - module: tnm
     args: {weight: 3.0, formats: "GeoTIFF", datasets: "2"}
@@ -73,7 +74,9 @@ modules:
         args:
           stage: "file"
       - name: stream_reproject
-        args: {dst_srs: "EPSG:4269+5703"}
+        args:
+          dst_srs: "EPSG:4269+5703"
+          cache_dir: "%shared_cache%"
       - name: point_raster_mask
         args:
           barrier: "coastline"
@@ -82,7 +85,6 @@ modules:
       - name: range_z
         args:
           min_z: 0.01
-          cache_dir: "%shared_cache%"
 
   # USACE eHydro.
   - module: ehydro
@@ -97,3 +99,32 @@ modules:
           dst_srs: "EPSG:4269+5703"
           cache_dir: "%shared_cache%"
       - name: outlierz
+
+
+  # --- DIGITAL COAST DAV (Smart Culled & Auto-Weighted) ---
+  - bundle: glob-dav
+  # - module: dav
+  #   args:
+  #     cull: true
+  #   hooks:
+  #     - name: set_weight
+  #       weight: 2
+  #     - name: dynamic-weight
+  #       args:
+  #         source_field: "year"
+  #         method: "chronological"
+  #         seed: 1995
+  #         offset: 1
+  #         scale: 3.33
+  #         on_entry: true
+  #         stage: manifest
+  #     - name: stream_reproject
+  #       args:
+  #         dst_srs: "EPSG:4269+5703"
+  #         cache_dir: "%shared_cache%"
+  #     - name: point_raster_mask
+  #       args:
+  #         barrier: "coastline"
+  #         invert: false
+  #         res: .11111111s
+  #         skip_if_true: "is_bathy"
