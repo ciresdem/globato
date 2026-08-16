@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @click.command("gui", cls=FetchezMainCommand)
 def gui_cmd():
-    """Launch the interactive Globato Web GUI."""
+    """Launch the experimental interactive Globato notebook."""
 
     click.secho("Starting Globato Web Server...", fg="green", bold=True)
     click.secho(

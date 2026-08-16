@@ -43,6 +43,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
     default_suffix = "_binary_cudem"
     meta_desc = "Intpolate NoData voids using Multi Resolution Morphological stacking."
     meta_tags = ["globato", "interpolation", "multi-stack"]
+    meta_requires = "multi-stack"
 
     def __init__(
         self,

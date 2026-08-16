@@ -18,7 +18,8 @@ import json
 import logging
 import threading
 import numpy as np
-import tempfile
+
+# import tempfile
 import uuid
 # from tqdm import tqdm
 
@@ -90,9 +91,12 @@ class MultiStackAccumulator:
         name, ext = os.path.splitext(base_name)
         unique_id = uuid.uuid4().hex[:8]
 
-        self.sums_fn = os.path.join(
-            tempfile.gettempdir(), f"{name}_{unique_id}.sums{ext}"
-        )
+        local_tmp = os.path.abspath("tmp")
+        os.makedirs(local_tmp, exist_ok=True)
+        self.sums_fn = os.path.join(local_tmp, f"{name}_{unique_id}.sums{ext}")
+        # self.sums_fn = os.path.join(
+        #     tempfile.gettempdir(), f"{name}_{unique_id}.sums{ext}"
+        # )
 
         self.wts = np.sort([float(x) for x in str(weight_threshold).split("/")])
 
@@ -376,12 +380,12 @@ class MultiStackAccumulator:
                     DESCRIPTION=desc,
                 )
 
-        if os.path.exists(self.sums_fn):
-            try:
-                os.remove(self.sums_fn)
-                logger.debug(f"Removed temporary scratch file: {self.sums_fn}")
-            except OSError as e:
-                logger.warning(f"Could not remove scratch file: {e}")
+        # if os.path.exists(self.sums_fn):
+        #     try:
+        #         os.remove(self.sums_fn)
+        #         logger.debug(f"Removed temporary scratch file: {self.sums_fn}")
+        #     except OSError as e:
+        #         logger.warning(f"Could not remove scratch file: {e}")
 
         return self.output_fn
 
@@ -594,14 +598,15 @@ class MultiStackHook(FetchHook):
 
             stats_str = f"{z_str}{w_str}{u_str}"
 
-        # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
-        pts_str = colorize(f"{count:,}", BOLD) + " pts"
-        # ds_str = colorize(dataset_str, BLUE)
-        st_str = colorize(f"({stats_str})", CYAN)
+            # Maybe we don't log here if there were no valid points? Let's see how it goes.
+            # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({z_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
+            pts_str = colorize(f"{count:,}", BOLD) + " pts"
+            # ds_str = colorize(dataset_str, BLUE)
+            st_str = colorize(f"({stats_str})", CYAN)
 
-        logger_str = f"Stacked {dataset_str} -> {pts_str} {st_str}"
-        # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({stats_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
-        logger.info(logger_str)
+            logger_str = f"Stacked {dataset_str} -> {pts_str} {st_str}"
+            # logger_str = f"Integrated {colorize(f'{count:,}', BOLD)} valid points {colorize(f'({stats_str})', CYAN)} from {colorize(dataset_str, BLUE)} into stack"
+            logger.info(logger_str)
 
         # The stream is exhausted; permanently mark this dataset as completed
         if self._accumulator and dataset_id:

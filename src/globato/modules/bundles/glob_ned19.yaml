@@ -1,0 +1,34 @@
+name: glob-ned19
+description: "USGS NED 1/9 Arc-Second DEMs"
+tags:
+  - globato
+  - topography
+  - lidar
+  - glob-stream
+modules:
+  - module: tnm
+    args:
+      weight: 5.0
+      datasets: '4'
+    hooks:
+      - name: unzip
+      - name: filename_filter
+        args:
+          match: .img
+      - name: filename_filter
+        args:
+          exclude: .xml
+      - name: raster_flats
+        args:
+          stage: file
+      - name: stream_reproject
+        args:
+          dst_srs: EPSG:4269+5703
+      - name: point_raster_mask
+        args:
+          barrier: coastline
+          invert: false
+          res: 3.0864197222222225e-05
+      - name: range_z
+        args:
+          min_z: 0.01

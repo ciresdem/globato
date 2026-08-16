@@ -20,7 +20,8 @@ from rasterio.features import rasterize
 from rasterio.transform import from_origin
 from rasterio.enums import Resampling
 from rasterio.warp import reproject
-import fiona
+from pyogrio.raw import read
+from shapely import from_wkb
 
 from fetchez import core, cli, utils
 from fetchez.hooks.unzip import Unzip
@@ -150,13 +151,12 @@ class GlobCoast(FetchModule):
             ext = os.path.splitext(f_path)[1].lower()
             if ext in _VECTOR_EXTS or f_path.lower().endswith(".gdb"):
                 try:
-                    # NOTE: bbox must be passed to src.filter(), NOT to fiona.open().
-                    # fiona.open() does not accept a bbox parameter; passing it there
-                    # is a silent no-op that returns the entire dataset.
-                    with fiona.open(f_path) as src:
-                        all_geoms.extend(
-                            f["geometry"] for f in src.filter(bbox=(w, s, e, n))
-                        )
+                    region_geom = self.region.to_shapely()
+                    meta, fids, geometry_wkb, fields = read(f_path)
+                    raw_geoms = from_wkb(geometry_wkb)
+                    all_geoms.extend(
+                        [g for g in raw_geoms if region_geom.intersects(g)]
+                    )
                 except Exception as exc:
                     logger.warning("Vector read failed for %s: %s", f_path, exc)
             elif ext in _RASTER_EXTS:

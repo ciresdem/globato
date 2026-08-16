@@ -18,12 +18,11 @@ import numpy as np
 import h5py as h5
 import pandas as pd
 import logging
-import fiona
+from pyogrio.raw import read
 import shapely
 import json
 import math
 from shapely.strtree import STRtree
-from shapely.geometry import shape
 
 import fetchez
 from fetchez import utils
@@ -975,13 +974,9 @@ class ATL03Reader(IceSat2Reader):
             for res in land_results:
                 path = res if isinstance(res, str) else res.get("dst_fn")
                 if path and os.path.exists(path):
-                    with fiona.open(path, "r") as src:
-                        for feat in src:
-                            if feat.get("geometry") is not None:
-                                land_geom = shape(feat["geometry"])
-                                # Only retain polygons that intersect our bounding box
-                                if region_geom.intersects(land_geom):
-                                    geoms.append(land_geom)
+                    meta, fids, geometry_wkb, fields = read(path)
+                    raw_geoms = shapely.from_wkb(geometry_wkb)
+                    geoms = [g for g in raw_geoms if region_geom.intersects(g)]
             if geoms:
                 return STRtree(geoms)
         except Exception as e:
@@ -1015,13 +1010,10 @@ class ATL03Reader(IceSat2Reader):
             return None
 
         for res in bldg_results:
-            with fiona.open(res, "r") as src:
-                for feat in src:
-                    if feat.get("geometry") is not None:
-                        bldg_geom = shape(feat["geometry"])
-                        result = region_geom.intersection(bldg_geom)
-                        if result.area:
-                            geoms.append(bldg_geom)
+            meta, fids, geometry_wkb, fields = read(res)
+            raw_geoms = shapely.from_wkb(geometry_wkb)
+            geoms = [g for g in raw_geoms if region_geom.intersects(g)]
+            # and region_geom.intersets(g).area
         if not geoms:
             return None
 
@@ -1029,7 +1021,7 @@ class ATL03Reader(IceSat2Reader):
         return tree
 
     def classify_by_mask_tree(self, dataset, tree, classification, except_classes=[]):
-        """Uses Fiona and Shapely STRtree for point-in-polygon classification."""
+        """Uses pyogrio and Shapely STRtree for point-in-polygon classification."""
 
         if tree is None:
             return dataset
@@ -1066,127 +1058,6 @@ class ATL03Reader(IceSat2Reader):
             logger.warning(f"Failed to apply mask: {e}")
 
         return dataset
-
-    # def classify_by_mask_geoms(
-    #     self, dataset, mask_file, classification, except_classes=[]
-    # ):
-    #     """Uses Fiona and Shapely STRtree for point-in-polygon classification."""
-
-    #     if not os.path.exists(mask_file):
-    #         return dataset
-
-    #     try:
-    #         geoms = []
-    #         region_geom = self.region.to_shapely()
-    #         with fiona.open(mask_file, "r") as src:
-    #             for feat in src:
-    #                 if feat.get("geometry") is not None:
-    #                     bldg_geom = shape(feat["geometry"])
-    #                     result = region_geom.intersection(bldg_geom)
-    #                     if result.area:
-    #                         # geoms.append(shape(feat["geometry"]))
-    #                         geoms.append(bldg_geom)
-
-    #         if not geoms:
-    #             return dataset
-
-    #         tree = STRtree(geoms)
-    #     try:
-    #         x_vals = (
-    #             dataset["x"].values
-    #             if "x" in dataset.columns
-    #             else dataset["longitude"].values
-    #         )
-    #         y_vals = (
-    #             dataset["y"].values
-    #             if "y" in dataset.columns
-    #             else dataset["latitude"].values
-    #         )
-    #         points = shapely.points(x_vals, y_vals)
-    #         pt_idx = self.tree.query(points, predicate="intersects")
-    #         intersecting_indices = np.unique(pt_idx)
-
-    #         if len(intersecting_indices) > 0:
-    #             real_indices = dataset.iloc[intersecting_indices].index
-    #             mask = dataset.index.isin(real_indices) & (
-    #                 ~dataset["ph_h_classed"].isin(except_classes)
-    #             )
-    #             dataset.loc[mask, "ph_h_classed"] = classification
-
-    #             logger.debug(f"External mask classified {np.count_nonzero(mask)} photons.")
-    #         else:
-    #             logger.debug("no photons classified by external mask")
-    #     except Exception as e:
-    #         logger.warning(f"Failed to apply mask: {mask_file}: {e}")
-
-    #     return dataset
-
-    # def apply_external_masks(self, df, geoms):
-    #     """Dynamically fetches building and land masks to classify photons."""
-
-    #     if not self.use_external_masks or not self.region:
-    #         return df
-
-    #     import fetchez
-    #     #from fetchez.spatial import Region
-    #     from fetchez.modules.bing import Bing
-    #     #from fetchez.modules.wsf import WSF
-    #     #from fetchez.modules.gba import GBA
-    #     #from globato.hooks.tools.osm_landmask import OSMLandmask
-
-    #     # if isinstance(self.region, list):
-    #     #     region_obj = Region.from_list(self.region)
-    #     # else:
-    #     #     region_obj = self.region
-
-    #     logger.debug("Fetching external masks to classify ICESat-2 photons...")
-
-    #     # Bing Buildings -> Class 7 (Buildings/Noise)
-    #     # bing_fetcher = Bing(src_region=self.region).run()
-    #     # logger.info(bing_fetcher)
-    #     # run_fetchez([bing_fetcher])
-    #     bing_results = fetchez.get("bing", region=self.region.to_list(), hooks=["unzip"])
-    #     for res in bing_results:
-    #         logger.info(res)
-    #         # if res.get("dst_fn"):
-    #         #     logger.info(res.get("dst_fn"))
-    #         df = self.classify_by_mask_geoms(
-    #             df, res, 7, except_classes=[40, 41, 42, 44]
-    #         )
-
-    #     # # Global Building Atlas -> Class 7 (Buildings/Noise)
-    #     # gba_fetcher = GBA(src_region=region_obj, fmt="geojson")
-    #     # run_fetchez([gba_fetcher])
-    #     # for res in gba_fetcher.results:
-    #     #     if res.get("dst_fn"):
-    #     #         df = self.classify_by_mask_geoms(
-    #     #             df, res["dst_fn"], 7, except_classes=[40, 41, 42, 44]
-    #     #         )
-
-    #     # # World Settlement Footprint -> Class 7 (Buildings/Noise)
-    #     # wsf_fetcher = WSF(src_region=region_obj)
-    #     # run_fetchez([wsf_fetcher])
-    #     # for res in wsf_fetcher.results:
-    #     #     if res.get("dst_fn"):
-    #     #         # WSF returns GeoTIFFs, so we need to vectorize it first.
-    #     #         logger.info(
-    #     #             f"WSF tile fetched: {res['dst_fn']}. (Raster masking hook needed here)"
-    #     #         )
-
-    #     # # OSM Landmask -> Class 1 (Land / Unclassified)
-    #     # osm_hook = OSMLandmask(filename="temp_icesat2_landmask.geojson")
-    #     # dummy_mod = type("Dummy", (), {"region": region_obj})()
-    #     # osm_hook.run([(dummy_mod, {})])
-
-    #     # if os.path.exists("temp_icesat2_landmask.geojson"):
-    #     #     df = self.classify_by_mask_geoms(
-    #     #         df,
-    #     #         "temp_icesat2_landmask.geojson",
-    #     #         1,
-    #     #         except_classes=[7, 40, 41, 42, 44],
-    #     #     )
-
-    #     return df
 
     # ==============================================
     # Main Reader

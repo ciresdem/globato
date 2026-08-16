@@ -16,13 +16,14 @@ import logging
 import numpy as np
 import rasterio
 from rasterio.features import shapes
-import fiona
+import shapely
+from pyogrio.raw import write
 from fetchez.hooks import FetchHook
 
 logger = logging.getLogger(__name__)
 
 
-# Should this convert a 'stream' from 'raster-stream' to 'vector-stream'?
+# Update to convert a 'stream' from 'raster-stream'?
 class RasterPolygonizeHook(FetchHook):
     """Converts a raster (like a binary mask or classified grid) into vector polygons."""
 
@@ -80,12 +81,12 @@ class RasterPolygonizeHook(FetchHook):
         return new_entries
 
     def _polygonize(self, src_path, dst_path):
-        """Performs the actual rasterio -> fiona extraction."""
+        """Performs the actual rasterio -> pyogrio extraction."""
 
         with rasterio.open(src_path) as src:
             image = src.read(1)
             transform = src.transform
-            crs = src.crs
+            crs_str = src.crs.to_string() if src.crs else "EPSG:4326"
 
             if self.target_value is not None:
                 mask = image == self.target_value
@@ -99,21 +100,29 @@ class RasterPolygonizeHook(FetchHook):
                 logger.debug(f"No matching pixels found to polygonize in {src_path}")
                 return False
 
-            results = (
-                {"properties": {"val": v}, "geometry": s}
-                for i, (s, v) in enumerate(
-                    shapes(image, mask=mask, transform=transform)
-                )
+            geoms = []
+            vals = []
+
+            # Extract the raw GeoJSON dictionaries and values from rasterio
+            for s, v in shapes(image, mask=mask, transform=transform):
+                geoms.append(shapely.geometry.shape(s))
+                vals.append(v)
+
+            if not geoms:
+                return False
+
+            geometry_wkb = shapely.to_wkb(geoms)
+            dtype = "float64" if image.dtype.kind == "f" else "int32"
+            field_data = [np.array(vals, dtype=dtype)]
+            driver = "GPKG" if self.format == "GPKG" else "ESRI Shapefile"
+            write(
+                dst_path,
+                geometry_wkb,
+                field_data,
+                fields=["val"],
+                geometry_type="Polygon",
+                crs=crs_str,
+                driver=driver,
             )
-
-            schema = {"geometry": "Polygon", "properties": {"val": "float"}}
-
-            driver = "ESRI Shapefile" if self.format == "SHP" else "GPKG"
-
-            with fiona.open(
-                dst_path, "w", driver=driver, crs=crs, schema=schema
-            ) as dst:
-                for feature in results:
-                    dst.write(feature)
 
         return True

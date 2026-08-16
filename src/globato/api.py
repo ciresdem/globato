@@ -174,7 +174,6 @@ def build(
             },
         }
     )
-
     # --- Interpolation Algorithm ---
     algo_hook = parse_hook_string(algo)
     if algo_hook["name"] in ["ms_cudem", "ms_binary_cudem"]:
@@ -186,6 +185,7 @@ def build(
             args["blend_dists"] = "/".join(map(str, blend_list))
         if "barrier" not in args:
             args["barrier"] = "osm"
+            # args["bathy_max_z"] = "ocean:-0.01,river:None,lake:None,wetland:0,estuary:0"
 
     algo_hook.setdefault("args", {})["output"] = f"{batch_outname}.tif"
     global_hooks.append(algo_hook)

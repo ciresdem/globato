@@ -29,7 +29,6 @@ dependencies = [
     "laspy[lazrs,laszip]",
     "rasterio>1.4.0",
     "geopandas>=1.0.0",
-    "fiona",  # to be removed
     "pyogrio>=0.7.0",
     "pandas",
     "pyproj>3.6.1",

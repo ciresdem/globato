@@ -263,7 +263,9 @@ def _generate_barrier_hash(
     include_reefs,
     include_wetlands,
     include_breakwaters,
+    include_estuaries,
     target_crs,
+    mode,
 ):
     """Generates a short, unique 8-character MD5 hash based on spatial parameters."""
 
@@ -275,12 +277,12 @@ def _generate_barrier_hash(
         if region
         else "global"
     )
-    hash_seed = f"{region_str}_{res}_{include_rivers}_{include_lakes}_{include_reefs}_{include_wetlands}_{include_breakwaters}{crs_str}"
+    hash_seed = f"{region_str}_{res}_{include_rivers}_{include_lakes}_{include_reefs}_{include_wetlands}_{include_breakwaters}_{include_estuaries}_{crs_str}{mode}"
     return hashlib.md5(hash_seed.encode("utf-8")).hexdigest()[:8]
 
 
 def _get_crs(crs_obj):
-    """Extracts an EPSG/WKT string from fiona/rasterio CRS objects."""
+    """Extracts an EPSG/WKT string from CRS objects."""
 
     import pyproj
 
@@ -303,6 +305,8 @@ def resolve_barrier(
     include_reefs=False,
     include_wetlands=True,
     include_breakwaters=True,
+    include_estuaries=True,
+    output_mode="binary",
     output_type="raster",
     target_crs="EPSG:4326",
 ):
@@ -311,14 +315,15 @@ def resolve_barrier(
     Auto-generates magic keywords or seamlessly converts/reprojects existing files.
     """
 
-    import fiona
     import pyproj
     import rasterio
     from rasterio.features import rasterize, shapes
     from rasterio.warp import calculate_default_transform, reproject, Resampling
     from rasterio.transform import from_bounds
-    from shapely.geometry import shape, mapping
+    import shapely
+    from shapely.geometry import shape
     from shapely.ops import transform as shapely_transform
+    from pyogrio.raw import read as pyogrio_read, write as pyogrio_write
 
     if not barrier_str:
         return None
@@ -358,7 +363,6 @@ def resolve_barrier(
 
         generator_mod = ModuleRegistry.get_class(target_mod_name)
         if generator_mod:
-            # OSM/Glob_Coast generate in EPSG:4326
             gen_instance = generator_mod(
                 src_region=region,
                 outdir=outdir,
@@ -368,6 +372,8 @@ def resolve_barrier(
                 include_reefs=include_reefs,
                 include_wetlands=include_wetlands,
                 include_breakwaters=include_breakwaters,
+                include_estuaries=include_estuaries,
+                output_mode=output_mode,
             )
             gen_instance.run()
             run_fetchez([gen_instance])
@@ -403,19 +409,18 @@ def resolve_barrier(
         logger.error("Failed to resolve or generate the barrier.")
         return None
 
-    # --- Extract Native CRS ---
+    # --- Extract Native CRS via Pyogrio ---
     if native_type == "raster":
         with rasterio.open(resolved_path) as src:
             native_crs = _get_crs(src.crs)
     else:
-        with fiona.open(resolved_path, "r") as src:
-            native_crs = _get_crs(src.crs)
+        meta, _, _, _ = pyogrio_read(resolved_path)
+        native_crs = _get_crs(meta.get("crs"))
 
     # Fast-path: Identity check
     if native_type == output_type and native_crs == target_crs:
         return resolved_path
 
-    # --- Enforce Output Type & Projection ---
     logger.debug(
         f"Barrier mismatch: Converting {native_type}({native_crs}) -> {output_type}({target_crs})"
     )
@@ -428,7 +433,9 @@ def resolve_barrier(
         include_reefs,
         include_wetlands,
         include_breakwaters,
+        include_estuaries,
         target_crs,
+        output_mode,
     )
     base_name = os.path.splitext(os.path.basename(resolved_path))[0]
 
@@ -445,7 +452,6 @@ def resolve_barrier(
         if os.path.exists(out_vec_path):
             return out_vec_path
 
-        geoms = []
         if native_type == "raster":
             with rasterio.open(resolved_path) as src:
                 image = src.read(1)
@@ -455,21 +461,43 @@ def resolve_barrier(
                     for s, v in shapes(image, mask=mask, transform=src.transform)
                     if v > 0
                 ]
+            if needs_reproject:
+                geoms = [shapely_transform(transformer.transform, g) for g in geoms]
+
+            # Write new vector with Pyogrio
+            geometry_wkb = shapely.to_wkb(geoms)
+            field_data = [np.array([1] * len(geoms), dtype="int32")]
+            pyogrio_write(
+                out_vec_path,
+                geometry_wkb,
+                field_data,
+                fields=["val"],
+                geometry_type="Polygon",
+                crs=target_crs,
+                driver="GeoJSON",
+            )
+
         else:
-            with fiona.open(resolved_path, "r") as src:
-                geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
+            # Vector to Vector: Preserve ALL attributes!
+            meta, fids, geometry_wkb, fields = pyogrio_read(resolved_path)
 
-        if needs_reproject:
-            geoms = [shapely_transform(transformer.transform, g) for g in geoms]
+            if needs_reproject:
+                geoms = shapely.from_wkb(geometry_wkb)
+                geoms = [
+                    shapely_transform(transformer.transform, g) if g else None
+                    for g in geoms
+                ]
+                geometry_wkb = shapely.to_wkb(geoms)
 
-        meta = {
-            "driver": "GeoJSON",
-            "schema": {"geometry": "Polygon", "properties": {"val": "int"}},
-            "crs": target_crs,
-        }
-        with fiona.open(out_vec_path, "w", **meta) as dst:
-            dst.writerecords(
-                [{"properties": {"val": 1}, "geometry": mapping(g)} for g in geoms]
+            # Write directly preserving the original fields (like 'class'!)
+            pyogrio_write(
+                out_vec_path,
+                geometry_wkb,
+                fields,
+                fields=meta.get("fields", []),
+                geometry_type=meta.get("geometry_type", "Unknown"),
+                crs=target_crs,
+                driver="GeoJSON",
             )
 
         return out_vec_path
@@ -486,8 +514,9 @@ def resolve_barrier(
                 logger.error("Region required to rasterize vector barrier.")
                 return None
 
-            with fiona.open(resolved_path, "r") as src:
-                geoms = [shape(f["geometry"]) for f in src if f["geometry"]]
+            meta, fids, geometry_wkb, fields = pyogrio_read(resolved_path)
+            geoms = shapely.from_wkb(geometry_wkb)
+            geoms = [g for g in geoms if g is not None]
 
             if needs_reproject:
                 geoms = [shapely_transform(transformer.transform, g) for g in geoms]
@@ -548,7 +577,7 @@ def resolve_barrier(
                         src_crs=src.crs,
                         dst_transform=transform,
                         dst_crs=target_crs,
-                        resampling=Resampling.nearest,  # Keeps the mask boolean 0/1
+                        resampling=Resampling.nearest,
                     )
             return out_ras_path
 
