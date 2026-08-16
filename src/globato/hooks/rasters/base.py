@@ -151,6 +151,7 @@ class RasterHook(FetchHook):
         include_reefs=True,
         include_wetlands=True,
         include_breakwaters=True,
+        include_estuaries=True,
         output_mode="binary",
     ):
         if not self.barrier:
@@ -174,6 +175,7 @@ class RasterHook(FetchHook):
             include_reefs=include_reefs,
             include_wetlands=include_wetlands,
             include_breakwaters=include_breakwaters,
+            include_estuaries=include_estuaries,
             target_crs=region.srs,
             output_mode=output_mode,
         )
@@ -187,6 +189,7 @@ class RasterHook(FetchHook):
         include_reefs=True,
         include_wetlands=True,
         include_breakwaters=True,
+        include_estuaries=True,
         output_mode="binary",
     ):
         barrier_path = self._get_barrier(
@@ -195,6 +198,7 @@ class RasterHook(FetchHook):
             include_reefs=include_reefs,
             include_wetlands=include_wetlands,
             include_breakwaters=include_breakwaters,
+            include_estuaries=include_estuaries,
             output_mode=output_mode,
         )
         # if not self.barrier:
@@ -243,6 +247,7 @@ class RasterHook(FetchHook):
         include_reefs=True,
         include_wetlands=True,
         include_breakwaters=True,
+        include_estuaries=True,
         output_mode="binary",
     ):
         """Generates a boolean numpy mask from the barrier.
@@ -258,6 +263,10 @@ class RasterHook(FetchHook):
             self.barrier_geoms = self._get_barrier_geometries(
                 include_rivers=include_rivers,
                 include_lakes=include_lakes,
+                include_wetlands=include_wetlands,
+                include_estuaries=include_estuaries,
+                include_reefs=include_reefs,
+                include_breakwaters=include_breakwaters,
                 output_mode=output_mode,
             )
 
