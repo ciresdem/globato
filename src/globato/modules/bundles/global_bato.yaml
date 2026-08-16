@@ -204,6 +204,14 @@ modules:
           builder: "grid"
           res: 3s
 
+  # - module: breakline
+  #   args:
+  #     source: "osm"
+  #     step: 3s
+  #     z_raster: "gebco"
+  #     srs: "EPSG:4326+9003"
+  #     weight: 1.0
+
   #   #  Bathymetry
   # - module: gebco
   #   args:

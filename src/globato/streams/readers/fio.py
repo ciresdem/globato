@@ -165,7 +165,9 @@ class FionaReader(BaseGlobatoReader):
 
     def _yield_raw_chunks(self):
         if not HAS_FIONA:
-            logger.error("Fiona/Shapely required for vector processing.")
+            logger.error(
+                "Fiona/Shapely required for vector processing with fiona; otherwise use the pyogrio reader."
+            )
             return
 
         try:

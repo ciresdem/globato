@@ -5,8 +5,8 @@
 globato.hooks.rasters.base
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Core architecture for Raster processing hooks.
-Separates Streaming (Local/Chunked) operations from Global (Whole-File) operations.
+Unified architecture for Raster processing hooks.
+Handles Streaming (Local/Chunked) and Global (Whole-File) operations.
 
 :copyright: (c) 2016 - 2026 Regents of the University of Colorado
 :license: MIT, see LICENSE for more details.
@@ -18,7 +18,9 @@ import shutil
 import numpy as np
 import rasterio
 from rasterio.windows import Window
-import fiona
+from pyogrio.raw import read
+import shapely
+
 from fetchez.spatial import parse_region
 from fetchez.hooks import FetchHook
 from fetchez.utils import float_or, parse_arg_to_list  # , inc2str
@@ -26,15 +28,18 @@ from fetchez.utils import float_or, parse_arg_to_list  # , inc2str
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# THE SHARED BASE (Utilities)
-# =============================================================================
-class RasterBaseHook(FetchHook):
-    """Shared utilities for both Streaming and Global raster hooks."""
+class RasterHook(FetchHook):
+    """Unified base class for all raster hooks.
+
+    Child classes must set `processing_mode`:
+    - "chunk": The hook implements `process_chunk(data, ndv, ...)` and operates on numpy arrays.
+    - "global": The hook implements `process_raster(src_path, dst_path, ...)` and operates on full files.
+    """
 
     meta_stage = "collection"
     default_suffix = "_processed"
-    meta_desc = "Process a raster file."
+    meta_desc = "Process a raster."
+    processing_mode = "chunk"
 
     def __init__(
         self,
@@ -45,6 +50,8 @@ class RasterBaseHook(FetchHook):
         upper=None,
         lower=None,
         strip_bands=False,
+        buffer=0,
+        chunk_size=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -57,6 +64,16 @@ class RasterBaseHook(FetchHook):
         self.lower = float_or(lower)
         self.strip_bands = strip_bands
 
+        self.buffer = int(buffer)
+
+        # If the user doesn't specify a chunk size, global hooks default to 'full' (the entire file)
+        # while chunk hooks default to Rasterio's native block size.
+        if chunk_size is None and self.processing_mode == "global":
+            self.chunk_size = "full"
+        else:
+            self.chunk_size = chunk_size
+
+    # --- Utilities ---
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
 
@@ -127,14 +144,14 @@ class RasterBaseHook(FetchHook):
                 )
                 src.write(data, 1)
 
-    def _get_barrier_geometries(
+    def _get_barrier(
         self,
-        profile=None,
         include_rivers=True,
         include_lakes=False,
         include_reefs=True,
         include_wetlands=True,
         include_breakwaters=True,
+        output_mode="binary",
     ):
         if not self.barrier:
             return None
@@ -158,14 +175,61 @@ class RasterBaseHook(FetchHook):
             include_wetlands=include_wetlands,
             include_breakwaters=include_breakwaters,
             target_crs=region.srs,
+            output_mode=output_mode,
         )
+
+        return barrier_path
+
+    def _get_barrier_geometries(
+        self,
+        include_rivers=True,
+        include_lakes=False,
+        include_reefs=True,
+        include_wetlands=True,
+        include_breakwaters=True,
+        output_mode="binary",
+    ):
+        barrier_path = self._get_barrier(
+            include_rivers=include_rivers,
+            include_lakes=include_lakes,
+            include_reefs=include_reefs,
+            include_wetlands=include_wetlands,
+            include_breakwaters=include_breakwaters,
+            output_mode=output_mode,
+        )
+        # if not self.barrier:
+        #     return None
+
+        # mod = getattr(self, "current_mod", None)
+        # region = getattr(mod, "region", None) if mod else None
+
+        # mod_outdir = getattr(mod, "outdir", getattr(mod, "_outdir", None))
+        # cache_dir = mod_outdir if mod_outdir else os.getcwd()
+
+        # from globato.utils import resolve_barrier
+
+        # barrier_path = resolve_barrier(
+        #     self.barrier,
+        #     region=region,
+        #     outdir=os.path.join(cache_dir, "auto_barriers"),
+        #     output_type="vector",
+        #     include_rivers=include_rivers,
+        #     include_lakes=include_lakes,
+        #     include_reefs=include_reefs,
+        #     include_wetlands=include_wetlands,
+        #     include_breakwaters=include_breakwaters,
+        #     target_crs=region.srs,
+        #     output_mode="binary",
+        # )
 
         if not barrier_path:
             return None
 
         try:
-            with fiona.open(barrier_path, "r") as vec:
-                return [feature["geometry"] for feature in vec]
+            meta, fids, geometry_wkb, fields = read(barrier_path)
+            geoms = shapely.from_wkb(geometry_wkb)
+            return list(geoms)
+
         except Exception as e:
             logger.error(f"Could not parse geometries from {barrier_path}: {e}")
             return None
@@ -179,6 +243,7 @@ class RasterBaseHook(FetchHook):
         include_reefs=True,
         include_wetlands=True,
         include_breakwaters=True,
+        output_mode="binary",
     ):
         """Generates a boolean numpy mask from the barrier.
         Automatically fetches or generates the geometries on-demand.
@@ -191,7 +256,9 @@ class RasterBaseHook(FetchHook):
         # _get_barrier_geometries fetches the data if not provided
         if not self.barrier_geoms:
             self.barrier_geoms = self._get_barrier_geometries(
-                transform, include_rivers=include_rivers, include_lakes=include_lakes
+                include_rivers=include_rivers,
+                include_lakes=include_lakes,
+                output_mode=output_mode,
             )
 
         # If fetching failed or returned nothing, abort
@@ -281,23 +348,141 @@ class RasterBaseHook(FetchHook):
 
         return x_vals, y_vals
 
+    def _promote_to_multistack(self, src_path, dst_path):
+        """Auto-promotes a 1-band DEM to a 7-band multi-stack for advanced hooks."""
+        with rasterio.open(src_path) as src:
+            profile = src.profile.copy()
+            profile.update(count=7, dtype="float32")
 
-# =============================================================================
-# THE STREAMING HOOK
-# =============================================================================
-class RasterStreamHook(RasterBaseHook):
-    """For localized, chunk-by-chunk operations (Morphology, Slopes, Sieve)."""
+            z = src.read(1)
+            nodata = src.nodata if src.nodata is not None else -9999
+            valid = (z != nodata) & ~np.isnan(z)
 
-    meta_category = "raster-stream"
+            count_arr = np.zeros_like(z, dtype="float32")
+            count_arr[valid] = 1.0
 
-    def __init__(self, buffer=0, chunk_size=None, **kwargs):
-        super().__init__(**kwargs)
-        self.buffer = int(buffer)
-        self.chunk_size = chunk_size
+            weight_arr = np.zeros_like(z, dtype="float32")
+            weight_arr[valid] = 1.0
 
+            unc_arr = np.zeros_like(z, dtype="float32")
+
+            rows, cols = np.indices(z.shape)
+            xs, ys = rasterio.transform.xy(src.transform, rows, cols, offset="center")
+            x_arr = np.array(xs, dtype="float32")
+            y_arr = np.array(ys, dtype="float32")
+
+            x_arr[~valid] = nodata
+            y_arr[~valid] = nodata
+
+            with rasterio.open(dst_path, "w", **profile) as dst:
+                dst.write(z.astype("float32"), 1)
+                dst.write(count_arr, 2)
+                dst.write(weight_arr, 3)
+                dst.write(unc_arr, 4)
+                dst.write(unc_arr, 5)
+                dst.write(x_arr, 6)
+                dst.write(y_arr, 7)
+
+    # --- Implementation Functions ---
+    def process_chunk(self, data, ndv, entry, transform=None, window=None):
+        raise NotImplementedError("Chunk-mode hooks must implement process_chunk()")
+
+    def process_raster(self, src_path, dst_path, entry):
+        raise NotImplementedError("Global-mode hooks must implement process_raster()")
+
+    # --- Routing and Processing ---
+    def run(self, entries):
+        logger.info(
+            f"[{self.name}] Running in '{self.processing_mode}' mode on {len(entries)} entries"
+        )
+        new_entries = []
+
+        local_tmp = os.path.abspath("tmp")
+        os.makedirs(local_tmp, exist_ok=True)
+
+        for mod, entry in entries:
+            self.current_mod = mod
+            stream = entry.get("stream")
+            src_fn = entry.get("dst_fn")
+
+            # Stream Data -> Chunk Hook
+            if stream and self.processing_mode == "chunk":
+                entry["stream"] = self._stream_wrapper(stream, entry)
+                entry["stream_type"] = "raster-stream"
+                new_entries.append((mod, entry))
+                continue
+
+            # Stream Data -> Global Hook (Requires Draining!)
+            if stream and self.processing_mode == "global":
+                logger.debug(
+                    f"[{self.name}] Global hook detected active stream. Draining to disk..."
+                )
+                from globato.hooks.sinks.raster_writer import RasterWrite
+
+                base_name = os.path.basename(src_fn) if src_fn else "streamed_raster"
+                drain_fn = os.path.join(
+                    local_tmp,
+                    f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif",
+                )
+
+                entry["dst_fn"] = drain_fn
+                drainer = RasterWrite(suffix="", inline=False)
+                drainer.run([(mod, entry)])
+                src_fn = entry.get("dst_fn")
+
+            # Ensure we have a valid file at this point
+            if not src_fn or not os.path.exists(src_fn):
+                new_entries.append((mod, entry))
+                continue
+
+            dst_fn = self.output or os.path.join(
+                local_tmp,
+                f"{os.path.splitext(os.path.basename(src_fn))[0]}{self.suffix}.tif",
+            )
+            logger.debug(f"[{self.name}] Processing file: {os.path.basename(src_fn)}")
+
+            if getattr(self, "meta_requires", None) == "multi-stack":
+                with rasterio.open(src_fn) as chk_src:
+                    if chk_src.count < 7:
+                        logger.warning(
+                            f"⚠️ [{self.name}] Requires a 7-band multi-stack but received a {chk_src.count}-band raster."
+                        )
+                        logger.warning(
+                            f"⚠️ Auto-promoting {os.path.basename(src_fn)} to a stack. (Note: Weights will be uniform)."
+                        )
+                        multi_fn = os.path.join(
+                            local_tmp, f"multi_{os.path.basename(src_fn)}"
+                        )
+                        self._promote_to_multistack(src_fn, multi_fn)
+                        src_fn = multi_fn
+
+            try:
+                # File Data -> Chunk Hook
+                if self.processing_mode == "chunk":
+                    success = self._process_file_fallback(src_fn, dst_fn, entry)
+
+                # File Data -> Global Hook
+                else:
+                    success = self.process_raster(src_fn, dst_fn, entry)
+
+                if success:
+                    self._clamp_raster(dst_fn)
+                    self._strip_to_single_band(dst_fn)
+                    entry["src_fn"] = str(src_fn)
+                    entry["dst_fn"] = str(dst_fn)
+                    entry.setdefault("artifacts", {})[self.name] = dst_fn
+
+            except Exception as e:
+                logger.error(f"[{self.name}] Failed on {src_fn}: {e}")
+                raise
+
+            new_entries.append((mod, entry))
+
+        return new_entries
+
+    # --- Generaters & Fallbacks ---
     def _stream_wrapper(self, input_stream, entry):
-        """Pass-through generator for in-memory stream pipelines."""
-
+        """Pass-through generator for in-memory chunk processing."""
         profile = next(input_stream)
         profile = self.modify_profile(profile)
         yield profile
@@ -307,59 +492,8 @@ class RasterStreamHook(RasterBaseHook):
             processed_data = self.process_chunk(data, ndv, entry, transform, buff_win)
             yield window, buff_win, processed_data, ndv, transform
 
-    def process_chunk(self, data, ndv, entry, transform=None, window=None):
-        raise NotImplementedError("Streaming hooks must implement process_chunk()")
-
-    def run(self, entries):
-        logger.info(f"[{self.name}] Running in local mode on {len(entries)} entries")
-        new_entries = []
-
-        local_tmp = os.path.abspath("tmp")
-        os.makedirs(local_tmp, exist_ok=True)
-
-        for mod, entry in entries:
-            # SET CURRENT MOD FOR COASTLINE GENERATION
-            self.current_mod = mod
-
-            if self.has_stream(entry):
-                stream = entry.get("stream")
-                entry["stream"] = self._stream_wrapper(stream, entry)
-                entry["steam_type"] = "raster-stream"
-                new_entries.append((mod, entry))
-                continue
-
-            src_fn = entry.get("dst_fn")
-            if not src_fn or not os.path.exists(src_fn):
-                new_entries.append((mod, entry))
-                continue
-
-            # dst_fn = self.output or f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
-            # dst_fn = f"{os.path.splitext(src_fn)[0]}{self.suffix}.tif"
-
-            if self.output:
-                dst_fn = self.output
-            else:
-                base_name = os.path.splitext(os.path.basename(src_fn))[0]
-                dst_fn = os.path.join(local_tmp, f"{base_name}{self.suffix}.tif")
-
-            logger.debug(f"Running local {self.name} on {os.path.basename(src_fn)}")
-            try:
-                success = self._process_file_fallback(src_fn, dst_fn, entry)
-                if success:
-                    self._clamp_raster(dst_fn)
-                    self._strip_to_single_band(dst_fn)
-
-                    entry["src_fn"] = src_fn
-                    entry["dst_fn"] = dst_fn
-                    entry.setdefault("artifacts", {})[self.name] = dst_fn
-            except Exception as e:
-                logger.error(f"StreamHook {self.name} failed on {src_fn}: {e}")
-
-            new_entries.append((mod, entry))
-
-        return new_entries
-
     def _process_file_fallback(self, src_path, dst_path, entry):
+        """Applies chunked processing to a file block-by-block."""
         with rasterio.open(src_path) as src:
             self.barrier_geoms = self._get_barrier_geometries(src.transform)
             profile = src.profile.copy()
@@ -400,79 +534,16 @@ class RasterStreamHook(RasterBaseHook):
 
         return True
 
-    process_raster = _process_file_fallback
+
+class RasterGlobalHook(RasterHook):
+    processing_mode = "global"
 
 
-# =============================================================================
-# THE GLOBAL HOOK
-# =============================================================================
-class RasterGlobalHook(RasterBaseHook):
-    """For operations requiring full spatial context (Splines, FillNodata, Orchestrators)."""
-
-    meta_category = "raster-global"
-
-    def process_raster(self, src_path, dst_path, entry):
-        raise NotImplementedError("Global hooks must implement process_raster()")
-
-    def run(self, entries):
-        logger.info(f"[{self.name}] Running in global mode on {len(entries)} entries")
-        new_entries = []
-
-        local_tmp = os.path.abspath("tmp")
-        os.makedirs(local_tmp, exist_ok=True)
-
-        for mod, entry in entries:
-            # SET CURRENT MOD FOR COASTLINE GENERATION
-            self.current_mod = mod
-            stream = entry.get("stream")
-            src_fn = entry.get("dst_fn")
-
-            if stream:
-                logger.debug(
-                    f"[{self.name}] Global hook detected active stream. Draining to disk..."
-                )
-                from globato.hooks.sinks.raster_writer import RasterWrite
-
-                base_name = os.path.basename(src_fn)
-                drain_fn = os.path.join(
-                    local_tmp,
-                    f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif",
-                )
-                entry["dst_fn"] = drain_fn
-                drainer = RasterWrite(suffix="", inline=False)
-                drainer.run([(mod, entry)])
-                src_fn = entry.get("dst_fn")
-
-            if not src_fn or not os.path.exists(src_fn):
-                new_entries.append((mod, entry))
-                continue
-
-            if self.output:
-                dst_fn = self.output
-            else:
-                base_name = os.path.splitext(os.path.basename(src_fn))[0]
-                dst_fn = os.path.join(local_tmp, f"{base_name}{self.suffix}.tif")
-
-            logger.debug(f"Running global {self.name} on {os.path.basename(src_fn)}")
-            try:
-                success = self.process_raster(src_fn, dst_fn, entry)
-                if success:
-                    self._clamp_raster(dst_fn)
-                    self._strip_to_single_band(dst_fn)
-
-                    entry["src_fn"] = str(src_fn)
-                    entry["dst_fn"] = str(dst_fn)
-                    entry.setdefault("artifacts", {})[self.name] = dst_fn
-            except Exception as e:
-                logger.error(f'Global hook "{self.name}" failed on {src_fn}: {e}')
-                raise
-
-            new_entries.append((mod, entry))
-
-        return new_entries
+class RasterStreamHook(RasterHook):
+    processing_mode = "chunk"
 
 
-class RasterCOG(RasterGlobalHook):
+class RasterCOG(RasterHook):
     """Converts a standard GeoTIFF into a strict Cloud-Optimized GeoTIFF (COG).
     Builds overviews (2, 4, 8, 16, 32) and aligns the byte structure for HTTP streaming.
     """
@@ -481,6 +552,7 @@ class RasterCOG(RasterGlobalHook):
     default_suffix = "_cog"
     meta_desc = "Transforms a stadard GeoTiff to a Cloud-Optimized GeoTiff (COG)."
     meta_aliases = ["format_cog"]
+    processing_mode = "global"
 
     def __init__(self, overviews=[2, 4, 8, 16, 32], resampling="average", **kwargs):
         super().__init__(**kwargs)

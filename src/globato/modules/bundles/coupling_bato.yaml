@@ -119,3 +119,20 @@ modules:
     args:
       dst_srs: EPSG:4269+5703
   - name: outlierz
+# - module: osm_landmask
+#   args:
+#     include_rivers: true
+#     include_reefs: true
+#     include_lakes: false
+#     include_wetlands: true
+#     include_breakwaters: true
+#   hooks:
+#   - name: set_datatype
+#     args:
+#       data_type: breakline
+#   # - name: stream_init
+#   #   args:
+#   #     step: 3s
+#   - name: stream_reproject
+#     args:
+#       dst_srs: EPSG:4269+5703

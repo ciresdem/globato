@@ -16,6 +16,7 @@ import shutil
 import logging
 import rasterio
 from fetchez.hooks import FetchHook
+from fetchez.utils import str2bool
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class RasterWrite(FetchHook):
         self.output_path = output_path
         self.suffix = suffix
         self.artifact_id = artifact_id or self.name
-        self.inline = str(inline).lower() in ["true", "1", "t", "yes"]
+        self.inline = str2bool(inline)
 
     def _write_stream(self, stream, dst_fn):
         """Generator that intercepts the stream, writes to disk, and yields onward."""
