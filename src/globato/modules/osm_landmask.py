@@ -51,7 +51,7 @@ HEADERS = {
     include_reefs="If True, returns reefs (natural=reef) as land.",
     include_wetlands="If True, carves out tidal flats, salt marshes, and estuaries.",
     include_breakwaters="If True, returns man-made breakwaters, piers, and groynes as land.",
-    output_mode="binary (landmask) or topology (all classes included in output).",
+    output_mode="binary (landmask) or topology (all classes included in output, includes all options).",
     min_area_sqm="Minimum area in square meters for a waterbody to be carved out.",
 )
 class OSMLandmaskModule(FetchModule):
@@ -96,8 +96,16 @@ class OSMLandmaskModule(FetchModule):
         self.include_estuaries = str2bool(str(include_estuaries))
 
         self.min_area_sqm = float(min_area_sqm)
-        self.output_mode = output_mode
+        self.output_mode = str(output_mode).lower()
         self.headers = HEADERS
+
+        if self.output_mode == "topology":
+            self.include_rivers = True
+            self.include_lakes = True
+            self.include_breakwaters = True
+            self.include_estuaries = True
+            self.include_reefs = True
+            self.include_wetlands = True
 
     def _generate_cache_key(self):
         region_str = self.wgs_region.format("fn") if self.wgs_region else "global"
