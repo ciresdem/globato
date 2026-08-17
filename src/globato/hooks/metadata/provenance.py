@@ -14,7 +14,6 @@ Generate bitmap data mask
 import os
 import logging
 import threading
-import numpy as np
 import rasterio
 from rasterio.windows import Window
 
@@ -346,7 +345,6 @@ class SourceMasks(FetchHook):
                 }
 
                 with rasterio.open(tif_path, "w", **self.profile) as dst:
-                    dst.write(np.zeros((1, self.ycount, self.xcount), dtype="uint8"))
                     dst.set_band_description(1, base)
 
                     if clean_tags:
