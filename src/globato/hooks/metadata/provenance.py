@@ -14,7 +14,6 @@ Generate bitmap data mask
 import os
 import logging
 import threading
-import numpy as np
 import rasterio
 from rasterio.windows import Window
 
