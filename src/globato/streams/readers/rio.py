@@ -13,6 +13,7 @@ Rasterio data parsing
 
 import logging
 import numpy as np
+
 import rasterio
 from rasterio.windows import Window, from_bounds
 from rasterio.warp import transform_bounds
@@ -33,7 +34,7 @@ class RasterioReader(BaseGlobatoReader):
     meta_category = "point-stream"
     meta_dtype = "rio-raster"
     meta_desc = "Read raster data through rasterio into a point stream"
-    meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
+    meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2", "img"]
 
     def __init__(
         self,

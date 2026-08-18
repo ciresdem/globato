@@ -401,7 +401,7 @@ class MultiStackHook(FetchHook):
     name = "multi_stack"
     meta_stage = "stream"
     meta_category = "stream-sink"
-    meta_desc = "Mult-weighted mixed weighted mean stacking."
+    meta_desc = "Multi-weighted mixed weighted mean stacking."
     meta_aliases = ["multi-stack"]
 
     def __init__(
