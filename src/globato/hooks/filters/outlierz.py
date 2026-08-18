@@ -26,6 +26,7 @@ class OutlierZ(GlobatoFilter):
 
     name = "outlierz"
     meta_desc = "filter outliers based on percentile"
+    meta_category = "stream-filter"
 
     def __init__(self, threshold=3.0, **kwargs):
         super().__init__(**kwargs)

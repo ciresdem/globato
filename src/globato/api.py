@@ -80,7 +80,7 @@ def build(
 ) -> Generator:
     """Build a Digital Elevation Model recipe and execute it programmatically."""
 
-    HookRegistry.load_all()
+    HookRegistry.load_fast()
 
     if isinstance(sources, str):
         sources = [sources]

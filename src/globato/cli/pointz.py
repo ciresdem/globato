@@ -95,7 +95,7 @@ def dump(
 ):
     """Process and dump elevation data."""
 
-    HookRegistry.load_all()
+    HookRegistry.load_fast()
 
     if not sources:
         click.secho(
@@ -155,7 +155,7 @@ def dump(
 def pointz_list_filters():
     """List all available point cloud filters."""
 
-    HookRegistry.load_all()
+    HookRegistry.load_fast()
     registry = HookRegistry.get_registry()
 
     click.secho("\n🌪️  Available `point-stream` Filters:\n", fg="cyan", bold=True)
@@ -176,8 +176,8 @@ def pointz_info(source, inf_format):
     """Scan a point cloud and return its spatial statistics."""
     from globato.hooks.metadata.globato_inf import generate_stream_inf
 
-    ReaderRegistry.load_all()
-    ProfileRegistry.load_all()
+    ReaderRegistry.load_fast()
+    ProfileRegistry.load_fast()
 
     term = source.split(".")[-1]
     reader = ReaderRegistry.get_reader(source, term)
@@ -218,8 +218,8 @@ def pointz_region(source):
 
     from globato.hooks.metadata.globato_inf import generate_stream_inf
 
-    ReaderRegistry.load_all()
-    ProfileRegistry.load_all()
+    ReaderRegistry.load_fast()
+    ProfileRegistry.load_fast()
 
     term = source.split(".")[-1]
     reader = ReaderRegistry.get_reader(source, term)

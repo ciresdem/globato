@@ -234,7 +234,7 @@ class GlobNOSXYZ(BaseHydroNOS):
     meta_desc = "NOAA NOS Hydrographic Surveys (XYZ soundings)"
 
     def __init__(self, weight=0.35, **kwargs):
-        kwargs.pop("datatype")
+        kwargs.pop("datatype", None)
         super().__init__(datatype="xyz", **kwargs)
 
         self.weight = weight
