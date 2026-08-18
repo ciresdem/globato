@@ -154,8 +154,8 @@ def add_field_to_recarray(rec, name, dtype, default_val):
 def globatize_modules(modules, shared_cache=None, crs=None, res=None):
     cache_dir = shared_cache
 
-    ModuleRegistry.load_all()
-    BundleRegistry.load_all()
+    ModuleRegistry.load_fast()
+    BundleRegistry.load_fast()
 
     # Expand the Modules & Bundles
     modules = Recipe({})._expand_modules(modules)

@@ -145,7 +145,7 @@ def wafflez_run(
 ):
     """Execute a YAML recipe. Supports single runs, batch execution, and config overrides."""
 
-    RecipeRegistry.load_all()
+    RecipeRegistry.load_fast()
 
     base_config = _load_yaml(target)
     if not base_config:
@@ -440,8 +440,8 @@ def _list_sources(ctx, param, value):
 
     from fetchez.registry import ModuleRegistry
 
-    ModuleRegistry.load_all()
-    BundleRegistry.load_all()
+    ModuleRegistry.load_fast()
+    BundleRegistry.load_fast()
     registry = ModuleRegistry.get_registry()
     registry.update(BundleRegistry.get_registry())
 
@@ -490,7 +490,7 @@ def _info_source(ctx, param, value):
 
     from fetchez.registry import ModuleRegistry
 
-    ModuleRegistry.load_all()
+    ModuleRegistry.load_fast()
     registry = ModuleRegistry.get_registry()
 
     source_name = value
@@ -689,7 +689,7 @@ def wafflez_build(
 
     from fetchez.registry import HookRegistry
 
-    HookRegistry.load_all()
+    HookRegistry.load_fast()
 
     if not sources:
         click.secho(
