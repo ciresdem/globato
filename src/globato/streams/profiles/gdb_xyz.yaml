@@ -2,4 +2,4 @@ name: gdb-xyz
 description: Force GeoDatabase through fiona
 stream-type: "point-stream"
 reader:
-  name: "fiona-point-reader"
+  name: "pyogrio-point-reader"

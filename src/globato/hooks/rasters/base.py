@@ -36,12 +36,10 @@ class RasterHook(FetchHook):
     - "global": The hook implements `process_raster(src_path, dst_path, ...)` and operates on full files.
     """
 
-    name = "raster-base-hook"
     meta_stage = "collection"
     default_suffix = "_processed"
     meta_desc = "Process a raster."
     processing_mode = "chunk"
-    meta_abstract = True
 
     def __init__(
         self,
@@ -547,15 +545,11 @@ class RasterHook(FetchHook):
 
 
 class RasterGlobalHook(RasterHook):
-    name = "raster-global-hook"
     processing_mode = "global"
-    meta_abstract = True
 
 
 class RasterStreamHook(RasterHook):
-    name = "raster-stream-hook"
     processing_mode = "chunk"
-    meta_abstract = True
 
 
 class RasterCOG(RasterHook):

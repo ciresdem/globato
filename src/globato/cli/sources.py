@@ -14,9 +14,10 @@ Discoverability and documentation for globato dem sources.
 import sys
 import click
 
+from fetchez.api import search_modules, list_modules, search_bundles, list_bundles
 from fetchez.recipe import Recipe
-from fetchez.registry import ModuleRegistry, BundleRegistry
-from fetchez.utils import FetchezMainGroup, FetchezMainCommand
+from fetchez.registry import ModuleRegistry
+from fetchez.utils import truncate_string, FetchezMainGroup, FetchezMainCommand
 
 
 @click.group(cls=FetchezMainGroup, name="sources", fetchez_commands=["list", "info"])
@@ -35,11 +36,8 @@ def sources_group():
 def sources_list(search):
     """List curated data sources and exit."""
 
-    ModuleRegistry.load_all()
-    BundleRegistry.load_all()
-
-    registry = ModuleRegistry.get_registry()
-    registry.update(BundleRegistry.get_registry())
+    registry = search_modules(search)
+    registry.update(search_bundles(search))
 
     click.secho("\nCurated Globato Data Sources & Bundles:", fg="cyan", bold=True)
     click.echo("=" * 60)
@@ -56,14 +54,15 @@ def sources_list(search):
         #     or "bundle" in tags
         # )
         is_globato = "glob-stream" in tags
-
         if is_globato and name not in meta.get("aliases", []):
             desc = (
                 meta.get("description")
                 or meta.get("desc", "No Description provided").strip().split("\n")[0]
-            )
+            ).strip()
+
+            truncated_desc = truncate_string(desc, 40)
             click.echo(
-                f"  {click.style(name, bold=True, fg='yellow'):<35} : {desc[:45]}..."
+                f"  {click.style(name, bold=True, fg='yellow'):<35} : {truncated_desc}"
             )
             count += 1
 
@@ -83,13 +82,8 @@ def sources_list(search):
 def sources_info(name):
     """inspect a specific data source and exit."""
 
-    from fetchez.registry import ModuleRegistry
-
-    ModuleRegistry.load_all()
-    registry = ModuleRegistry.get_registry()
-
-    BundleRegistry.load_all()
-    bundle_registry = BundleRegistry.get_registry()
+    registry = list_modules()
+    bundle_registry = list_bundles()
 
     source_name = name
     is_bundle = source_name in bundle_registry

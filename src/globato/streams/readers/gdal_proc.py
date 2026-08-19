@@ -35,9 +35,10 @@ class GDALReader(BaseGlobatoReader):
 
     name = "gdal-point-reader"
     meta_category = "point-stream"
-    meta_dtype = "gdal-raster"
+    meta_dtype = ["gdal-raster", "gdal"]
     meta_desc = "Read raster data through gdal into a point stream"
-    meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
+    # meta_extensions = ["tif", "tiff", "vrt", "dt0", "dt1", "dt2"]
+    meta_extnesions = []
 
     def __init__(
         self,

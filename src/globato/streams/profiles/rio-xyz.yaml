@@ -1,0 +1,5 @@
+name: rio
+description: Rasterio Raster Reader
+stream-type: point-stream
+reader:
+  name: rasterio-point-reader
