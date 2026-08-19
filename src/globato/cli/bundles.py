@@ -37,7 +37,7 @@ def bundle_group():
 def bundle_list():
     """List all available curated Data Bundles."""
 
-    BundleRegistry.load_fast()
+    BundleRegistry.load_all()
     registry = BundleRegistry.get_registry()
 
     click.secho("\n📦 Available Curated Data Bundles:", fg="cyan", bold=True)
@@ -60,7 +60,7 @@ def bundle_list():
 def macro_copy(target, outdir):
     """Copy a macro to your local environment for editing."""
 
-    BundleRegistry.load_fast()
+    BundleRegistry.load_all()
     bundle_meta = BundleRegistry.get_yaml(target)
 
     if not bundle_meta:

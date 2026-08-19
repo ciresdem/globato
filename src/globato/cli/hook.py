@@ -43,7 +43,7 @@ def hook_group():
 def hook_list(search):
     """List all available processing hooks grouped by category."""
 
-    HookRegistry.load_fast()
+    HookRegistry.load_all()
     registry = HookRegistry.get_registry()
 
     grouped_hooks = {}
@@ -85,7 +85,7 @@ def hook_list(search):
 def hook_info(name):
     """Show arguments and YAML recipe examples for a specific hook."""
 
-    HookRegistry.load_fast()
+    HookRegistry.load_all()
     hook_cls = HookRegistry.get_class(name)
     meta = HookRegistry.get_info(name)
 

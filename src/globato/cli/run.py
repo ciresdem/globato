@@ -102,7 +102,7 @@ def _absolutize_local_sources(config, base_dir):
 def run_cmd(target, region, increment, t_srs, outname, outdir, overwrite, shared_cache):
     """Execute a Globato recipe."""
 
-    RecipeRegistry.load_fast()
+    RecipeRegistry.load_all()
 
     base_config = _load_yaml(target)
     if not base_config:

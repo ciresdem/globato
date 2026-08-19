@@ -134,7 +134,7 @@ class BinaryCudemStepDown(RasterGlobalHook):
 
         from fetchez.registry import HookRegistry
 
-        HookRegistry.load_fast()
+        HookRegistry.load_all()
 
         algo_name = parsed_algo_hook["name"]
         algo_args = parsed_algo_hook.get("args", {})

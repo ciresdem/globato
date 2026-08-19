@@ -146,8 +146,8 @@ class DatalistReader(BaseGlobatoReader):
         # from fetchez.hooks.stream_init import DataStream
         from fetchez.registry import ReaderRegistry, ProfileRegistry
 
-        ReaderRegistry.load_fast()
-        ProfileRegistry.load_fast()
+        ReaderRegistry.load_all()
+        ProfileRegistry.load_all()
 
         entries = self._get_entries()
         logger.info(

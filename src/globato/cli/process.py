@@ -59,7 +59,7 @@ def process_cmd(
     pipes them through dynamic hooks, and dumps the result.
     """
 
-    HookRegistry.load_fast()
+    HookRegistry.load_all()
 
     if not sources:
         click.secho("Error: You must provide at least one data source.", fg="red")

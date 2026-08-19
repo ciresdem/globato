@@ -199,7 +199,7 @@ def dem_list_sources():
 
     from fetchez.registry import ModuleRegistry
 
-    ModuleRegistry.load_fast()
+    ModuleRegistry.load_all()
 
     click.secho("\nCurated Globato Data Sources:", fg="cyan", bold=True)
     click.echo("=" * 60)
@@ -239,7 +239,7 @@ def dem_info_source(source_name):
 
     from fetchez.registry import ModuleRegistry
 
-    ModuleRegistry.load_fast()
+    ModuleRegistry.load_all()
 
     registry = ModuleRegistry.get_registry()
     if source_name not in registry:

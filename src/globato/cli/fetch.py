@@ -30,7 +30,7 @@ def fetch_group():
 def fetch_list(search):
     """List all curated Globato DEM data modules."""
 
-    ModuleRegistry.load_fast()
+    ModuleRegistry.load_all()
     registry = ModuleRegistry.get_registry()
 
     click.secho("\nAvailable Curated Globato Sources:", fg="cyan", bold=True)
@@ -83,7 +83,7 @@ def fetch_run(module_name, region, outdir, extra_args):
     Example: globato fetch run glob_fabdem -R loc:"Denver, CO" -O ./denver_data
     """
 
-    ModuleRegistry.load_fast()
+    ModuleRegistry.load_all()
     mod_cls = ModuleRegistry.get_class(module_name)
 
     if not mod_cls:

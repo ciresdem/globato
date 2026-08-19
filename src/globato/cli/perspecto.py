@@ -307,8 +307,8 @@ def perspecto_points(src, filters, region, is_3d, outliers, out):
         click.secho(f"Error importing PointCloudViz: {e}", fg="red")
         sys.exit(1)
 
-    HookRegistry.load_fast()
-    ReaderRegistry.load_fast()
+    HookRegistry.load_all()
+    ReaderRegistry.load_all()
     active_filters = []
     parsed_region = Region.from_string(region) if region else None
 

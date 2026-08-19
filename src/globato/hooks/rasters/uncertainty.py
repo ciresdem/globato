@@ -106,7 +106,7 @@ class UncertaintySurface(RasterGlobalHook):
     def _run_split_sample(self, stack_data, valid_mask, nodata, profile):
         """split-sample uncertainty calculations."""
 
-        HookRegistry.load_fast()
+        HookRegistry.load_all()
         interp_cls = HookRegistry.get_class(self.algo)
         if not interp_cls:
             logger.error(f"Cannot run split-sample: Algorithm '{self.algo}' not found.")
