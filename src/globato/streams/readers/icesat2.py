@@ -1185,6 +1185,10 @@ class ATL03Reader(IceSat2Reader):
                 "ph_index_within_seg": ph_index_counters,
             }
         )
+        # Some downstream packages may break when trying to write
+        # the laser column with xarray as an object, so we
+        # explicitly cast it to S4 here.
+        df["laser"] = df["laser"].astype("|S4")
 
         seg_starts = np.concatenate(([0], np.cumsum(seg_ph_cnt)[:-1]))
         seg_idx_dict = dict(zip(seg_id, seg_starts))
