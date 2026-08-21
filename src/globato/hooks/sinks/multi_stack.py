@@ -154,8 +154,11 @@ class MultiStackAccumulator:
             "crs": CRS.from_string(self.crs) if self.crs else None,
             "transform": self.transform,
             "tiled": True,
-            # "compress": "lzw",
-            # "predictor": 2,
+            "blockxsize": 256,
+            "blockysize": 256,
+            "compress": "lzw",
+            "predictor": 2,
+            "interleave": "band",
             "bigtiff": "YES",
         }
 

@@ -183,9 +183,9 @@ def build(
         args["steps"] = len(weight_list)
         if "blend_dists" not in args and blend_list:
             args["blend_dists"] = "/".join(map(str, blend_list))
-        if "barrier" not in args:
-            args["barrier"] = "osm"
-            # args["bathy_max_z"] = "ocean:-0.01,river:None,lake:None,wetland:0,estuary:0"
+        # if "barrier" not in args:
+        args["barrier"] = "osm"
+        args["bathy_max_z"] = "ocean:-0.01,river:0,lake:None,wetland:0,estuary:0"
 
     algo_hook.setdefault("args", {})["output"] = f"{batch_outname}.tif"
     global_hooks.append(algo_hook)

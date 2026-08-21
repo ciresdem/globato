@@ -73,6 +73,8 @@ class RasterHook(FetchHook):
         else:
             self.chunk_size = chunk_size
 
+        self.local_tmp = os.path.abspath("tmp")
+
     # --- Utilities ---
     def modify_profile(self, profile):
         """Override this to change dtype, count, or nodata for the output raster."""
@@ -406,8 +408,8 @@ class RasterHook(FetchHook):
         )
         new_entries = []
 
-        local_tmp = os.path.abspath("tmp")
-        os.makedirs(local_tmp, exist_ok=True)
+        self.local_tmp = os.path.abspath("tmp")
+        os.makedirs(self.local_tmp, exist_ok=True)
 
         for mod, entry in entries:
             self.current_mod = mod
@@ -430,7 +432,7 @@ class RasterHook(FetchHook):
 
                 base_name = os.path.basename(src_fn) if src_fn else "streamed_raster"
                 drain_fn = os.path.join(
-                    local_tmp,
+                    self.local_tmp,
                     f"{os.path.splitext(base_name)[0]}_drained_{self.name}.tif",
                 )
 
@@ -445,7 +447,7 @@ class RasterHook(FetchHook):
                 continue
 
             dst_fn = self.output or os.path.join(
-                local_tmp,
+                self.local_tmp,
                 f"{os.path.splitext(os.path.basename(src_fn))[0]}{self.suffix}.tif",
             )
             logger.debug(f"[{self.name}] Processing file: {os.path.basename(src_fn)}")
@@ -460,7 +462,7 @@ class RasterHook(FetchHook):
                             f"⚠️ Auto-promoting {os.path.basename(src_fn)} to a stack. (Note: Weights will be uniform)."
                         )
                         multi_fn = os.path.join(
-                            local_tmp, f"multi_{os.path.basename(src_fn)}"
+                            self.local_tmp, f"multi_{os.path.basename(src_fn)}"
                         )
                         self._promote_to_multistack(src_fn, multi_fn)
                         src_fn = multi_fn

@@ -27,7 +27,7 @@ class RasterFootprintFill(RasterStreamHook):
     Requires a chunk buffer >= max_gap to prevent seamlines.
     """
 
-    name = "raster-xfootprint-fill"
+    name = "raster-footprint-fill"
     meta_stage = "stream"
     meta_category = "raster-stream"
     meta_aliases = ["raster_footprint_fill"]
