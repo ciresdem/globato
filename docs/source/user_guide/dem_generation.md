@@ -6,9 +6,19 @@ Globato produces seamless, high-resolution Digital Elevation Models (DEMs) from 
 1. **The Workflow Execution Lifecycle:**
 When Globato executes a DEM recipe, the data stream passes through seven distinct processing stages:
 
-	```
-	[1. Discovery] ──► [2. Caching] ──► [3. Filtering] ──► [4. Transform]
-    [7. Finalize]  ◄── [6. Interpolate] ◄── [5. Accumulate] ◄────┘
+	```mermaid
+	graph TD
+		A[1. Discovery] --> B[2. Caching]
+		B --> C[3. Filtering]
+		C --> D[4. Transform]
+		D --> E[5. Accumulate: multi_stack]
+		E --> F[6. Interpolate: ms_binary_cudem]
+		F -->|Step-Up & Blend| E
+		F --> G[7. Finalize]
+
+		classDef default fill:#1e1e1e,stroke:#0074D9,stroke-width:2px,color:#d4d4d4;
+		classDef core fill:#0074D9,stroke:#ffffff,stroke-width:2px,color:#ffffff,font-weight:bold;
+		class E,F core;
 	```
 
 	1. **Data Discovery & Access:** Fetchez queries remote APIs (NASA CMR, NOAA, TNM) or crawls local file systems (`local_fs`) to compile the initial data manifest.
@@ -27,54 +37,45 @@ When Globato executes a DEM recipe, the data stream passes through seven distinc
 2. **The Core Engine:** `multi_stack` & `ms_binary_cudem`
 The core gridding pipeline forms an interdependent loop: ms_binary_cudem steps down to coarser resolutions during gap-filling, calling multi_stack internally to re-bin data while preserving all statistical weights.
 
-                        ┌──────────────────────────────────────────┐
-                        │               Point Stream               │
-                        └────────────────────┬─────────────────────┘
-                                             │
-                                             ▼
-		┌─────────────────────────────────────────────────────────────────────────────┐
-		│ multi_stack (Accumulation)                                                  │
-		│  • Stacks points into target resolution cells.                              │
-		│  • Higher-weight tiers supersede lower weights.                             │
-		│  • Identical weights compute weighted statistical means.                    │
-		│  • Streams disk state via .sums.tif (RAM efficient).                        │
-		└────────────────────────────────────┬────────────────────────────────────────┘
-                                             │
-                        ┌──────────────────────────────────────────┐
-                        │             7-Band Stack Grid            │
-                        └────────────────────┬─────────────────────┘
-                                             │
-                                             ▼
-		┌─────────────────────────────────────────────────────────────────────────────┐
-		│ ms_binary_cudem (Morphological Multi-Resolution Interpolation)              │
-		│  1. Decimates stack to lowest resolution tier.                              │
-		│  2. Interpolates base surface at coarse scale.                              │
-		│  3. Steps up iteratively toward full resolution, interpolating voids.       │
-		│  4. Blends & supersedes lower-res output with higher-weighted native data.  │
-		└────────────────────────────────────┬────────────────────────────────────────┘
-                                             │
-                                             ▼
-                        ┌──────────────────────────────────────────┐
-                        │          Final Continuous DEM            │
-                        └──────────────────────────────────────────┘
+	```mermaid
+	graph TD
+		classDef core fill:#0074D9,stroke:#ffffff,stroke-width:2px,color:#ffffff,font-weight:bold;
+		classDef process fill:#f8f9fa,stroke:#cccccc,stroke-width:1px,color:#333333;
+		classDef output fill:#2ECC40,stroke:#ffffff,stroke-width:2px,color:#ffffff,font-weight:bold;
+
+		Stream[Raw Point Streams] --> Accumulate
+
+		subgraph The Core Engine
+			Accumulate[multi_stack]:::core <-->|Decimate & Re-bin| Interpolate[ms_binary_cudem]:::core
+			Interpolate -->|1. Build Coarse Base| InterpStep[Interpolate Voids]:::process
+			InterpStep -->|2. Step-Up to High Res| BlendStep[Blend & Supersede]:::process
+			BlendStep -->|3. Loop Until Native Res| Interpolate
+		end
+
+		BlendStep -->|Final Pass| DEM[Seamless Continuous DEM]:::output
+	```
 
 * **multi_stack:** Statistical Binning & Accumulation
    The multi_stack hook aggregates points directly from the data streams into pixel bins at your target resolution. It performs no spatial interpolation.
 
 	* **Weight-Based Superseding:** Data are grouped by assigned weights. Data in higher weight tiers completely overwrite data from lower weight tiers. Within the same weight tier, multiple observations are merged using a weighted mean.
-* Low Memory Footprint: It maintains a running .sums.tif file on local storage to track cell state incrementally. This allows Globato to process billions of points without exceeding system RAM.
+
+	* **Low Memory Footprint:** It maintains a running .sums.tif file on local storage to track cell state incrementally. This allows Globato to process billions of points without exceeding system RAM.
 
 	* **The 7-Band Output:** It generates a multi-band statistical grid summarizing the accumulated point stream:
 
-| Band | Channel Name       | Description                                       |
-|:----:|:-------------------|:--------------------------------------------------|
-| 1    | z                  | Weighted-average elevation                        |
-| 2    | count              | Number of accumulated observations                |
-| 3    | weight             | Data weight / priority value                      |
-| 4    | uncertainty        | Accumulated measurement uncertainty               |
-| 5    | source_uncertainty | Native uncertainty inherent to the source dataset |
-| 6    | x                  | Weighted-average X coordinate                     |
-| 7    | y                  | Weighted-average Y coordinate                     |
+
+	| Band | Channel Name       | Description                                       |
+	|:----:|:-------------------|:--------------------------------------------------|
+	| 1    | z                  | Weighted-average elevation                        |
+	| 2    | count              | Number of accumulated observations                |
+	| 3    | weight             | Data weight / priority value                      |
+	| 4    | uncertainty        | Accumulated measurement uncertainty               |
+	| 5    | source_uncertainty | Native uncertainty inherent to the source dataset |
+	| 6    | x                  | Weighted-average X coordinate                     |
+	| 7    | y                  | Weighted-average Y coordinate                     |
+
+---
 
 * **ms_binary_cudem:** Multi-Resolution Interpolation
 The `ms_binary_cudem` hook is a Morphological Multi-Resolution Step-Down gridding tool. It fills data voids without smoothing or degrading dense, high-resolution features (like coastlines or structures).
@@ -84,6 +85,8 @@ The `ms_binary_cudem` hook is a Morphological Multi-Resolution Step-Down griddin
 		1. It builds an interpolated base surface at the coarsest scale.
 		2. It iterates back up toward full resolution, interpolating voids surrounding each weight group at each step.
 		3. Higher-weighted data tiers blend over and supersede lower-resolution tiers and interpolated regions.
+	* **Topological Landmasks:** Integrates OpenStreetMap topology to apply multi-class interpolation limits and define physical boundaries in the ocean for breakwaters and reefs.
+	* **Morphological Caps:** Stretches taut, distance-bounded linear caps across near-shore voids to prevent artificial interpolation bulges while enforcing natural coastal drop-offs.
 
 	* **Result:** A continuous elevation surface that preserves high resolution detail where data exist and gracefully fills voids where data are missing.
 
