@@ -7,6 +7,7 @@ Welcome to the Globato user guide! Here you will find everything you need to kno
 
 installation
 quickstart
+cli_usage
 dem_generation
 
 ```
