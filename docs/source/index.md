@@ -24,8 +24,11 @@ Globato is part of the [Continuous DEMs Project](https://continuous-dems.readthe
 If you are new to Globato, the best place to start is the Quickstart guide, which will take you from installation to generating your first DEM in under 5 minutes.
 
 * **[Quickstart: From Zero to DEM](user_guide/quickstart.md)**
-* **Anatomy of a Recipe**
-* **CLI Syntax Cheatsheet**
+* **[CLI Syntax](user_guide/cli_usage.md)**
+
+## Learn More
+
+Interested in how `globato` generates multi-resolution DEMs? Read the [DEM Generation](user_guide/dem_generation.md) guide to learn about multi-stacking, binary-cudem multi-resolution interpolation and more.
 
 ---
 
