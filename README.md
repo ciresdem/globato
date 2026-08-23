@@ -1,6 +1,6 @@
 <p align="center">
 	<a href="https://github.com/continuous-dems">
-		<img src="https://raw.githubusercontent.com/continuous-dems/globato/refs/heads/main/docs/source/_static/continuous_dems_logo_mini_inf.svg" height="80" alt="Continuous DEMs Logo">
+		<img src="https://raw.githubusercontent.com/continuous-dems/globato/refs/heads/main/docs/source/_static/globato-logo.svg" height="80" alt="Continuous DEMs Logo">
 	</a>
 </p>
 <h1 align="center">GloBaTo</h1>
