@@ -83,7 +83,7 @@ modules:
       - name: filter_field
         args:
           field: confidence
-          min_val: 3
+          min_val: 4
       - name: dynamic-weight
         args:
           source_field: confidence

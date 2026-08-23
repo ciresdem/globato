@@ -70,6 +70,7 @@ hooks:
       steps: 2
       blend_dists: 2/10/02
       barrier: osm
+      bathy_max_z: "ocean:-0.01,river:0,lake:None,wetland:0,estuary:0"
       # algos: "interp_gmt:tension=.75"
       # algos: interp_rbf
       algos: raster_fill:max_distance=6/raster_fill:max_distance=12/interp_gmt:tension=.75
@@ -83,14 +84,6 @@ hooks:
       tags: "Project=Coastal Relief Model,Version=6,Author=NCEI"
       bands: "Elevation (meters)"
 
-  # - name: raster_cut
-  #   args:
-  #     region: batch_region
-
-  # - name: raster_crop
-  #   args:
-  #     output: "%name%_%batch_name%_final.tif"
-
   - name: format_cog
     args:
       overviews: 2/4/8/16/32
@@ -100,13 +93,6 @@ hooks:
     args:
       output: "%name%_%batch_name%_hs.tif"
       cmap: coastal_relief
-
-    # - name: copy_artifact
-    #   args:
-    #     target_dir: /home/ncei/Projects/globato/crm/vol6/crm_vol6/crm_out
-    #     match:
-    #       - "%name%_%batch_name%_final.tif"
-    #       - "%name%_%batch_name%_hs.tif"
 
   - name: cleanup_tmp
     args: {"target_dir": "tmp"}

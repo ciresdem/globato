@@ -9,7 +9,13 @@ readme = "README.md"
 license = { file = "LICENSE" }
 dynamic = ["version"]
 requires-python = ">=3.12"
-authors = [{ name = "Matthew Love", email = "matthew.love@colorado.edu" }]
+authors = [
+    {name = "Matthew Love", email = "matthew.love@colorado.edu"},
+    {name = "Christopher Amante", email = "christopher.amante@colorado.edu"},
+    {name = "Elliot Lim", email = "elliot.lim@colorado.edu"},
+    {name = "Michael MacFerrin", email = "michael.macferrin@colorado.edu"},
+    {name = "Matt Fisher", email = "mfisher87@gmail.com"},
+]
 maintainers = [
     {name = "Matthew Love", email = "matthew.love@colorado.edu"},
 ]
@@ -64,7 +70,6 @@ test = [
 docs = [
     "sphinx",
     "sphinx-autodoc-typehints>=2.0.1",
-    "sphinx-argparse-cli",
     "pydata-sphinx-theme",
     "myst-parser",
     "sphinxcontrib-mermaid"
@@ -138,7 +143,7 @@ exclude = [
   ".github",
 ]
 
-# # --- Devtools configuration ---
+# --- Devtools configuration ---
 
 [tool.mypy]
 mypy_path = "src"
@@ -152,7 +157,6 @@ disable_error_code = ["import-untyped"]
 module = [
     "matplotlib.*",
     "rasterio.*",
-    "scipy.*",
     "pyproj.*",
     "fetchez.*",
     "osgeo",
@@ -168,6 +172,11 @@ module = [
 ]
 ignore_missing_imports = true
 # follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = "scipy.*"
+follow_untyped_imports = false
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 markers = [
