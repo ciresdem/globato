@@ -37,7 +37,6 @@ extensions = [
     "sphinx.ext.viewcode",  # Add links to source code
     "sphinx.ext.githubpages",  # Auto-generate .nojekyll for GH Pages
     "sphinx.ext.mathjax",
-    "sphinx_argparse_cli",  # argparse
     "myst_parser",  # Parse Markdown files
     "sphinxcontrib.mermaid",  # mermaid support
 ]
