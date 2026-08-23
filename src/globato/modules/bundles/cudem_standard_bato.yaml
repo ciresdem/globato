@@ -101,7 +101,7 @@ modules:
       - name: outlierz
 
 
-  # --- DIGITAL COAST DAV (Smart Culled & Auto-Weighted) ---
+  # --- DIGITAL COAST DAV (Culled & Auto-Weighted) ---
   - bundle: glob-dav
   # - module: dav
   #   args:
