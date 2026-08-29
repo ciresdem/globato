@@ -6,78 +6,27 @@
     role="img"
     aria-labelledby="title desc">
   <title id="title">Globato colored logo</title>
-  <desc id="desc">Six rounded terrain-colored tiles crossed by a transparent multi-resolution terrain visor profile.</desc>
-  <defs>>
+  <desc id="desc">Six rounded terrain-colored tiles crossed by a transparent visor.</desc>
+  <defs>
     <mask id="visorCut" maskUnits="userSpaceOnUse" x="0" y="0" width="300" height="200">
       <rect width="300" height="200" fill="white"/>
       <rect
 	  fill="black"
 	  id="rect1868"
-	  width="200"
-	  height="36"
-	  x="60"
-	  y="80"
-	  rx="6"/>
-
-      <!-- <path d="M8 184 L34 111 L57 128 L82 102 L102 96 L120 70 L151 72 L171 101 L191 105 L211 88 L234 113 L259 104 L276 123 L312 182" -->
-      <!--       fill="none" stroke="black" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/> -->
+	  width="82"
+	  height="30"
+	  x="130"
+	  y="20"
+	  rx="16"/>
     </mask>
   </defs>
 
   <g mask="url(#visorCut)">
-    <rect x="4" y="4" width="92" height="92" rx="6" fill="#85B58D"/>
-    <rect x="104" y="4" width="92" height="92" rx="6" fill="#5482B4"/>
-    <rect x="204" y="4" width="92" height="92" rx="6" fill="#D4BE9D"/>
-    <rect x="4" y="104" width="92" height="92" rx="6"  fill="#B5C18E "/>
-    <rect x="104" y="104" width="92" height="92" rx="6" fill="#828D98"/>
-    <rect x="204" y="104" width="92" height="92" rx="6" fill="#2B4C7E"/>
-    <!-- <rect -->
-    <!-- 	width="28" -->
-    <!-- 	height="28" -->
-    <!-- 	rx="6" -->
-    <!-- 	x="113" -->
-    <!-- 	y="113" -->
-    <!-- 	fill="#85B58D" -->
-    <!-- 	id="rect90" /> -->
-    <!-- <rect -->
-    <!-- 	width="28" -->
-    <!-- 	height="28" -->
-    <!-- 	rx="6" -->
-    <!-- 	x="147" -->
-    <!-- 	y="113" -->
-    <!-- 	fill="#5482B4" -->
-    <!-- 	id="rect92" /> -->
-    <!-- <rect -->
-    <!-- 	width="28" -->
-    <!-- 	height="28" -->
-    <!-- 	rx="6" -->
-    <!-- 	x="180" -->
-    <!-- 	y="113" -->
-    <!-- 	fill="#B5C18E" -->
-    <!-- 	id="rect94" /> -->
-    <!-- <rect -->
-    <!-- 	width="28" -->
-    <!-- 	height="28" -->
-    <!-- 	rx="6" -->
-    <!-- 	x="113" -->
-    <!-- 	y="146" -->
-    <!-- 	fill="#2B4C7E" -->
-    <!-- 	id="rect100" /> -->
-    <!-- <rect -->
-    <!-- 	width="28" -->
-    <!-- 	height="28" -->
-    <!-- 	rx="6" -->
-    <!-- 	x="113" -->
-    <!-- 	y="178" -->
-    <!-- 	fill="#D4BE9D" -->
-    <!-- 	id="rect104" /> -->
-    <!-- <rect -->
-    <!-- 	width="60" -->
-    <!-- 	height="60" -->
-    <!-- 	rx="6" -->
-    <!-- 	x="147" -->
-    <!-- 	y="146" -->
-    <!-- 	fill="#77A3C8" -->
-    <!-- 	id="rect116" /> -->
+    <rect x="4" y="4" width="92" height="92" rx="16" fill="#85B58D"/>
+    <rect x="104" y="4" width="92" height="92" rx="16" fill="#828D98"/>
+    <rect x="204" y="4" width="92" height="92" rx="16" fill="#D4BE9D"/>
+    <rect x="4" y="104" width="92" height="92" rx="16"  fill="#B5C18E "/>
+    <rect x="104" y="104" width="92" height="92" rx="16" fill="#5482B4"/>
+    <rect x="204" y="104" width="92" height="92" rx="16" fill="#2B4C7E"/>
   </g>
 </svg>
