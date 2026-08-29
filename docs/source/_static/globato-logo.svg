@@ -14,9 +14,9 @@
 	  fill="black"
 	  id="rect1868"
 	  width="200"
-	  height="80"
+	  height="36"
 	  x="60"
-	  y="60"
+	  y="90"
 	  rx="6"/>
 
       <!-- <path d="M8 184 L34 111 L57 128 L82 102 L102 96 L120 70 L151 72 L171 101 L191 105 L211 88 L234 113 L259 104 L276 123 L312 182" -->
@@ -26,10 +26,10 @@
 
   <g mask="url(#visorCut)">
     <rect x="10" y="10" width="94" height="94" rx="6" fill="#85B58D"/>
-    <rect x="113" y="10" width="94" height="94" rx="6" fill="#77A3C8"/>
-    <rect x="216" y="10" width="94" height="94" rx="6" fill="#B5C18E"/>
-    <rect x="10" y="113" width="94" height="94" rx="6" fill="#2B4C7E"/>
-    <rect x="113" y="113" width="94" height="94" rx="6" fill="#F4F7FA"/>
+    <rect x="113" y="10" width="94" height="94" rx="6" fill="#5482B4"/>
+    <rect x="216" y="10" width="94" height="94" rx="6" fill="#D4BE9D"/>
+    <rect x="10" y="113" width="94" height="94" rx="6"  fill="#B5C18E "/>
+    <rect x="113" y="113" width="94" height="94" rx="6" fill="#828D98"/>
 
     <!-- <rect -->
     <!-- 	width="28" -->
@@ -80,6 +80,6 @@
     <!-- 	fill="#77A3C8" -->
     <!-- 	id="rect116" /> -->
 
-    <rect x="216" y="113" width="94" height="94" rx="6" fill="#D4BE9D"/>
+    <rect x="216" y="113" width="94" height="94" rx="6" fill="#2B4C7E"/>
   </g>
 </svg>
