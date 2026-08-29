@@ -87,7 +87,7 @@ def perspecto_group():
 )
 @click.option(
     "--cmap",
-    default="etopo",
+    default="coastal_relief",
     help="Matplotlib colormap or CPT file/name (default: 'etopo').",
 )
 @click.option(
@@ -169,7 +169,7 @@ def perspecto_hillshade(
     start_time = time.time()
 
     entry = {"src_fn": src, "dst_fn": dst}
-    success = hook.process_raster(src, dst, entry)
+    success = hook._process_file_fallback(src, dst, entry)
 
     elapsed = time.time() - start_time
 

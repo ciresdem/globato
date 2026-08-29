@@ -76,7 +76,7 @@ class StreamReproject(FetchHook):
                 mod_region = getattr(mod, "region", None)
                 if mod_region:
                     try:
-                        safe_region = mod_region.copy().buffer(pct=5)
+                        safe_region = mod_region.copy()  # .buffer(pct=5)
                     except Exception:
                         safe_region = list(mod_region)
 
