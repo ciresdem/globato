@@ -170,20 +170,25 @@ class ReferenceQuality(GlobatoFilter):
         # if self.target_srs:
 
         # Check the stream's current SRS first, fallback to the module's region SRS
-        current_stream_srs = entry.get("src_srs") or region.srs or "EPSG:4326"
+        current_stream_srs = (
+            entry.get("src_srs") or region.srs or "EPSG:4326+global:mss"
+        )
 
-        if self._transformer is None:
-            self._transformer, _ = SRSParser(
-                current_stream_srs,
-                self.wgs_region.srs,
-                region=self.wgs_region,
-            ).get_components()
-        if self._transformer is None:
-            self._transformer, _ = SRSParser(
-                region.srs,
-                self.wgs_region.srs or "epsg:4326",
-                region=self.wgs_region,
-            ).get_components()
+        try:
+            if self._transformer is None:
+                self._transformer, _ = SRSParser(
+                    current_stream_srs,
+                    self.wgs_region.srs,
+                    region=self.wgs_region,
+                ).get_components()
+            if self._transformer is None:
+                self._transformer, _ = SRSParser(
+                    region.srs,
+                    self.wgs_region.srs or "epsg:4326+global:mss",
+                    region=self.wgs_region,
+                ).get_components()
+        except Exception:
+            logger.debug("Could not perform vertical transformation: {e}")
 
         return True
 
