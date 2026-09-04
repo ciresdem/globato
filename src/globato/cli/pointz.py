@@ -135,7 +135,12 @@ def dump(
         global_hooks.append({"name": "pixels2points", "args": {}})
 
     global_hooks.append({"name": "drop_class", "args": {}})
-    global_hooks.append({"name": "xyz_write", "args": {"output_path": output}})
+    global_hooks.append(
+        {
+            "name": "xyz_write",
+            "args": {"output_path": output, "columns": ["x", "y", "z", "w"]},
+        }
+    )
 
     config = make_recipe_config(
         "pointz_dump", region, compiled_modules, global_hooks, crs=t_srs
@@ -148,7 +153,7 @@ def dump(
         click.secho(f"Recipe saved to {out_yaml}", fg="green", bold=True, err=True)
     else:
         click.secho("Executing PointZ Pipeline...", fg="cyan", err=True)
-        Recipe.from_file(config).run()
+        [x for x in Recipe.from_file(config).run()]
 
 
 @pointz_group.command("list-filters", cls=FetchezMainCommand)
