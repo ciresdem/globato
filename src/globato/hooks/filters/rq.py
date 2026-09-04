@@ -174,11 +174,15 @@ class ReferenceQuality(GlobatoFilter):
 
         if self._transformer is None:
             self._transformer, _ = SRSParser(
-                current_stream_srs, self.wgs_region.srs
+                current_stream_srs,
+                self.wgs_region.srs,
+                region=self.wgs_region,
             ).get_components()
         if self._transformer is None:
             self._transformer, _ = SRSParser(
-                region.srs, self.wgs_region.srs or "epsg:4326"
+                region.srs,
+                self.wgs_region.srs or "epsg:4326",
+                region=self.wgs_region,
             ).get_components()
 
         return True
