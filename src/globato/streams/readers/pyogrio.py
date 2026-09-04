@@ -103,7 +103,6 @@ class PyogrioReader(BaseGlobatoReader):
         self.z_scale = float_or(z_scale, 1.0)
         self.elevation_value = float_or(elevation_value)
         self.chunk_size = chunk_size
-
         # Breakline Properties
         self.as_breakline = as_breakline
         self.step = step
@@ -358,8 +357,10 @@ class PyogrioReader(BaseGlobatoReader):
         if self.weight_field and self.weight_field in chunk_gdf.columns:
             w_raw = chunk_gdf[self.weight_field].fillna(1.0).values
             w = np.repeat(w_raw, counts)
+            w *= self.weight
         else:
             w = np.ones(len(x))
+            w *= self.weight
 
         if self.unc_field and self.unc_field in chunk_gdf.columns:
             u_raw = chunk_gdf[self.unc_field].fillna(0.0).values
