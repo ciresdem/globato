@@ -29,6 +29,9 @@ modules:
       - name: unzip
       - name: filename_filter
         args: {match: ".tif"}
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+3855"
       - name: raster_warp
         args: {res: 3s}
       - name: point_raster_mask
@@ -52,6 +55,9 @@ modules:
       - name: unzip
       - name: filename_filter
         args: {match: ".tif"}
+      - name: set-srs
+        args:
+          srs: "EPSG:4326+3855"
       - name: raster_warp
         args: {res: 9s}
       - name: point_raster_mask

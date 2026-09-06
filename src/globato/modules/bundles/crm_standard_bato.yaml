@@ -34,7 +34,9 @@ modules:
           stage: "file"
       - name: raster_warp
         args: {res: 1s}
-
+      - name: set-srs
+        args:
+          srs: "EPSG:4269+5703"
       - name: stream_data
       - name: stream_reproject
         args:
@@ -56,6 +58,9 @@ modules:
       - name: raster_flats
         args:
           stage: "file"
+      - name: set-srs
+        args:
+          srs: "EPSG:4269+5703"
       - name: raster_warp
         args: {res: 1s}
       - name: stream_reproject
